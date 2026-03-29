@@ -1,0 +1,2092 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { 
+  LayoutDashboard, Wallet, Receipt, ShieldAlert, 
+  Target, TrendingUp, Calculator, Plus, Trash2, 
+  AlertCircle, CheckCircle2, Info, Settings2, Download, Upload,
+  Landmark, ArrowRightLeft, ChevronLeft, ChevronRight, Calendar,
+  ShoppingCart, Check, FileSpreadsheet, Activity, Edit3, BarChart3, CreditCard, PiggyBank,
+  PieChart, CheckSquare, MoreHorizontal, ArrowUpRight, ArrowDownRight, Minus, BarChart
+} from 'lucide-react';
+
+// --- Utilidades ---
+const formatCOP = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+const getTasaMensual = (tasaEA) => Math.pow(1 + tasaEA / 100, 1 / 12) - 1;
+const deleteItem = (setter, id) => setter(prev => prev.filter(item => item.id !== id));
+const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+// Inyector de SheetJS para Excel
+const loadSheetJS = async () => {
+  if (window.XLSX) return window.XLSX;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = () => reject(new Error('No se pudo cargar SheetJS'));
+    document.head.appendChild(script);
+  });
+};
+
+// --- Componentes UI Base ---
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-slate-900 border border-slate-800 rounded-xl shadow-lg p-4 md:p-5 ${className}`}>{children}</div>
+);
+
+const Input = ({ label, type = "text", value, onChange, placeholder, className="", min, max, step, disabled, error }) => (
+  <div className={`flex flex-col gap-1.5 ${className}`}>
+    <label className={`text-xs font-medium ${error ? 'text-rose-400' : 'text-slate-400'}`}>{label}</label>
+    <input type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} max={max} step={step} disabled={disabled}
+      className={`bg-slate-950 border ${error ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-800 focus:ring-indigo-500'} rounded-lg px-3 py-2.5 md:py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 transition-colors disabled:opacity-50`} />
+    {error && <span className="text-[10px] text-rose-400 mt-0.5">{error}</span>}
+  </div>
+);
+
+const Select = ({ label, value, onChange, options, className="", required, error, disabled }) => (
+  <div className={`flex flex-col gap-1.5 ${className}`}>
+    <label className={`text-xs font-medium ${error ? 'text-rose-400' : 'text-slate-400'}`}>{label}</label>
+    <select value={value} onChange={onChange} required={required} disabled={disabled}
+      className={`bg-slate-950 border ${error ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-800 focus:ring-indigo-500'} rounded-lg px-3 py-2.5 md:py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 transition-colors disabled:opacity-50`}>
+      <option value="">Seleccione...</option>
+      {options.map((opt, i) => {
+        const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
+        const lbl = typeof opt === 'object' && opt !== null ? opt.label : opt;
+        return <option key={i} value={val}>{lbl}</option>;
+      })}
+    </select>
+    {error && <span className="text-[10px] text-rose-400 mt-0.5">{error}</span>}
+  </div>
+);
+
+const Toast = ({ toast, onClose }) => {
+  if (!toast) return null;
+  return (
+    <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'} text-white`}>
+      {toast.type === 'success' ? <CheckCircle2 size={18}/> : <AlertCircle size={18}/>}
+      <span className="text-sm font-medium">{toast.msg}</span>
+      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><Trash2 size={14} className="hidden"/></button>
+    </div>
+  );
+};
+
+// --- Componentes Reutilizables de Módulos ---
+const PagoFijoCard = ({ pf, cuentasPermitidas, onPay }) => {
+  const [cuentaId, setCuentaId] = useState('');
+  const [montoCustom, setMontoCustom] = useState(pf.monto);
+  const [editMonto, setEditMonto] = useState(false);
+
+  return (
+    <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg flex flex-col justify-between">
+      <div>
+        <div className="flex justify-between items-start mb-3">
+          <div><p className="font-bold text-white text-base">{pf.descripcion}</p><p className="text-xs text-slate-400">{pf.categoria}</p></div>
+          <div className="text-right">
+            {!editMonto ? (
+              <p className="font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800 hover:border-amber-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto solo por este mes">
+                {formatCOP(montoCustom)} <Edit3 size={12}/>
+              </p>
+            ) : (
+              <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-24 text-sm bg-slate-950 text-white border border-indigo-500 rounded p-1.5 text-right outline-none shadow-inner" autoFocus />
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-slate-800">
+        <label className="text-[10px] text-slate-500 font-bold uppercase">Medio de pago</label>
+        <div className="flex gap-2">
+          <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500">
+            <option value="">Selecciona...</option>
+            {cuentasPermitidas.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+          <button onClick={() => onPay(cuentaId, montoCustom)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg font-bold flex items-center justify-center transition-colors shadow-md">
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// --- Pestañas Principales ---
+
+const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, scoreData, scoreHistory, presupuestos }) => {
+  const [chartFilter, setChartFilter] = useState('Todos');
+  
+  const { score, issues, recs } = scoreData;
+
+  const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
+  const gastosPorCategoria = {};
+  gastosFiltrados.forEach(g => {
+    const cat = g.categoria || 'Otros';
+    gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + g.monto;
+  });
+  
+  const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
+  const maxMonto = chartData.length > 0 ? chartData[0][1] : 1;
+
+  // Evaluar tendencia del Score
+  const prevMonthDate = new Date(`${selectedMonth}-01T12:00:00`);
+  prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+  const prevMonthStr = prevMonthDate.toISOString().slice(0, 7);
+  const prevScore = scoreHistory[prevMonthStr] || null;
+
+  const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-rose-400';
+  const scoreBg = score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+
+  // Tendencia 6 Meses
+  const trendData = useMemo(() => {
+    return Array.from({length: 6}, (_, i) => {
+      const d = new Date(`${selectedMonth}-01T12:00:00`);
+      d.setMonth(d.getMonth() - 5 + i);
+      const mStr = d.toISOString().slice(0, 7);
+      const label = d.toLocaleString('es-ES', { month: 'short' }).replace(/^\w/, c=>c.toUpperCase());
+      const tIng = ingresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
+      const tEgr = egresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
+      return { mes: mStr, label, ing: tIng, egr: tEgr };
+    });
+  }, [ingresos, egresos, selectedMonth]);
+
+  const maxTrendVal = Math.max(...trendData.map(d => Math.max(d.ing, d.egr)), 1);
+
+  // Alertas de Presupuesto (Dashboard Feature)
+  const alertasPresupuesto = useMemo(() => {
+    return presupuestos.map(p => {
+       const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
+       return { ...p, gastado, porcentaje: p.limite > 0 ? (gastado / p.limite) * 100 : 0 };
+    }).filter(p => p.porcentaje >= 75).sort((a,b) => b.porcentaje - a.porcentaje);
+  }, [presupuestos, egresosMes]);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Inicio y Dashboard Global</h1><p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, PowerBI de egresos y salud financiera.</p></header>
+
+      {/* KPIs Globales */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500">
+          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Ingresos del Mes</h3>
+          <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
+        </Card>
+        <Card className="p-3 md:p-5 border-t-4 border-t-rose-500">
+          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
+          <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
+        </Card>
+        <Card className="p-3 md:p-5 border-t-4 border-t-amber-500">
+          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Cuotas (Pendientes)</h3>
+          <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(cuotasMesRestantes)} <span className="text-[10px] text-slate-500 font-normal block">De {formatCOP(cuotasMesTotal)}</span></p>
+        </Card>
+        <Card className={`p-3 md:p-5 border-t-4 ${flujoNetoMes >= 0 ? 'border-t-indigo-500' : 'border-t-rose-500'}`}>
+          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Flujo Libre (Caja)</h3>
+          <p className={`text-lg md:text-2xl font-bold mt-1 ${flujoNetoMes >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+            {formatCOP(flujoNetoMes)}
+          </p>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Gráfico Tendencia de 6 Meses */}
+        <Card className="flex flex-col">
+          <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2"><BarChart size={18} className="text-emerald-400" /> Tendencia Histórica (6 Meses)</h2>
+          <div className="flex-1 flex items-end justify-between gap-2 h-48 pb-2 border-b border-slate-800">
+            {trendData.map((d, i) => {
+              const hInc = (d.ing / maxTrendVal) * 100;
+              const hExp = (d.egr / maxTrendVal) * 100;
+              return (
+                <div key={i} className="flex flex-col items-center w-full h-full justify-end group relative">
+                  <div className="flex gap-1 w-full justify-center items-end h-full">
+                    <div style={{ height: `${Math.max(hInc, 2)}%` }} className="w-1/3 max-w-[12px] bg-emerald-500/80 rounded-t-sm transition-all group-hover:bg-emerald-400"></div>
+                    <div style={{ height: `${Math.max(hExp, 2)}%` }} className="w-1/3 max-w-[12px] bg-rose-500/80 rounded-t-sm transition-all group-hover:bg-rose-400"></div>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-100 absolute -top-12 bg-slate-950 border border-slate-800 text-white text-[10px] p-2 rounded shadow-xl whitespace-nowrap z-10 pointer-events-none transition-opacity">
+                    <p className="text-emerald-400">Ing: {formatCOP(d.ing)}</p>
+                    <p className="text-rose-400">Egr: {formatCOP(d.egr)}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-between mt-2 px-1">
+            {trendData.map((d, i) => <span key={i} className="text-[10px] font-medium text-slate-500 uppercase">{d.label}</span>)}
+          </div>
+          <div className="flex justify-center gap-4 mt-4 text-xs font-medium text-slate-400">
+            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-emerald-500/80"></div> Ingresos</span>
+            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-rose-500/80"></div> Egresos</span>
+          </div>
+        </Card>
+
+        {/* Gráfico de Barras Distribución */}
+        <Card className="flex flex-col">
+          <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2"><BarChart3 size={18} className="text-indigo-400" /> Distribución de Egresos</h2>
+            <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-xs font-medium w-full md:w-auto">
+              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+              <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Fijo' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
+              <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Variable' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
+            </div>
+          </div>
+          <div className="flex-1 space-y-4 overflow-y-auto max-h-[250px] pr-2">
+            {chartData.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No hay egresos registrados.</p>}
+            {chartData.map(([name, amount]) => {
+              const width = Math.max((amount / maxMonto) * 100, 2);
+              return (
+                <div key={name} className="relative">
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-slate-300 font-medium truncate pr-4">{name}</span>
+                    <span className="font-bold text-slate-200">{formatCOP(amount)}</span>
+                  </div>
+                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
+                    <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${width}%` }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <Card className="flex flex-col items-center justify-center py-8 bg-slate-900/50 relative overflow-hidden">
+          {prevScore !== null && (
+            <div className="absolute top-4 right-4 flex items-center gap-1 text-xs font-bold bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800" title="Comparado con el mes anterior">
+              {score > prevScore ? <span className="text-emerald-400 flex items-center gap-1"><ArrowUpRight size={14}/> +{score - prevScore} pts</span> :
+               score < prevScore ? <span className="text-rose-400 flex items-center gap-1"><ArrowDownRight size={14}/> {prevScore - score} pts</span> :
+               <span className="text-slate-400 flex items-center gap-1"><Minus size={14}/> = pts</span>}
+            </div>
+          )}
+          <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><Activity size={18} className="text-emerald-400"/> Score de Salud Financiera</h2>
+          <div className={`text-6xl md:text-7xl font-black font-mono mt-2 ${scoreColor}`}>{score}</div>
+          <p className={`font-bold mt-2 ${scoreColor}`}>{score >= 80 ? 'Excelente Salud' : score >= 50 ? 'Requiere Atención' : 'Situación Crítica'}</p>
+          <div className="w-full max-w-xs bg-slate-800 rounded-full h-2 mt-6">
+            <div className={`h-full rounded-full ${scoreBg}`} style={{width: `${score}%`}}></div>
+          </div>
+        </Card>
+
+        <div className="space-y-6">
+          <Card>
+            <h2 className="text-lg font-semibold text-white mb-4 border-b border-slate-800 pb-2 flex items-center gap-2"><AlertCircle size={18} className="text-amber-400"/> Diagnóstico y Alertas</h2>
+            
+            {/* Alertas de Presupuestos dinámicas por color */}
+            {alertasPresupuesto.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {alertasPresupuesto.map((p, i) => {
+                  const isOver = p.porcentaje >= 100;
+                  return (
+                    <div key={i} className={`${isOver ? 'bg-rose-500/20 border-rose-500' : 'bg-amber-500/10 border-amber-500/30'} border rounded-lg p-3 flex justify-between items-center`}>
+                      <div>
+                        <p className={`text-xs font-bold ${isOver ? 'text-rose-400' : 'text-amber-400'} flex items-center gap-1`}><AlertCircle size={12}/> {isOver ? 'Presupuesto excedido' : 'Presupuesto al límite'}</p>
+                        <p className="text-sm font-medium text-slate-200 mt-0.5">{p.categoria}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-white">{p.porcentaje.toFixed(0)}%</p>
+                        <p className="text-[10px] text-slate-400">gastado</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {recs.map((r, i) => (
+                <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex gap-4 items-start">
+                  <div className="text-2xl mt-1">{r.ico}</div>
+                  <div><h3 className="font-bold text-sm text-slate-200">{r.title}</h3><p className="text-xs text-slate-400 mt-1 leading-relaxed">{r.txt}</p></div>
+                </div>
+              ))}
+              {recs.length === 0 && alertasPresupuesto.length === 0 && (
+                 <p className="text-sm text-slate-500 text-center py-6">Todo en orden por ahora. ¡Buen trabajo!</p>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CuentasTab = ({ cuentas, setCuentas, transferencias, setTransferencias, egresos, setEgresos, showToast }) => {
+  const [cuentaEdit, setCuentaEdit] = useState({ id: null, name: '', type: 'bank', initialBalance: '', initialDebt: '', limit: '', tasaEA: '', cuotaMinima: '' });
+  const [nuevaTx, setNuevaTx] = useState({ fecha: '', fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
+  const [errors, setErrors] = useState({});
+  const [txErrors, setTxErrors] = useState({});
+  const formRef = useRef(null);
+
+  const guardarCuenta = (e) => {
+    e.preventDefault();
+    let errs = {};
+    if(!cuentaEdit.name) errs.name = "Obligatorio";
+    if(Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    let baseData = {
+      name: cuentaEdit.name, type: cuentaEdit.type, 
+      initialBalance: Number(cuentaEdit.initialBalance) || 0, initialDebt: Number(cuentaEdit.initialDebt) || 0, 
+      limit: Number(cuentaEdit.limit) || 0, cuotaMinima: Number(cuentaEdit.cuotaMinima) || 0,
+      tasaEA: Number(cuentaEdit.tasaEA) || 0
+    };
+
+    if (cuentaEdit.id) {
+      setCuentas(prev => prev.map(c => c.id === cuentaEdit.id ? { ...c, ...baseData } : c));
+      showToast("Cuenta actualizada correctamente.");
+    } else {
+      setCuentas(prev => [...prev, { id: generateId(), ...baseData }]);
+      showToast("Cuenta creada correctamente.");
+    }
+    limpiarFormCuenta();
+  };
+
+  const limpiarFormCuenta = () => {
+    setCuentaEdit({ id: null, name: '', type: 'bank', initialBalance: '', initialDebt: '', limit: '', tasaEA: '', cuotaMinima: '' });
+    setErrors({});
+  };
+
+  const cargarParaEditar = (c) => {
+    setCuentaEdit({ id: c.id, name: c.name, type: c.type, initialBalance: c.initialBalance, initialDebt: c.currentDebt, limit: c.limit, tasaEA: c.tasaEA, cuotaMinima: c.cuotaMinima });
+    setErrors({});
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const agregarTransferencia = (e) => {
+    e.preventDefault();
+    let errs = {};
+    if(!nuevaTx.fromId) errs.fromId = "Obligatorio";
+    if(!nuevaTx.toId) errs.toId = "Obligatorio";
+    if(!nuevaTx.monto) errs.monto = "Obligatorio";
+    if(!nuevaTx.fecha) errs.fecha = "Obligatorio";
+    if(nuevaTx.fromId === nuevaTx.toId && nuevaTx.fromId) errs.toId = "Destino debe ser distinto al origen";
+    if(Object.keys(errs).length > 0) { setTxErrors(errs); return; }
+
+    const transId = generateId();
+    setTransferencias(prev => [...prev, { ...nuevaTx, id: transId, monto: Number(nuevaTx.monto) }]);
+    if (Number(nuevaTx.costoAvance) > 0) {
+      setEgresos(prev => [...prev, { id: generateId(), fecha: nuevaTx.fecha, descripcion: `Comisión Transferencia: ${nuevaTx.descripcion}`, categoria: 'Otros', tipo: 'Variable', monto: Number(nuevaTx.costoAvance), cuentaId: nuevaTx.fromId }]);
+      showToast(`Transferencia y gasto por comisión de ${formatCOP(nuevaTx.costoAvance)} registrados.`);
+    } else {
+      showToast("Transferencia registrada exitosamente.");
+    }
+    setNuevaTx({ fecha: '', fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
+    setTxErrors({});
+  };
+
+  const tipoOrigen = cuentas.find(c=>c.id===nuevaTx.fromId)?.type;
+  const tipoDestino = cuentas.find(c=>c.id===nuevaTx.toId)?.type;
+  const esAvance = tipoOrigen === 'credit' && ['bank','cash'].includes(tipoDestino);
+
+  const c_ahorros = cuentas.filter(c => ['bank', 'cash'].includes(c.type));
+
+  const renderCuentaCard = (c, colorClass) => (
+    <div key={c.id} className="flex justify-between items-center p-3 bg-slate-950 rounded-lg border border-slate-800">
+      <div>
+        <p className="text-sm font-medium text-slate-200">{c.name}</p>
+        <p className="text-[10px] text-slate-500">Saldo real: {formatCOP(c.currentBalance)}</p>
+      </div>
+      <div className="text-right flex items-center gap-2 md:gap-3">
+        <p className={`text-sm font-bold ${colorClass}`}>{formatCOP(c.currentBalance)}</p>
+        <button onClick={() => cargarParaEditar(c)} className="text-slate-600 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
+        <button onClick={() => {deleteItem(setCuentas, c.id); showToast("Cuenta eliminada");}} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Landmark className="text-indigo-400 w-6 h-6 md:w-8 md:h-8"/> Cuentas y Transferencias</h1><p className="text-sm md:text-base text-slate-400 mt-1">Gestiona tu capital en bancos y traslados. Las tarjetas están en la pestaña Deudas.</p></header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-3 border-t-4 border-t-indigo-500 bg-indigo-950/10">
+          <div className="flex justify-between items-center mb-4" ref={formRef}>
+            <h2 className="text-base font-semibold text-white">{cuentaEdit.id ? '✏️ Editar Cuenta' : '✨ Crear Nueva Cuenta'}</h2>
+            {cuentaEdit.id && <button onClick={limpiarFormCuenta} className="text-xs text-indigo-400 hover:underline">Cancelar Edición</button>}
+          </div>
+          <form onSubmit={guardarCuenta} className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+            <Input label="Nombre" value={cuentaEdit.name} onChange={e=>setCuentaEdit({...cuentaEdit, name: e.target.value})} error={errors.name} className="col-span-2 md:col-span-1" />
+            <Select label="Tipo" options={[{value:'bank', label:'Cuenta Ahorro'}, {value:'cash', label:'Efectivo'}, {value:'pocket', label:'Inversión / Bolsillo'}]} value={cuentaEdit.type} onChange={e=>setCuentaEdit({...cuentaEdit, type: e.target.value})} className="col-span-2 md:col-span-1" />
+            
+            <Input type="number" label="Saldo Base/Inicial ($)" value={cuentaEdit.initialBalance} onChange={e=>setCuentaEdit({...cuentaEdit, initialBalance: e.target.value})} className="col-span-2 md:col-span-2" />
+            <button type="submit" className="col-span-2 md:col-span-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg text-sm transition-colors mt-2">{cuentaEdit.id ? 'Actualizar Datos' : 'Guardar Nueva Cuenta'}</button>
+          </form>
+        </Card>
+
+        <div className="lg:col-span-2 grid grid-cols-1 gap-4">
+          <Card>
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2"><Wallet size={16}/> Cuentas de Ahorro / Retiros</h3>
+            <div className="space-y-2">{c_ahorros.map(c=>renderCuentaCard(c, 'text-emerald-400'))}</div>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card className="border-t-4 border-t-amber-500">
+            <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2"><ArrowRightLeft size={16} className="text-amber-400"/> Traslado de Fondos</h2>
+            <p className="text-xs text-slate-400 mb-4">Mueve dinero de una cuenta a otra.</p>
+            <form onSubmit={agregarTransferencia} className="space-y-3">
+              <Select label="Origen (Sale de)" options={cuentas.filter(c=>['bank','cash','credit'].includes(c.type)).map(c => ({value: c.id, label: c.name}))} value={nuevaTx.fromId} onChange={e=>setNuevaTx({...nuevaTx, fromId: e.target.value})} error={txErrors.fromId} />
+              <Select label="Destino (Entra a)" options={cuentas.filter(c=>['bank','cash'].includes(c.type)).map(c => ({value: c.id, label: c.name}))} value={nuevaTx.toId} onChange={e=>setNuevaTx({...nuevaTx, toId: e.target.value})} error={txErrors.toId} />
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="number" label="Monto ($)" value={nuevaTx.monto} onChange={e=>setNuevaTx({...nuevaTx, monto: e.target.value})} error={txErrors.monto} min="1" />
+                <Input type="date" label="Fecha" value={nuevaTx.fecha} onChange={e=>setNuevaTx({...nuevaTx, fecha: e.target.value})} error={txErrors.fecha} />
+              </div>
+              {esAvance && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg">
+                  <p className="text-[10px] text-rose-400 mb-2 font-bold uppercase">Detectado Avance desde Tarjeta</p>
+                  <Input type="number" label="Costo de transacción ($) (Se irá a Egresos Variables)" value={nuevaTx.costoAvance} onChange={e=>setNuevaTx({...nuevaTx, costoAvance: e.target.value})} required min="0" />
+                </div>
+              )}
+              <Input label="Descripción (Opcional)" placeholder="Ej: Traslado a bolsillo" value={nuevaTx.descripcion} onChange={e=>setNuevaTx({...nuevaTx, descripcion: e.target.value})} />
+              <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-lg text-sm transition-colors">Registrar Traslado</button>
+            </form>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const IngresosTab = ({ ingresos, setIngresos, cuentas, selectedMonth, showToast }) => {
+  const [nuevo, setNuevo] = useState({ fecha: '', descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
+  const [editId, setEditId] = useState(null);
+  const [errors, setErrors] = useState({});
+  const formRef = useRef(null);
+
+  const opcionesPlantillas = [
+    { value: 'otro', label: 'Otro (Ingreso manual)' },
+    { value: 'Salario L', label: 'Salario Leo' },
+    { value: 'Salario A (Q1)', label: 'Salario Andre (Q1)' },
+    { value: 'Salario A (Q2)', label: 'Salario Andre (Q2)' },
+    { value: 'Bono Salario A', label: 'Bono Salario Andre' },
+    { value: 'Prima 1 L', label: 'Prima 1 Leo' },
+    { value: 'Prima 2 L', label: 'Prima 2 Leo' },
+    { value: 'Prima 1 A', label: 'Prima 1 Andre' },
+    { value: 'Prima 2 A', label: 'Prima 2 Andre' }
+  ];
+
+  const handlePlantillaChange = (e) => {
+    const val = e.target.value;
+    if (val === 'otro' || val === '') {
+      setNuevo({...nuevo, plantilla: val, descripcion: ''});
+      return;
+    }
+    let baseMonto = 0; let cuentaName = ''; let persona = ''; let tipo = 'Fijo';
+    const currentYear = new Date().getFullYear();
+    const currentMonth = selectedMonth.split('-')[1];
+    let dia = '01';
+
+    if (val === 'Salario L') {
+       baseMonto = 5765251; cuentaName = 'Bancolombia Leo'; persona = 'L'; 
+       const endOfMonth = new Date(currentYear, currentMonth, 0).getDate();
+       dia = endOfMonth <= 30 ? '27' : '28'; 
+    } else if (val === 'Salario A (Q1)') {
+       baseMonto = 1200000; cuentaName = 'Banco de Bogotá Andre'; persona = 'A'; dia = '14';
+    } else if (val === 'Salario A (Q2)') {
+       baseMonto = 1200000; cuentaName = 'Banco de Bogotá Andre'; persona = 'A'; dia = '28';
+    } else if (val === 'Bono Salario A') {
+       baseMonto = 500000; cuentaName = 'Banco de Bogotá Andre'; persona = 'A'; tipo = 'Variable'; dia = '28';
+    } else if (val === 'Prima 1 L' || val === 'Prima 2 L') {
+       baseMonto = 2800000; cuentaName = 'Bancolombia Leo'; persona = 'L'; tipo = 'Bono';
+    } else if (val === 'Prima 1 A' || val === 'Prima 2 A') {
+       baseMonto = 1200000; cuentaName = 'Banco de Bogotá Andre'; persona = 'A'; tipo = 'Bono';
+    }
+    const cuentaEncontrada = cuentas.find(c => c.name.includes(cuentaName))?.id || cuentas[0]?.id;
+
+    setNuevo({ fecha: `${selectedMonth}-${dia}`, descripcion: val, persona: persona, tipo: tipo, monto: baseMonto.toString(), cuentaId: cuentaEncontrada || '', plantilla: val });
+    setErrors({});
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const guardar = (e) => { 
+    e.preventDefault();
+    let errs = {};
+    if(!nuevo.descripcion) errs.descripcion = "Obligatorio";
+    if(!nuevo.monto) errs.monto = "Obligatorio";
+    if(!nuevo.cuentaId) errs.cuentaId = "Obligatorio";
+    if(!nuevo.fecha) errs.fecha = "Obligatorio";
+    if(Object.keys(errs).length > 0) { setErrors(errs); return; }
+    
+    if (editId) {
+      setIngresos(prev => prev.map(i => i.id === editId ? { ...nuevo, monto: Number(nuevo.monto) } : i));
+      setEditId(null);
+      showToast("Ingreso actualizado.");
+    } else {
+      setIngresos(prev => [...prev, { ...nuevo, id: generateId(), monto: Number(nuevo.monto) }]); 
+      showToast("Ingreso guardado correctamente.");
+    }
+    setNuevo({ fecha: '', descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' }); 
+    setErrors({});
+  };
+
+  const cargarParaEditar = (ing) => {
+    setNuevo({ fecha: ing.fecha, descripcion: ing.descripcion, persona: ing.persona || '', tipo: ing.tipo || 'Variable', monto: ing.monto.toString(), cuentaId: ing.cuentaId, plantilla: 'otro' });
+    setEditId(ing.id);
+    setErrors({});
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const cancelarEdicion = () => {
+    setEditId(null);
+    setNuevo({ fecha: '', descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
+    setErrors({});
+  }
+  
+  const ingresosMes = ingresos.filter(i => i.fecha.startsWith(selectedMonth));
+  const optionsCuentas = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type)).map(c => ({value: c.id, label: c.name}));
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Ingresos</h1><p className="text-sm md:text-base text-slate-400 mt-1">Registra tus ingresos. Selecciona una plantilla base para autocompletar rápidamente.</p></header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <Card className={editId ? "border-t-4 border-t-amber-500 bg-amber-950/10" : ""}>
+            <div className="flex justify-between items-center mb-4" ref={formRef}>
+              <h2 className="text-lg font-semibold text-white">{editId ? '✏️ Editar Ingreso' : 'Registro de Ingresos'}</h2>
+              {editId && <button onClick={cancelarEdicion} className="text-xs text-amber-400 hover:underline">Cancelar Edición</button>}
+            </div>
+            <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4 items-end">
+              {!editId && (
+                <Select label="Plantilla Rápida" options={opcionesPlantillas} value={nuevo.plantilla} onChange={handlePlantillaChange} className="col-span-1 sm:col-span-2 md:col-span-3" />
+              )}
+              {nuevo.plantilla === 'otro' || editId ? (
+                 <Input label="Descripción del Ingreso" placeholder="Ej: Venta extra" value={nuevo.descripcion} onChange={e=>setNuevo({...nuevo, descripcion: e.target.value})} error={errors.descripcion} className="col-span-1 sm:col-span-2 md:col-span-3" />
+              ) : null}
+              
+              <Input type="date" label="Fecha" value={nuevo.fecha} onChange={e=>setNuevo({...nuevo, fecha: e.target.value})} error={errors.fecha}/>
+              <Select label="Destino (Cuenta)" options={optionsCuentas} value={nuevo.cuentaId} onChange={e=>setNuevo({...nuevo, cuentaId: e.target.value})} error={errors.cuentaId} />
+              <Input type="number" label="Monto ($)" value={nuevo.monto} onChange={e=>setNuevo({...nuevo, monto: e.target.value})} error={errors.monto} />
+              <Input label="Persona (Opcional)" placeholder="Ej: L o A" value={nuevo.persona} onChange={e=>setNuevo({...nuevo, persona: e.target.value})} />
+              <Select label="Tipo" options={[{value:'Fijo',label:'Fijo'}, {value:'Variable',label:'Variable'}, {value:'Bono',label:'Bono'}, {value:'Freelance',label:'Freelance'}]} value={nuevo.tipo} onChange={e=>setNuevo({...nuevo, tipo: e.target.value})} />
+              
+              <div className="flex gap-2 col-span-1 sm:col-span-2 md:col-span-3 mt-2">
+                <button type="submit" className={`flex-1 ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors`}>
+                  {editId ? 'Actualizar Ingreso' : <><Plus size={18} /> Guardar Ingreso</>}
+                </button>
+                {editId && <button type="button" onClick={cancelarEdicion} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition-colors">Cancelar</button>}
+              </div>
+            </form>
+          </Card>
+        </div>
+        <Card className="flex flex-col">
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Ingresos guardados este mes</h3>
+          <div className="flex-1 overflow-y-auto space-y-3">
+            {ingresosMes.map(ing => (
+              <div key={ing.id} className={`p-3 rounded-lg border flex justify-between items-center transition-colors ${editId === ing.id ? 'bg-amber-900/20 border-amber-500/50' : 'bg-slate-950 border-slate-800'}`}>
+                <div>
+                  <p className="text-sm font-bold text-slate-200">{ing.descripcion}</p>
+                  <p className="text-[10px] text-slate-500">{ing.fecha} • {cuentas.find(c => c.id === ing.cuentaId)?.name}</p>
+                </div>
+                <div className="text-right flex items-center gap-2">
+                  <p className="text-sm font-bold text-emerald-400">{formatCOP(ing.monto)}</p>
+                  <button onClick={() => cargarParaEditar(ing)} className="text-slate-500 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
+                  <button onClick={() => {deleteItem(setIngresos, ing.id); showToast("Ingreso eliminado");}} className="text-slate-500 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+                </div>
+              </div>
+            ))}
+            {ingresosMes.length === 0 && <p className="text-center py-6 text-slate-500 text-sm">No hay ingresos registrados este mes.</p>}
+          </div>
+          <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
+            <span className="text-slate-400 font-medium">Total Mes:</span>
+            <span className="text-2xl font-bold text-emerald-400">{formatCOP(ingresosMes.reduce((s,i)=>s+i.monto,0))}</span>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const EgresosTab = ({ egresos, setEgresos, pagosFijos, setPagosFijos, cuentas, selectedMonth, categoriasMaestras, showToast, comprasCuotas, setComprasCuotas }) => {
+  const [nuevoVariable, setNuevoVariable] = useState({ fecha: '', descripcion: '', categoria: categoriasMaestras[0] || 'Otros', monto: '', cuentaId: '' });
+  const [editVarId, setEditVarId] = useState(null);
+  const [errorsVar, setErrorsVar] = useState({});
+  const varRef = useRef(null);
+
+  const [ccTarjetaId, setCcTarjetaId] = useState('');
+  const [ccDesc, setCcDesc] = useState('');
+  const [ccCat, setCcCat] = useState(categoriasMaestras[0] || 'Otros');
+  const [ccMonto, setCcMonto] = useState('');
+  const [ccCuotas, setCcCuotas] = useState('');
+  const [ccTasaEA, setCcTasaEA] = useState(0);
+  const [editCuotaId, setEditCuotaId] = useState(null);
+  const [errorsCc, setErrorsCc] = useState({});
+  const ccRef = useRef(null);
+  
+  const cuentasPermitidasPago = cuentas.filter(c => ['bank', 'cash', 'credit'].includes(c.type)).map(c => ({value: c.id, label: c.name}));
+  const cuentasTarjetas = cuentas.filter(c => c.type === 'credit');
+
+  const guardarVariable = (e) => {
+    e.preventDefault();
+    let errs = {};
+    if(!nuevoVariable.descripcion) errs.descripcion = "Obligatorio";
+    if(!nuevoVariable.monto) errs.monto = "Obligatorio";
+    if(!nuevoVariable.cuentaId) errs.cuentaId = "Obligatorio";
+    if(!nuevoVariable.fecha) errs.fecha = "Obligatorio";
+    if(Object.keys(errs).length > 0) { setErrorsVar(errs); return; }
+    
+    if (editVarId) {
+      setEgresos(prev => prev.map(eg => eg.id === editVarId ? { ...nuevoVariable, monto: Number(nuevoVariable.monto), tipo: eg.tipo } : eg));
+      setEditVarId(null);
+      showToast("Gasto actualizado.");
+    } else {
+      setEgresos(prev => [...prev, { ...nuevoVariable, id: generateId(), monto: Number(nuevoVariable.monto), tipo: 'Variable' }]);
+      showToast("Gasto registrado exitosamente.");
+    }
+    setNuevoVariable({ fecha: '', descripcion: '', categoria: categoriasMaestras[0] || 'Otros', monto: '', cuentaId: '' });
+    setErrorsVar({});
+  };
+
+  const cargarParaEditarVariable = (egreso) => {
+    setNuevoVariable({ fecha: egreso.fecha, descripcion: egreso.descripcion, categoria: egreso.categoria, monto: egreso.monto.toString(), cuentaId: egreso.cuentaId });
+    setEditVarId(egreso.id);
+    setErrorsVar({});
+    varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const cancelarEdicionVariable = () => {
+    setEditVarId(null);
+    setNuevoVariable({ fecha: '', descripcion: '', categoria: categoriasMaestras[0] || 'Otros', monto: '', cuentaId: '' });
+    setErrorsVar({});
+  }
+
+  const procesarPagoFijo = (pagoFijoId, cuentaId, montoFinal) => {
+    if(!cuentaId) { showToast("Selecciona de dónde vas a pagar.", "error"); return; }
+    const pf = pagosFijos.find(p => p.id === pagoFijoId);
+    const fechaActual = new Date();
+    const isCurrentMonth = selectedMonth === fechaActual.toISOString().slice(0, 7);
+    const diaStr = isCurrentMonth ? fechaActual.getDate().toString().padStart(2, '0') : '01';
+    const fechaPago = `${selectedMonth}-${diaStr}`; 
+    
+    const nuevoEgreso = { 
+      id: generateId(), fecha: fechaPago, descripcion: pf.descripcion, 
+      categoria: pf.categoria, monto: Number(montoFinal) || pf.monto, 
+      cuentaId: cuentaId, pagoFijoId: pf.id, tipo: 'Fijo',
+      deudaId: (pf.categoria.toLowerCase().includes('tarjeta') || pf.categoria.toLowerCase().includes('crédito') || pf.categoria.toLowerCase().includes('vehículo') || pf.categoria.toLowerCase().includes('davibank')) 
+                ? (cuentas.find(c => ['credit', 'loan'].includes(c.type) && c.name.toLowerCase() === pf.descripcion.toLowerCase())?.id || null) 
+                : null
+    };
+    setEgresos(prev => [...prev, nuevoEgreso]);
+    showToast(`Pago de ${pf.descripcion} registrado.`);
+  };
+
+  const handleCcTarjetaChange = (e) => {
+    const tId = e.target.value;
+    setCcTarjetaId(tId);
+    const card = cuentas.find(c => c.id === tId);
+    if(card) setCcTasaEA(card.tasaEA || 0);
+  };
+
+  const ccCuotaMensual = useMemo(() => {
+    const p = Number(ccMonto) || 0;
+    const n = Number(ccCuotas) || 1;
+    const ea = Number(ccTasaEA) || 0;
+    const tm = Math.pow(1 + ea/100, 1/12) - 1;
+    if (p <= 0 || n <= 0) return 0;
+    if (tm === 0) return p / n;
+    return (p * tm) / (1 - Math.pow(1 + tm, -n));
+  }, [ccMonto, ccCuotas, ccTasaEA]);
+
+  const guardarCompraCuotas = (e) => {
+    e.preventDefault();
+    let errs = {};
+    if(!ccTarjetaId) errs.tarjetaId = "Obligatorio";
+    if(!ccDesc) errs.descripcion = "Obligatorio";
+    if(!ccMonto) errs.montoTotal = "Obligatorio";
+    if(!ccCuotas) errs.cuotasTotales = "Obligatorio";
+    if(Object.keys(errs).length > 0) { setErrorsCc(errs); return; }
+
+    if (editCuotaId) {
+      setComprasCuotas(prev => prev.map(c => c.id === editCuotaId ? { 
+          ...c, tarjetaId: ccTarjetaId, descripcion: ccDesc, montoTotal: Number(ccMonto), 
+          cuotasTotales: Number(ccCuotas), valorMensual: Math.round(ccCuotaMensual) 
+      } : c));
+      setEditCuotaId(null);
+      showToast("Compra a cuotas actualizada");
+    } else {
+      const isCurrentMonth = selectedMonth === new Date().toISOString().slice(0, 7);
+      const diaStr = isCurrentMonth ? new Date().getDate().toString().padStart(2, '0') : '01';
+      const fechaCompra = `${selectedMonth}-${diaStr}`; 
+
+      const egreso = { id: generateId(), fecha: fechaCompra, descripcion: ccDesc, categoria: ccCat, monto: Number(ccMonto), cuentaId: ccTarjetaId, tipo: 'Variable' };
+      setEgresos(prev => [...prev, egreso]);
+
+      const nuevaCuota = { id: generateId(), tarjetaId: ccTarjetaId, descripcion: ccDesc, montoTotal: Number(ccMonto), cuotasTotales: Number(ccCuotas), valorMensual: Math.round(ccCuotaMensual), cuotasPagadas: 0 };
+      setComprasCuotas(prev => [...prev, nuevaCuota]);
+      showToast('Compra registrada. El total ha descontado tu cupo de tarjeta.');
+    }
+    
+    setCcTarjetaId(''); setCcDesc(''); setCcMonto(''); setCcCuotas(''); setCcTasaEA(0);
+    setErrorsCc({});
+  };
+
+  const cargarParaEditarCuota = (c) => {
+    setCcTarjetaId(c.tarjetaId); setCcDesc(c.descripcion); setCcMonto(c.montoTotal.toString()); setCcCuotas(c.cuotasTotales.toString());
+    const card = cuentas.find(acc => acc.id === c.tarjetaId);
+    setCcTasaEA(card ? card.tasaEA : 0);
+    setEditCuotaId(c.id);
+    setErrorsCc({});
+    ccRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const cancelarEdicionCuota = () => {
+    setEditCuotaId(null);
+    setCcTarjetaId(''); setCcDesc(''); setCcMonto(''); setCcCuotas(''); setCcTasaEA(0);
+    setErrorsCc({});
+  };
+
+  const avanzarCuota = (id) => {
+    setComprasCuotas(prev => prev.map(c => {
+      if(c.id === id && c.cuotasPagadas < c.cuotasTotales) return {...c, cuotasPagadas: c.cuotasPagadas + 1};
+      return c;
+    }));
+  };
+
+  const egresosMes = egresos.filter(d => d.fecha.startsWith(selectedMonth));
+  
+  const pagosPendientes = pagosFijos.map(pf => {
+    const egresoEsteMes = egresosMes.find(e => e.pagoFijoId === pf.id);
+    return { ...pf, pagado: !!egresoEsteMes, egresoInfo: egresoEsteMes };
+  }).sort((a, b) => a.pagado - b.pagado);
+
+  const totalCompromisoCuotas = comprasCuotas.filter(c => c.cuotasPagadas < c.cuotasTotales).reduce((s, c) => s + c.valorMensual, 0);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      <header className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Receipt className="text-rose-500 w-6 h-6 md:w-8 md:h-8" /> Egresos</h1>
+          <p className="text-sm md:text-base text-slate-400 mt-1">Tus gastos fijos y variables unificados.</p>
+        </div>
+      </header>
+
+      {/* SECCIÓN 1: GASTOS VARIABLES */}
+      <Card className={`border-t-4 ${editVarId ? 'border-t-amber-500 bg-amber-950/10' : 'border-t-rose-500 bg-slate-900/80'}`}>
+        <div className="flex justify-between items-center mb-4" ref={varRef}>
+          <h2 className="text-lg font-semibold text-white">{editVarId ? '✏️ Editar Gasto Variable' : '1. Registrar Gasto Variable Diario'}</h2>
+          {editVarId && <button onClick={cancelarEdicionVariable} className="text-xs text-amber-400 hover:underline">Cancelar Edición</button>}
+        </div>
+        <form onSubmit={guardarVariable} className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+          <Input type="date" label="Fecha" value={nuevoVariable.fecha} onChange={e=>setNuevoVariable({...nuevoVariable, fecha: e.target.value})} error={errorsVar.fecha} className="col-span-2 md:col-span-1"/>
+          <Input label="Descripción del Gasto" placeholder="Ej: Supermercado" value={nuevoVariable.descripcion} onChange={e=>setNuevoVariable({...nuevoVariable, descripcion: e.target.value})} error={errorsVar.descripcion} className="col-span-2 md:col-span-2" />
+          <Select label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoVariable.categoria} onChange={e=>setNuevoVariable({...nuevoVariable, categoria: e.target.value})} required className="col-span-1 md:col-span-1" />
+          <Select label="Pagado desde" options={cuentasPermitidasPago} value={nuevoVariable.cuentaId} onChange={e=>setNuevoVariable({...nuevoVariable, cuentaId: e.target.value})} error={errorsVar.cuentaId} className="col-span-1 md:col-span-1" />
+          <Input type="number" label="Monto ($)" value={nuevoVariable.monto} onChange={e=>setNuevoVariable({...nuevoVariable, monto: e.target.value})} error={errorsVar.monto} className="col-span-2 md:col-span-1" />
+          <div className="col-span-2 md:col-span-6 mt-2 flex gap-2">
+            <button type="submit" className={`flex-1 ${editVarId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-rose-600 hover:bg-rose-700'} text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors`}>
+              {editVarId ? 'Actualizar Gasto' : <><Plus size={18} /> Registrar Gasto Variable</>}
+            </button>
+            {editVarId && <button type="button" onClick={cancelarEdicionVariable} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition-colors">Cancelar</button>}
+          </div>
+        </form>
+      </Card>
+
+      {/* SECCIÓN 2: COMPRAS A CUOTAS */}
+      <Card className={`border-t-4 ${editCuotaId ? 'border-t-amber-500 bg-amber-950/20' : 'border-t-indigo-500 bg-slate-900/80'}`}>
+        <div className="flex justify-between items-center mb-4" ref={ccRef}>
+          <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+            <ShoppingCart size={20} className="text-indigo-400"/> 
+            {editCuotaId ? '✏️ Editando Compra a Cuotas' : '2. Separador de Compras a Cuotas (TC)'}
+          </h2>
+          <div className="flex gap-2 items-center">
+            {editCuotaId && <button onClick={cancelarEdicionCuota} className="text-xs text-amber-400 hover:underline">Cancelar Edición</button>}
+            <p className="hidden md:block text-xs font-bold text-indigo-400 bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-500/20">Compromiso Mensual Cuotas: {formatCOP(totalCompromisoCuotas)}</p>
+          </div>
+        </div>
+        
+        <form onSubmit={guardarCompraCuotas} className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-6 items-end">
+          <Select label="Tarjeta de Crédito" options={cuentasTarjetas.map(c=>({value:c.id,label:c.name}))} value={ccTarjetaId} onChange={handleCcTarjetaChange} error={errorsCc.tarjetaId} className="col-span-2 md:col-span-2" />
+          <Input label="Compra" placeholder="Ej: Televisor" value={ccDesc} onChange={e=>setCcDesc(e.target.value)} error={errorsCc.descripcion} className="col-span-2 md:col-span-2" />
+          {!editCuotaId && <Select label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={ccCat} onChange={e=>setCcCat(e.target.value)} required className="col-span-1 md:col-span-1" />}
+          <Input type="number" label="Total Compra" value={ccMonto} onChange={e=>setCcMonto(e.target.value)} error={errorsCc.montoTotal} className="col-span-1 md:col-span-1" />
+          <Input type="number" label="Nº Cuotas" value={ccCuotas} onChange={e=>setCcCuotas(e.target.value)} error={errorsCc.cuotasTotales} className="col-span-1 md:col-span-1" />
+          
+          <div className="col-span-2 md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+             <Input type="number" label="Tasa E.A. (%)" value={ccTasaEA} onChange={e=>setCcTasaEA(e.target.value)} step="0.01" className="col-span-1 md:col-span-1 bg-slate-900" />
+             <div className="flex flex-col gap-1.5 col-span-1 md:col-span-1">
+               <label className="text-xs font-medium text-slate-400">Valor Mensual</label>
+               <div className="bg-slate-950 border border-indigo-500 rounded-lg px-3 py-2.5 md:py-2 text-sm text-indigo-400 font-bold h-full flex items-center">
+                 {formatCOP(Math.round(editCuotaId ? (ccCuotaMensual || 0) : ccCuotaMensual))}
+               </div>
+             </div>
+             <div className="col-span-2 md:col-span-2 flex gap-2 h-full">
+              <button type="submit" className={`w-full ${editCuotaId ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'} font-bold rounded-lg transition-colors border border-indigo-500/20`}>
+                {editCuotaId ? 'Actualizar Compra' : 'Cargar a Tarjeta y Separar'}
+              </button>
+             </div>
+          </div>
+        </form>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-slate-800 pt-6">
+          {comprasCuotas.filter(c => c.cuotasPagadas < c.cuotasTotales).map(c => {
+            const progreso = (c.cuotasPagadas / c.cuotasTotales) * 100;
+            return (
+              <div key={c.id} className="bg-slate-950 border border-slate-800 rounded-lg p-4 relative group">
+                <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => cargarParaEditarCuota(c)} className="text-slate-600 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
+                  <button onClick={() => {deleteItem(setComprasCuotas, c.id); showToast("Compra a cuotas eliminada");}} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+                </div>
+                <p className="font-bold text-slate-200">{c.descripcion}</p>
+                <p className="text-[10px] text-indigo-400 mb-2">{cuentas.find(acc=>acc.id===c.tarjetaId)?.name}</p>
+                
+                <div className="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>Pagadas: {c.cuotasPagadas}</span>
+                  <span>Faltan: {c.cuotasTotales - c.cuotasPagadas}</span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-1.5 mb-3">
+                  <div className="bg-indigo-500 h-1.5 rounded-full transition-all" style={{width: `${progreso}%`}}></div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-300">{formatCOP(c.valorMensual)}/mes</span>
+                  <button onClick={() => avanzarCuota(c.id)} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button>
+                </div>
+              </div>
+            )
+          })}
+          {comprasCuotas.filter(c => c.cuotasPagadas < c.cuotasTotales).length === 0 && <p className="text-slate-500 text-sm">No hay compras a cuotas activas.</p>}
+        </div>
+      </Card>
+
+      {/* SECCIÓN 3: PAGOS FIJOS */}
+      <div className="flex justify-between items-end mt-8">
+        <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2"><CheckSquare size={20} className="text-amber-400"/> 3. Pagos Fijos (Checklist de {selectedMonth})</h2>
+      </div>
+
+      {pagosFijos.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {pagosPendientes.map(pf => {
+            if (pf.pagado) {
+              return (
+                <div key={pf.id} className="bg-emerald-900/10 border border-emerald-500/20 rounded-lg p-3 flex justify-between items-center opacity-70">
+                  <div><p className="font-bold text-emerald-400 line-through">{pf.descripcion}</p><p className="text-[10px] text-emerald-500/70">Pagado con {cuentas.find(c=>c.id===pf.egresoInfo.cuentaId)?.name}</p></div>
+                  <CheckCircle2 size={24} className="text-emerald-500" />
+                </div>
+              );
+            }
+            return <PagoFijoCard key={pf.id} pf={pf} cuentasPermitidas={cuentasPermitidasPago} onPay={(cuentaId, monto) => procesarPagoFijo(pf.id, cuentaId, monto)} />;
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-slate-500 py-4">No has configurado pagos fijos. Abre "Editar Plantillas Fijas" en la pestaña Presupuestos.</p>
+      )}
+
+      {/* SECCIÓN 4: TABLA DE HISTORIAL */}
+      <div className="mt-8 pt-8 border-t border-slate-800">
+        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Historial Completo de Egresos (Fijos y Variables)</h3>
+        <div className="overflow-x-auto bg-slate-900 rounded-xl border border-slate-800">
+          <table className="w-full text-sm text-left min-w-[600px]">
+            <thead className="text-xs text-slate-400 uppercase bg-slate-950">
+              <tr><th className="px-4 py-4 rounded-tl-lg">Fecha</th><th className="px-4 py-4">Descripción</th><th className="px-4 py-4">Categoría/Cuenta</th><th className="px-4 py-4 text-right">Monto</th><th className="px-4 py-4 rounded-tr-lg"></th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/50">
+              {egresosMes.map(g => (
+                <tr key={g.id} className={`transition-colors ${editVarId === g.id ? 'bg-amber-900/20' : 'hover:bg-slate-800/20'}`}>
+                  <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{g.fecha}</td>
+                  <td className="px-4 py-3 text-slate-300 font-medium">
+                    {g.descripcion}
+                    {g.tipo === 'Fijo' && <span className="ml-2 text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider">Fijo</span>}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400">
+                    <span className="bg-slate-800 px-2 py-1 rounded-md text-xs block w-max mb-1">{g.categoria}</span>
+                    <span className="text-[10px] text-indigo-400/80">Pagado con: {cuentas.find(c => c.id === g.cuentaId)?.name || '?'}</span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-rose-400">{formatCOP(g.monto)}</td>
+                  <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
+                    <button onClick={() => cargarParaEditarVariable(g)} className="text-slate-500 hover:text-indigo-400 p-1.5" title="Editar Gasto"><Edit3 size={16} /></button>
+                    <button onClick={() => {deleteItem(setEgresos, g.id); showToast("Gasto eliminado");}} className="text-slate-500 hover:text-rose-400 p-1.5" title="Eliminar"><Trash2 size={16} /></button>
+                  </td>
+                </tr>
+              ))}
+              {egresosMes.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-500">No hay egresos registrados este mes.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PresupuestosTab = ({ presupuestos, setPresupuestos, pagosFijos, setPagosFijos, egresos, selectedMonth, showToast, categoriasMaestras }) => {
+  const [tipoForm, setTipoForm] = useState('variable'); 
+  const [nuevoVar, setNuevoVar] = useState({ categoria: '', limite: '' });
+  const [nuevoFijo, setNuevoFijo] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+  const [editId, setEditId] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [filtroLista, setFiltroLista] = useState('Todos'); 
+  const formRef = useRef(null);
+
+  const guardar = (e) => {
+    e.preventDefault();
+    let errs = {};
+    
+    if (tipoForm === 'variable') {
+      if(!nuevoVar.categoria) errs.categoria = "Requerido";
+      if(!nuevoVar.limite) errs.limite = "Requerido";
+      if(Object.keys(errs).length > 0) { setErrors(errs); return; }
+      
+      if (editId) {
+        setPresupuestos(prev => prev.map(p => p.id === editId ? { ...p, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) } : p));
+        setEditId(null);
+        showToast("Límite actualizado.");
+      } else {
+        setPresupuestos(prev => [...prev, { id: generateId(), categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) }]);
+        showToast("Presupuesto agregado.");
+      }
+      setNuevoVar({ categoria: '', limite: '' });
+    } else {
+      if(!nuevoFijo.descripcion) errs.descripcion = "Requerido";
+      if(!nuevoFijo.categoria) errs.categoria = "Requerido";
+      if(!nuevoFijo.monto) errs.monto = "Requerido";
+      if(!nuevoFijo.diaPago) errs.diaPago = "Requerido";
+      if(Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+      if (editId) {
+        setPagosFijos(prev => prev.map(pf => pf.id === editId ? { ...pf, descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) } : pf));
+        setEditId(null);
+        showToast("Gasto Fijo actualizado.");
+      } else {
+        setPagosFijos(prev => [...prev, { id: generateId(), descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) }]);
+        showToast("Gasto Fijo agregado.");
+      }
+      setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+    }
+    setErrors({});
+  };
+
+  const cargarParaEditar = (p) => {
+    setEditId(p.id);
+    setErrors({});
+    if (p.tipo === 'Fijo') {
+      setTipoForm('fijo');
+      setNuevoFijo({ descripcion: p.nombre, monto: p.limite.toString(), categoria: p.categoria, diaPago: (p.diaPago || 1).toString() });
+    } else {
+      setTipoForm('variable');
+      setNuevoVar({ categoria: p.categoria, limite: p.limite.toString() });
+    }
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const cancelarEdicion = () => {
+    setEditId(null);
+    setNuevoVar({ categoria: '', limite: '' });
+    setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+    setErrors({});
+  }
+
+  const egresosMes = egresos.filter(g => g.fecha.startsWith(selectedMonth));
+
+  // --- Combinar y Filtrar Fijos y Variables ---
+  const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
+  const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
+  const gastadoFijo = egresosMes.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + e.monto, 0);
+  const gastadoVar = egresosMes.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
+
+  const items = useMemo(() => {
+    const list = [];
+    if (filtroLista === 'Todos' || filtroLista === 'Fijos') {
+      pagosFijos.forEach(pf => {
+        const gastado = egresosMes.filter(e => e.pagoFijoId === pf.id).reduce((s, e) => s + e.monto, 0);
+        list.push({ id: pf.id, tipo: 'Fijo', nombre: pf.descripcion, categoria: pf.categoria, limite: pf.monto, gastado, diaPago: pf.diaPago });
+      });
+    }
+    if (filtroLista === 'Todos' || filtroLista === 'Variables') {
+      presupuestos.forEach(p => {
+        const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
+        list.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
+      });
+    }
+    return list.sort((a, b) => b.limite - a.limite);
+  }, [pagosFijos, presupuestos, egresosMes, filtroLista]);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      <header>
+        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><PieChart className="text-indigo-400 w-8 h-8"/> Presupuestos y Ejecución</h1>
+        <p className="text-sm md:text-base text-slate-400 mt-1">Controla cómo se está gastando el dinero vs lo que tenías planificado.</p>
+      </header>
+
+      {/* Resumen Global Presupuestal */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Presupuesto Fijo</p>
+          <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
+        </div>
+        <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
+          <p className="text-[10px] text-amber-500 uppercase font-bold mb-1">Gastado Fijo</p>
+          <p className="text-lg font-bold text-amber-400">{formatCOP(gastadoFijo)}</p>
+        </div>
+        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Límite Variable</p>
+          <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
+        </div>
+        <div className="bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
+          <p className="text-[10px] text-indigo-400 uppercase font-bold mb-1">Gastado Variable</p>
+          <p className="text-lg font-bold text-indigo-400">{formatCOP(gastadoVar)}</p>
+        </div>
+      </div>
+
+      <Card className={editId ? "border-t-4 border-t-amber-500 bg-amber-950/10" : ""}>
+        <div className="flex justify-between items-center mb-4" ref={formRef}>
+          <div className="flex gap-4">
+            <button 
+              onClick={() => { if(!editId) setTipoForm('variable') }} 
+              type="button"
+              className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
+            >
+              {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
+            </button>
+            {!editId && <span className="text-slate-700">|</span>}
+            <button 
+              onClick={() => { if(!editId) setTipoForm('fijo') }} 
+              type="button"
+              className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+            >
+              {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
+            </button>
+          </div>
+          {editId && <button onClick={cancelarEdicion} className="text-xs text-amber-400 hover:underline">Cancelar Edición</button>}
+        </div>
+        <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          {tipoForm === 'variable' ? (
+            <>
+              <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} disabled={!!editId} className="sm:col-span-5" />
+              <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
+              <div className="sm:col-span-3 flex gap-2">
+                 <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Input label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} className="sm:col-span-4" />
+              <Select label="Categoría Fija" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-3" />
+              <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
+              <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
+              <div className="sm:col-span-2 flex gap-2">
+                 <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
+              </div>
+            </>
+          )}
+        </form>
+      </Card>
+
+      {/* Selector de Filtro */}
+      <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium w-full md:w-max">
+        <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
+        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {items.map(p => {
+          const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
+          const isDanger = porcentaje > 90;
+          const isWarning = porcentaje > 75 && !isDanger;
+          const bgBar = p.tipo === 'Fijo' ? 'bg-amber-500' : (isDanger ? 'bg-rose-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500');
+
+          return (
+            <Card key={p.id + p.tipo} className={`border-t-4 ${p.tipo === 'Fijo' ? 'border-t-amber-500/50' : (isDanger ? 'border-t-rose-500' : isWarning ? 'border-t-amber-500' : 'border-t-emerald-500')}`}>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-bold text-white text-base leading-tight pr-2">{p.nombre}</h3>
+                  <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded mt-1 inline-block ${p.tipo === 'Fijo' ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'}`}>{p.tipo}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => cargarParaEditar(p)} className="text-slate-600 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
+                  <button onClick={() => {
+                    if (p.tipo === 'Variable') {
+                      deleteItem(setPresupuestos, p.id);
+                      showToast("Presupuesto eliminado");
+                    } else {
+                      deleteItem(setPagosFijos, p.id);
+                      showToast("Gasto Fijo eliminado de esta vista y de la pestaña Egresos.");
+                    }
+                  }} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-slate-400 mb-3 mt-4">
+                <span>Gastado: <strong className="text-white">{formatCOP(p.gastado)}</strong></span>
+                <span>{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
+              </div>
+              <div className="w-full bg-slate-950 rounded-full h-3 mb-2 border border-slate-800">
+                <div className={`h-full rounded-full transition-all duration-1000 ${bgBar}`} style={{ width: `${porcentaje}%` }}></div>
+              </div>
+              <p className={`text-xs text-right font-bold ${p.tipo === 'Fijo' ? 'text-amber-400' : (isDanger ? 'text-rose-400' : isWarning ? 'text-amber-400' : 'text-emerald-400')}`}>
+                {porcentaje.toFixed(1)}% consumido
+              </p>
+            </Card>
+          );
+        })}
+        {items.length === 0 && <p className="col-span-1 md:col-span-2 lg:col-span-3 text-center text-slate-500 py-10 border border-dashed border-slate-800 rounded-xl">No hay elementos para mostrar en esta vista.</p>}
+      </div>
+    </div>
+  );
+};
+
+const DeudasTab = ({ cuentas, setCuentas, showToast }) => {
+  const [cardForm, setCardForm] = useState(null);
+  const [errors, setErrors] = useState({});
+
+  const deudasAnalizadas = cuentas
+    .filter(c => ['credit', 'loan'].includes(c.type))
+    .map(d => {
+      const tasaMes = getTasaMensual(d.tasaEA);
+      const interesMes = d.currentDebt * tasaMes;
+      return { ...d, tasaMes, interesMes };
+    })
+    .sort((a, b) => b.tasaEA - a.tasaEA);
+
+  const guardarTarjeta = (e) => {
+    e.preventDefault();
+    let errs = {};
+    if(!cardForm.name) errs.name = "Obligatorio";
+    if(Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    let baseData = {
+      name: cardForm.name,
+      type: 'credit',
+      initialBalance: 0,
+      initialDebt: Number(cardForm.initialDebt) || 0,
+      limit: Number(cardForm.limit) || 0,
+      cuotaMinima: Number(cardForm.cuotaMinima) || 0,
+      tasaEA: Number(cardForm.tasaEA) || 0
+    };
+
+    if (cardForm.id) {
+      setCuentas(prev => prev.map(c => c.id === cardForm.id ? { ...c, ...baseData } : c));
+      showToast("Tarjeta actualizada correctamente.");
+    } else {
+      setCuentas(prev => [...prev, { id: generateId(), ...baseData }]);
+      showToast("Tarjeta creada correctamente.");
+    }
+    setCardForm(null);
+    setErrors({});
+  };
+
+  const cargarParaEditar = (c) => {
+    setCardForm({
+      id: c.id,
+      name: c.name,
+      initialDebt: c.initialDebt,
+      limit: c.limit,
+      tasaEA: c.tasaEA,
+      cuotaMinima: c.cuotaMinima
+    });
+    setErrors({});
+  };
+
+  const actualizarCampo = (id, field, val) => {
+    setCuentas(prev => prev.map(c => c.id === id ? {...c, [field]: Number(val)} : c));
+  }
+
+  const actualizarIBR = (id, ibrValue, ibrPuntos) => {
+    const val = Number(ibrValue);
+    const pts = Number(ibrPuntos);
+    const namv = val + pts;
+    const nuevaEA = (Math.pow(1 + (namv/100)/12, 12) - 1) * 100;
+    
+    setCuentas(prev => prev.map(c => c.id === id ? {...c, ibrValue: val, tasaEA: nuevaEA} : c));
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      <header>
+        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><ShieldAlert className="text-rose-500 w-6 h-6 md:w-8 md:h-8"/> Tarjetas y Créditos</h1>
+        <p className="text-sm md:text-base text-slate-400 mt-1">Estrategia Avalancha y detalle de tus deudas.</p>
+      </header>
+
+      <Card className="border-t-4 border-t-indigo-500">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold text-white">Tarjetas de Crédito</h2>
+          <button onClick={() => setCardForm({id: null, name: '', initialDebt: '', limit: '', tasaEA: '', cuotaMinima: ''})} className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors">
+            <Plus size={14}/> Agregar Tarjeta
+          </button>
+        </div>
+
+        {cardForm && (
+          <div className="bg-slate-950 border border-indigo-500/50 p-4 rounded-xl mb-4 animate-in slide-in-from-top-2">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-bold text-indigo-400">{cardForm.id ? 'Editar Tarjeta' : 'Nueva Tarjeta'}</h3>
+              <button onClick={() => setCardForm(null)} className="text-xs text-slate-400 hover:text-slate-200">Cancelar</button>
+            </div>
+            <form onSubmit={guardarTarjeta} className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+              <Input label="Nombre de Tarjeta" value={cardForm.name} onChange={e=>setCardForm({...cardForm, name: e.target.value})} error={errors.name} className="col-span-2" />
+              <Input type="number" label="Cupo Total ($)" value={cardForm.limit} onChange={e=>setCardForm({...cardForm, limit: e.target.value})} className="col-span-1" />
+              <Input type="number" label="Deuda Actual ($)" value={cardForm.initialDebt} onChange={e=>setCardForm({...cardForm, initialDebt: e.target.value})} className="col-span-1" />
+              <Input type="number" label="Tasa E.A. (%)" value={cardForm.tasaEA} onChange={e=>setCardForm({...cardForm, tasaEA: e.target.value})} step="0.01" className="col-span-1" />
+              <Input type="number" label="Cuota Mínima ($)" value={cardForm.cuotaMinima} onChange={e=>setCardForm({...cardForm, cuotaMinima: e.target.value})} className="col-span-1" />
+              <div className="col-span-2 md:col-span-6 mt-1 flex justify-end">
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded transition-colors">
+                  {cardForm.id ? 'Guardar Cambios' : 'Crear Tarjeta'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left min-w-[800px]">
+            <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50">
+              <tr>
+                <th className="px-3 py-3 rounded-tl-lg">Tarjeta</th>
+                <th className="px-3 py-3 text-right">Cupo Total</th>
+                <th className="px-3 py-3 text-right">Cupo Disp.</th>
+                <th className="px-3 py-3 text-right">Deuda Actual</th>
+                <th className="px-3 py-3 text-center">Tasa M.V.</th>
+                <th className="px-3 py-3 text-center">Tasa E.A.</th>
+                <th className="px-3 py-3 text-center">Cuota Mín.</th>
+                <th className="px-3 py-3 text-center rounded-tr-lg">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/50">
+              {deudasAnalizadas.filter(d=>d.type==='credit').map(d => {
+                const tasaMV = getTasaMensual(d.tasaEA) * 100;
+                return (
+                  <tr key={d.id} className="hover:bg-slate-800/20 transition-colors">
+                    <td className="px-3 py-3 font-medium text-slate-200">{d.name}</td>
+                    <td className="px-3 py-3 text-right text-slate-300">{formatCOP(d.limit)}</td>
+                    <td className="px-3 py-3 text-right font-bold text-emerald-400">{formatCOP(Math.max(0, d.limit - d.currentDebt))}</td>
+                    <td className="px-3 py-3 text-right font-bold text-rose-400">{formatCOP(d.currentDebt)}</td>
+                    <td className="px-3 py-3 text-center text-amber-400">{tasaMV.toFixed(2)}%</td>
+                    <td className="px-3 py-3 text-center text-slate-300">{d.tasaEA}%</td>
+                    <td className="px-3 py-3 text-center text-slate-300">{formatCOP(d.cuotaMinima)}</td>
+                    <td className="px-3 py-3 text-center flex justify-center gap-2">
+                      <button onClick={() => cargarParaEditar(d)} className="text-slate-500 hover:text-indigo-400 p-1 bg-slate-900 rounded"><Edit3 size={14}/></button>
+                      <button onClick={() => {deleteItem(setCuentas, d.id); showToast("Tarjeta eliminada");}} className="text-slate-500 hover:text-rose-400 p-1 bg-slate-900 rounded"><Trash2 size={14}/></button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card className="border-t-4 border-t-rose-500">
+        <h2 className="text-lg font-bold text-white mb-4">Créditos y Préstamos</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {deudasAnalizadas.filter(d=>d.type==='loan' && d.currentDebt > 0).map(d => (
+            <div key={d.id} className="bg-slate-950 p-4 rounded-lg border border-slate-800 flex flex-col gap-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-bold text-slate-200">{d.name}</p>
+                  {d.hasIBR && <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Tasa Variable (IBR)</p>}
+                </div>
+                <div className="text-right">
+                   <p className="font-bold text-rose-400 text-lg">{formatCOP(d.currentDebt)}</p>
+                   <p className="text-[10px] text-slate-500">Deuda Restante</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-center bg-slate-900 p-2 rounded">
+                {d.hasIBR ? (
+                  <>
+                     <div className="flex flex-col gap-1 w-1/2">
+                       <span className="text-[10px] text-slate-500">IBR Actual (%)</span>
+                       <div className="flex items-center gap-1">
+                         <input type="number" step="0.01" value={d.ibrValue} onChange={(e)=>actualizarIBR(d.id, e.target.value, d.ibrPuntos)} className="w-full bg-slate-950 border border-slate-700 text-white text-xs px-2 py-1 rounded outline-none focus:border-rose-500" />
+                         <span className="text-[10px] text-slate-400">+{d.ibrPuntos}</span>
+                       </div>
+                     </div>
+                     <div className="flex flex-col gap-1 w-1/2">
+                       <span className="text-[10px] text-slate-500">Cuota Fija Base</span>
+                       <input type="number" value={d.cuotaMinima} onChange={(e)=>actualizarCampo(d.id, 'cuotaMinima', e.target.value)} className="w-full bg-slate-950 border border-slate-700 text-white text-xs px-2 py-1 rounded outline-none focus:border-rose-500" />
+                     </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-1 w-1/3">
+                      <span className="text-[10px] text-slate-500">Tasa E.A (%)</span>
+                      <input type="number" step="0.1" value={d.tasaEA.toFixed(2)} onChange={(e)=>actualizarCampo(d.id, 'tasaEA', e.target.value)} className="w-full bg-slate-950 border border-slate-700 text-white text-xs px-2 py-1 rounded outline-none focus:border-rose-500" />
+                    </div>
+                    <div className="flex flex-col gap-1 w-2/3">
+                      <span className="text-[10px] text-slate-500">Cuota Fija</span>
+                      <input type="number" value={d.cuotaMinima} onChange={(e)=>actualizarCampo(d.id, 'cuotaMinima', e.target.value)} className="w-full bg-slate-950 border border-slate-700 text-white text-xs px-2 py-1 rounded outline-none focus:border-rose-500" />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-800">
+                 <div className="flex flex-col gap-1">
+                   <span className="text-[10px] text-slate-500">Progreso Cuotas</span>
+                   <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-700 w-max">
+                     <input type="number" value={d.cuotasPagadas || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasPagadas', e.target.value)} className="w-10 bg-transparent text-emerald-400 text-xs font-bold outline-none text-right" />
+                     <span className="text-slate-500 text-[10px]">/</span>
+                     <input type="number" value={d.cuotasTotales || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasTotales', e.target.value)} className="w-10 bg-transparent text-slate-300 text-xs font-bold outline-none" />
+                   </div>
+                 </div>
+                 <span className="text-[10px] text-amber-500 font-medium text-right">Int. prox mes:<br/>{formatCOP(d.interesMes)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-bold text-white mb-4">Estrategia Avalancha Global</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left min-w-[600px]">
+            <thead className="text-xs text-slate-400 uppercase bg-slate-950">
+              <tr>
+                <th className="px-4 py-3 rounded-tl-lg">Prio</th>
+                <th className="px-4 py-3">Obligación</th>
+                <th className="px-4 py-3 text-right">Deuda Real</th>
+                <th className="px-4 py-3 text-center">Tasa E.A.</th>
+                <th className="px-4 py-3 text-right rounded-tr-lg">Cuota (Mín o Fija)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deudasAnalizadas.filter(c => c.currentDebt > 0).map((d, i) => (
+                <tr key={d.id} className={`border-b border-slate-800/50 hover:bg-slate-800/20 ${i===0 ? 'bg-indigo-950/20' : ''}`}>
+                  <td className="px-4 py-3"><div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${i===0 ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>{i+1}</div></td>
+                  <td className="px-4 py-3 text-slate-200 font-medium">{d.name} {i===0 && <span className="text-[9px] md:text-[10px] uppercase tracking-wider text-indigo-400 font-bold mt-1 block">Objetivo Avalancha (Abonar extra aquí)</span>}</td>
+                  <td className="px-4 py-3 text-right text-slate-300 font-bold">{formatCOP(d.currentDebt)}</td>
+                  <td className="px-4 py-3 text-center font-bold text-rose-400">{d.tasaEA.toFixed(2)}%</td>
+                  <td className="px-4 py-3 text-right text-slate-300">{formatCOP(d.cuotaMinima)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+const SimuladorTab = ({ cuentas, addPagoFijo, showToast }) => {
+  const [activeSim, setActiveSim] = useState('acelerado'); 
+
+  // --- Simulador 1: Pago Acelerado Deudas ---
+  const [s1, setS1] = useState({ deudaId: '', extra: 200000 });
+  const dSeleccionada = cuentas.find(c => c.id === s1.deudaId);
+  const s1Saldo = dSeleccionada ? dSeleccionada.currentDebt : 0;
+  const s1Tasa = dSeleccionada ? dSeleccionada.tasaEA : 0;
+  const s1Cuota = dSeleccionada ? dSeleccionada.cuotaMinima : 0;
+
+  const calcSim1 = () => {
+    if (s1Saldo <= 0) return { error: "Selecciona una obligación con deuda actual para simular." };
+    const tm = getTasaMensual(s1Tasa); const intMesActual = s1Saldo * tm;
+    if (s1Cuota <= intMesActual) return { error: "La cuota actual no cubre ni los intereses mensuales. Incrementa la cuota base en la pestaña Deudas." };
+    
+    const simular = (pagoMensual) => { 
+      let saldoRemanente = s1Saldo; let meses = 0; let intTotal = 0; 
+      while(saldoRemanente > 0 && meses < 600) { 
+        const int = saldoRemanente * tm; 
+        intTotal += int; 
+        saldoRemanente = saldoRemanente + int - pagoMensual; 
+        meses++; 
+      } 
+      return { meses, intTotal }; 
+    };
+    const escenarioNormal = simular(s1Cuota); 
+    const escenarioAcelerado = simular(s1Cuota + s1.extra);
+    
+    return { 
+      mesesNormal: escenarioNormal.meses, intNormal: Math.round(escenarioNormal.intTotal), 
+      mesesAcelerado: escenarioAcelerado.meses, intAcelerado: Math.round(escenarioAcelerado.intTotal), 
+      ahorroInt: Math.round(escenarioNormal.intTotal - escenarioAcelerado.intTotal), 
+      ahorroMeses: escenarioNormal.meses - escenarioAcelerado.meses 
+    };
+  };
+  const resS1 = s1Saldo > 0 ? calcSim1() : null;
+
+  const asumirAcelerado = () => {
+    if (!dSeleccionada) { showToast("Selecciona una deuda primero", "error"); return; }
+    addPagoFijo({ descripcion: `Abono Acelerado: ${dSeleccionada.name}`, categoria: 'Deudas', monto: s1Cuota + s1.extra, diaPago: 1 });
+    showToast(`Simulación guardada! Abono de ${formatCOP(s1Cuota + s1.extra)} en Pagos Fijos.`);
+  };
+
+
+  // --- Simulador 2: Plan de Ahorro ---
+  const [s2, setS2] = useState({ nombre: '', objetivo: 5000000, ahorrado: 0, meses: 12, tasaEA: 5 });
+  
+  const calcSim2 = () => {
+    if (s2.objetivo <= 0 || s2.meses <= 0) return null;
+    const tm = getTasaMensual(s2.tasaEA);
+    let reqMensual = 0;
+    
+    if (tm === 0) {
+      reqMensual = (s2.objetivo - s2.ahorrado) / s2.meses;
+    } else {
+      const factor = Math.pow(1 + tm, s2.meses);
+      const futuroAhorrado = s2.ahorrado * factor;
+      const restante = s2.objetivo - futuroAhorrado;
+      if (restante > 0) reqMensual = (restante * tm) / (factor - 1);
+    }
+    
+    reqMensual = Math.max(0, reqMensual);
+    const totalAportado = s2.ahorrado + (reqMensual * s2.meses);
+    const rendimientos = s2.objetivo - totalAportado;
+    
+    return { aporteMensual: Math.round(reqMensual), totalAportado: Math.round(totalAportado), rendimientos: Math.round(rendimientos) };
+  };
+  const resS2 = calcSim2();
+
+  const asumirAhorro = () => {
+    if (!s2.nombre) { showToast("Escribe un nombre para tu Plan de Ahorro.", "error"); return; }
+    addPagoFijo({ descripcion: `Ahorro: ${s2.nombre}`, categoria: 'Inversión', monto: resS2.aporteMensual, diaPago: 1 });
+    showToast(`Plan activado. Cuota de ${formatCOP(resS2.aporteMensual)} en Pagos Fijos.`);
+  };
+
+
+  // --- Simulador 3: Interés Compuesto / Inversiones ---
+  const [s3, setS3] = useState({ invId: 'otra', capital: 0, tasa: 10, anos: 5, aporte: 200000 });
+  
+  const handleInvChange = (e) => {
+    const val = e.target.value;
+    if (val === 'otra' || val === '') {
+      setS3({...s3, invId: val, capital: 0, tasa: 10});
+    } else {
+      const inv = cuentas.find(c => c.id === val);
+      if (inv) setS3({...s3, invId: val, capital: inv.currentBalance, tasa: inv.tasaEA});
+    }
+  }
+
+  const calcSim3 = () => {
+    const tm = getTasaMensual(s3.tasa); const meses = s3.anos * 12; let vf = s3.capital * Math.pow(1 + tm, meses);
+    if (s3.aporte > 0) vf += s3.aporte * ((Math.pow(1 + tm, meses) - 1) / tm);
+    const capitalInvertido = s3.capital + (s3.aporte * meses); return { vf, capitalInvertido, rendimientos: vf - capitalInvertido };
+  };
+  const resS3 = calcSim3();
+
+  const asumirInversion = () => {
+    const iSeleccionada = cuentas.find(c => c.id === s3.invId);
+    const nombreDesc = iSeleccionada ? iSeleccionada.name : 'Nueva Inversión';
+    addPagoFijo({ descripcion: `Aporte a Inversión: ${nombreDesc}`, categoria: 'Inversión', monto: s3.aporte, diaPago: 1 });
+    showToast(`Aporte programado de ${formatCOP(s3.aporte)} en Pagos Fijos.`);
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0 max-w-4xl mx-auto">
+      <header>
+        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Simuladores y Proyecciones</h1>
+        <p className="text-sm md:text-base text-slate-400 mt-1">Conecta con tus datos reales y "Asume el gasto" para integrarlo a tus pagos mensuales.</p>
+      </header>
+
+      {/* Selector de Simulación */}
+      <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium">
+        <button onClick={()=>setActiveSim('acelerado')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'acelerado' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Pago Acelerado</button>
+        <button onClick={()=>setActiveSim('ahorro')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'ahorro' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Plan de Ahorro</button>
+        <button onClick={()=>setActiveSim('inversion')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'inversion' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Int. Compuesto</button>
+      </div>
+
+      {activeSim === 'acelerado' && (
+        <Card className="border-t-4 border-t-rose-500 animate-in slide-in-from-bottom-4">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-2 flex items-center gap-2"><TrendingUp size={20} className="text-rose-400"/> Pago Acelerado (Deudas)</h2>
+          <p className="text-sm text-slate-400 mb-6">Proyecta cuánto tiempo y dinero ahorras si aumentas la cuota de tus obligaciones actuales.</p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <Select label="Elige tu crédito o tarjeta" options={cuentas.filter(c=>['credit','loan'].includes(c.type)).map(c=>({value:c.id,label:`${c.name} (Deuda: ${formatCOP(c.currentDebt)})`}))} value={s1.deudaId} onChange={e=>setS1({...s1, deudaId: e.target.value})} className="sm:col-span-2" />
+            <Input type="number" label="Abono EXTRA mensual ($)" value={s1.extra} onChange={e=>setS1({...s1, extra: Number(e.target.value)})} className="bg-slate-900 sm:col-span-2" />
+          </div>
+
+          {resS1 && resS1.error ? (
+            <div className="p-4 bg-rose-500/20 text-rose-400 rounded-lg text-sm font-medium">{resS1.error}</div>
+          ) : resS1 ? (
+            <div className="bg-slate-950 p-4 md:p-6 rounded-xl border border-slate-800 space-y-6">
+              <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+                <div className="text-center w-1/2 border-r border-slate-800 pr-2">
+                  <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Pagando lo actual</p>
+                  <p className="text-lg md:text-xl font-bold text-slate-300">{resS1.mesesNormal} meses</p>
+                  <p className="text-xs text-rose-400 mt-1">{formatCOP(resS1.intNormal)} intereses</p>
+                </div>
+                <div className="text-center w-1/2 pl-2">
+                  <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Abonando el Extra</p>
+                  <p className="text-lg md:text-xl font-bold text-indigo-400">{resS1.mesesAcelerado} meses</p>
+                  <p className="text-xs text-amber-400 mt-1">{formatCOP(resS1.intAcelerado)} intereses</p>
+                </div>
+              </div>
+              <div className="bg-emerald-500/10 p-4 rounded-lg border border-emerald-500/20 text-center">
+                <p className="text-sm text-emerald-400 font-medium">✨ Con este abono, te ahorras <span className="font-bold text-lg">{formatCOP(resS1.ahorroInt)}</span> y terminas {resS1.ahorroMeses} meses antes.</p>
+              </div>
+              <button onClick={asumirAcelerado} className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                <CheckCircle2 size={18}/> Asumir Gasto Fijo: {formatCOP(s1Cuota + s1.extra)} / mes
+              </button>
+            </div>
+          ) : null}
+        </Card>
+      )}
+
+      {activeSim === 'ahorro' && (
+        <Card className="border-t-4 border-t-emerald-500 animate-in slide-in-from-bottom-4">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-2 flex items-center gap-2"><Target size={20} className="text-emerald-400"/> Plan de Ahorro</h2>
+          <p className="text-sm text-slate-400 mb-6">Define un objetivo de dinero y tiempo. El sistema calculará la cuota mensual exacta requerida.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <Input label="Nombre del Plan (Ej: Viaje, Carro)" placeholder="Escribe tu meta..." value={s2.nombre} onChange={e=>setS2({...s2, nombre: e.target.value})} className="sm:col-span-2" />
+            <Input type="number" label="¿Cuánto dinero necesitas? ($)" value={s2.objetivo} onChange={e=>setS2({...s2, objetivo: Number(e.target.value)})} />
+            <Input type="number" label="¿En cuántos meses? (Ej: 12)" value={s2.meses} onChange={e=>setS2({...s2, meses: Number(e.target.value)})} />
+            <Input type="number" label="Rendimiento del banco E.A. (%)" value={s2.tasaEA} onChange={e=>setS2({...s2, tasaEA: Number(e.target.value)})} />
+            <Input type="number" label="Dinero ya ahorrado ($)" value={s2.ahorrado} onChange={e=>setS2({...s2, ahorrado: Number(e.target.value)})} />
+          </div>
+
+          {resS2 && (
+            <div className="bg-slate-950 p-4 md:p-6 rounded-xl border border-slate-800 space-y-6">
+              <div className="text-center pb-4 border-b border-slate-800">
+                 <p className="text-sm text-slate-400 uppercase tracking-wider mb-2">Debes ahorrar mensualmente:</p>
+                 <p className="text-4xl font-black text-emerald-400">{formatCOP(resS2.aporteMensual)}</p>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Dinero aportado por ti:</span>
+                <span className="font-bold text-white">{formatCOP(resS2.totalAportado)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-400">Intereses ganados:</span>
+                <span className="font-bold text-emerald-400">+{formatCOP(resS2.rendimientos)}</span>
+              </div>
+              <button onClick={asumirAhorro} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                <CheckCircle2 size={18}/> Asumir Gasto Fijo: {formatCOP(resS2.aporteMensual)} / mes
+              </button>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {activeSim === 'inversion' && (
+        <Card className="border-t-4 border-t-amber-500 animate-in slide-in-from-bottom-4">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-2 flex items-center gap-2"><PiggyBank size={20} className="text-amber-400"/> Proyección de Interés Compuesto</h2>
+          <p className="text-sm text-slate-400 mb-6">Observa cómo crece el dinero de un bolsillo real o simula una inversión externa.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <Select label="Seleccionar Inversión" className="sm:col-span-2" 
+              options={[{value: 'otra', label: 'Otra (Ingreso manual)'}, ...cuentas.filter(c=>c.type === 'pocket').map(c=>({value:c.id,label:`${c.name} (${formatCOP(c.currentBalance)})`}))]} 
+              value={s3.invId} onChange={handleInvChange} />
+            <Input type="number" label="Capital Inicial ($)" value={s3.capital} onChange={e=>setS3({...s3, capital: Number(e.target.value)})} disabled={s3.invId !== 'otra'} />
+            <Input type="number" label="Tasa E.A. (%)" value={s3.tasa} onChange={e=>setS3({...s3, tasa: Number(e.target.value)})} disabled={s3.invId !== 'otra'} />
+            <Input type="number" label="Tiempo (Años)" value={s3.anos} onChange={e=>setS3({...s3, anos: Number(e.target.value)})} />
+            <Input type="number" label="Aporte Adicional Mensual ($)" value={s3.aporte} onChange={e=>setS3({...s3, aporte: Number(e.target.value)})} className="bg-amber-950/20" />
+          </div>
+
+          <div className="bg-slate-950 p-4 md:p-6 rounded-xl border border-slate-800 space-y-6">
+            <div className="flex justify-between items-end pb-4 border-b border-slate-800">
+              <div><p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Capital aportado</p><p className="text-lg md:text-xl font-medium text-slate-300">{formatCOP(resS3.capitalInvertido)}</p></div>
+              <div className="text-right"><p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Rendimientos</p><p className="text-lg md:text-xl font-bold text-amber-400">+{formatCOP(resS3.rendimientos)}</p></div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-400 uppercase tracking-wider mb-2">Valor Final Proyectado</p>
+              <p className="text-3xl md:text-4xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-emerald-400">{formatCOP(resS3.vf)}</p>
+            </div>
+            {s3.aporte > 0 && 
+              <button onClick={asumirInversion} className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                <CheckCircle2 size={18}/> Asumir Aporte: {formatCOP(s3.aporte)} / mes
+              </button>
+            }
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// --- Ajustes: Export/Import Excel y JSON ---
+const SettingsTab = ({ stateData, setAllState, selectedMonth, showToast }) => {
+  const fileInputRef = useRef(null);
+  const fileExcelInputRef = useRef(null);
+
+  // Backup JSON
+  const handleExportJSON = () => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stateData)); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", `respaldo_finanzas_${new Date().toISOString().split('T')[0]}.json`); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); };
+  const handleImportJSON = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const parsed = JSON.parse(event.target.result); setAllState(parsed); showToast("¡Respaldo JSON restaurado con éxito!"); } catch (err) { showToast("Error al leer JSON.", "error"); } }; reader.readAsText(file); e.target.value = ''; };
+
+  // Exportar Excel Completo
+  const handleExportExcel = async (onlyCurrentMonth = false) => {
+    try {
+      const xlsx = await loadSheetJS();
+      const wb = xlsx.utils.book_new();
+
+      const isCurrentMonth = (fecha) => fecha && fecha.startsWith(selectedMonth);
+      const filterData = (data) => onlyCurrentMonth ? data.filter(i => isCurrentMonth(i.fecha)) : data;
+
+      const ingresosData = filterData(stateData.ingresos).map(i => ({ Fecha: i.fecha, Descripcion: i.descripcion, Persona: i.persona, Tipo: i.tipo, Cuenta: stateData.cuentas.find(c=>c.id===i.cuentaId)?.name, Monto: i.monto }));
+      const egresosData = filterData(stateData.egresos).map(e => ({ Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: stateData.cuentas.find(c=>c.id===e.cuentaId)?.name, Monto: e.monto }));
+      const deudasData = stateData.cuentas.filter(c=>['credit','loan'].includes(c.type)).map(c => ({ Nombre: c.name, DeudaActual: c.currentDebt, TasaEA: c.tasaEA, CuotaMinima: c.cuotaMinima }));
+
+      xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(ingresosData), "Ingresos");
+      xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(egresosData), "Egresos");
+      xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(deudasData), "Deudas");
+
+      const fileName = onlyCurrentMonth ? `FinanzasFamilia_${selectedMonth}.xlsx` : `FinanzasFamilia_Total_${new Date().toISOString().split('T')[0]}.xlsx`;
+      xlsx.writeFile(wb, fileName);
+    } catch (e) { showToast("Hubo un error al generar Excel.", "error"); }
+  };
+
+  // Importar Excel Básico
+  const handleImportExcel = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const xlsx = await loadSheetJS();
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const wb = xlsx.read(evt.target.result, { type: 'binary' });
+          let newIngresos = [...stateData.ingresos];
+          let newEgresos = [...stateData.egresos];
+
+          if (wb.Sheets["Ingresos"]) {
+            const importIngresos = xlsx.utils.sheet_to_json(wb.Sheets["Ingresos"]);
+            const mappedIng = importIngresos.filter(i=>i.Monto).map(i => ({
+              id: generateId(), fecha: i.Fecha || new Date().toISOString().split('T')[0], 
+              descripcion: i.Descripcion || 'Importado', persona: i.Persona || '', 
+              tipo: i.Tipo || 'Variable', monto: Number(i.Monto) || 0, cuentaId: stateData.cuentas[0]?.id
+            }));
+            newIngresos = [...newIngresos, ...mappedIng];
+          }
+          if (wb.Sheets["Egresos"]) {
+            const importEgresos = xlsx.utils.sheet_to_json(wb.Sheets["Egresos"]);
+            const mappedEgr = importEgresos.filter(i=>i.Monto).map(i => ({
+              id: generateId(), fecha: i.Fecha || new Date().toISOString().split('T')[0], 
+              descripcion: i.Descripcion || 'Importado', categoria: i.Categoria || 'Otros', 
+              tipo: i.Tipo || 'Variable', monto: Number(i.Monto) || 0, cuentaId: stateData.cuentas[0]?.id
+            }));
+            newEgresos = [...newEgresos, ...mappedEgr];
+          }
+
+          setAllState({...stateData, ingresos: newIngresos, egresos: newEgresos});
+          showToast("Datos de Excel importados correctamente.");
+        } catch(err) { showToast("Error procesando el archivo de Excel.", "error"); }
+      };
+      reader.readAsBinaryString(file);
+    } catch (err) { showToast("No se pudo cargar la herramienta de Excel.", "error"); }
+    e.target.value = '';
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto animate-in fade-in duration-500 space-y-6 pb-20 md:pb-0">
+      <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Settings2 className="h-6 w-6 md:h-8 md:w-8 text-slate-400" /> Datos y Respaldo</h1><p className="text-sm md:text-base text-slate-400 mt-1">Exporta a Excel para análisis o asegura el sistema entero con JSON.</p></header>
+      
+      <h2 className="text-lg font-bold text-white mt-8 mb-2">Análisis de Datos (Excel)</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+        <Card className="border-t-4 border-t-emerald-500 flex flex-col items-start gap-4 sm:col-span-2">
+          <div className="flex gap-4 items-center">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center"><FileSpreadsheet className="h-5 w-5 md:h-6 md:w-6"/></div>
+            <div><h3 className="font-bold text-white">Exportar a .XLSX</h3><p className="text-xs text-slate-400">Descarga tablas limpias de ingresos, egresos y deudas.</p></div>
+          </div>
+          <div className="w-full grid grid-cols-2 gap-3">
+             <button onClick={() => handleExportExcel(true)} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition-colors">Exportar SOLO {selectedMonth}</button>
+             <button onClick={() => handleExportExcel(false)} className="w-full py-2.5 bg-slate-800 border border-emerald-500/50 hover:bg-slate-700 text-emerald-400 rounded-lg font-bold text-xs shadow-sm transition-colors">Exportar TODO el Histórico</button>
+          </div>
+        </Card>
+        <Card className="border-t-4 border-t-emerald-500 flex flex-col items-start gap-4">
+          <div className="flex gap-4 items-center">
+            <div className="w-10 h-10 bg-slate-800 text-emerald-400 rounded-xl flex items-center justify-center"><Upload className="h-5 w-5"/></div>
+            <div><h3 className="font-bold text-white">Añadir desde .XLSX</h3><p className="text-xs text-slate-400">Importa nuevas filas de Excel generadas previamente.</p></div>
+          </div>
+          <input type="file" accept=".xlsx, .xls" ref={fileExcelInputRef} onChange={handleImportExcel} className="hidden" />
+          <button onClick={()=>fileExcelInputRef.current.click()} className="w-full py-2.5 bg-slate-800 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700 rounded-lg font-bold text-xs shadow-sm transition-colors">Subir Filas Excel</button>
+        </Card>
+      </div>
+
+      <h2 className="text-lg font-bold text-white mt-10 mb-2">Copia de Seguridad del Sistema (JSON)</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+        <Card><div className="space-y-4"><div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center"><Download className="h-5 w-5"/></div><h3 className="font-bold text-white">Respaldar Sistema</h3><button onClick={handleExportJSON} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm">Descargar JSON</button></div></Card>
+        <Card><div className="space-y-4"><div className="w-10 h-10 md:w-12 md:h-12 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center"><Upload className="h-5 w-5"/></div><h3 className="font-bold text-white">Restaurar Sistema</h3><input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" /><button onClick={()=>fileInputRef.current.click()} className="w-full py-2.5 bg-slate-800 border border-rose-500/50 text-rose-400 hover:bg-slate-700 rounded-xl font-bold text-sm">Cargar JSON</button></div></Card>
+      </div>
+    </div>
+  );
+};
+
+
+// --- Componente Principal ---
+export default function App() {
+  const [activeTab, setActiveTab] = useState('deudas');
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [showMobileMore, setShowMobileMore] = useState(false);
+  const [toast, setToast] = useState(null);
+  
+  // Filtro de Perspectiva
+  const [filtroPersona, setFiltroPersona] = useState('Total'); 
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const changeMonth = (offset) => {
+    const [year, month] = selectedMonth.split('-');
+    const date = new Date(year, parseInt(month) - 1 + offset, 1);
+    setSelectedMonth(date.toISOString().slice(0, 7));
+  };
+  
+  const getMonthName = (ym) => {
+    const [year, month] = ym.split('-');
+    const date = new Date(year, parseInt(month) - 1, 1);
+    return date.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+  };
+
+  // --- Helpers de Propiedad ---
+  const getOwner = (text) => {
+     if (!text) return 'Shared';
+     const t = text.toUpperCase();
+     const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
+     const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
+     
+     if (hasL && !hasA) return 'Leo';
+     if (hasA && !hasL) return 'Andre';
+     return 'Shared';
+  };
+
+  const belongsToFilter = (owner) => filtroPersona === 'Total' || owner === 'Shared' || owner === filtroPersona;
+
+  // --- Estado Global (v31) ---
+  const [cuentas, setCuentas] = useState(() => { 
+    const saved = localStorage.getItem('ff_cuentas_v31'); 
+    return saved ? JSON.parse(saved) : [
+      { id: 'bancolombia_l', name: 'Bancolombia Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 }, 
+      { id: 'bogota_a', name: 'Banco de Bogotá Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'efectivo_l', name: 'Efectivo Leo', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'efectivo_a', name: 'Efectivo Andre', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'nequi_l', name: 'Nequi Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'nequi_a', name: 'Nequi Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'daviplata_a', name: 'Daviplata Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'daviplata_l', name: 'Daviplata Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'rappicuenta_l', name: 'Rappicuenta Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      
+      { id: 'tc_rappi', name: 'Rappi Leo', type: 'credit', initialBalance: 0, initialDebt: 1632734, limit: 6000000, tasaEA: 34.5, cuotaMinima: 100000 },
+      { id: 'tc_nu_l', name: 'Nu Bank Leo', type: 'credit', initialBalance: 0, initialDebt: 4794863.37, limit: 5000000, tasaEA: 24.6, cuotaMinima: 229622, fechaLimite: '06/04/2026' },
+      { id: 'tc_falabella', name: 'Falabella Leo', type: 'credit', initialBalance: 0, initialDebt: 174586, limit: 1550000, tasaEA: 25.22, cuotaMinima: 174586, fechaLimite: '10/04/2026' },
+      { id: 'tc_nu_a', name: 'Nu Bank Andre', type: 'credit', initialBalance: 0, initialDebt: 0, limit: 900000, tasaEA: 34.5, cuotaMinima: 0 },
+      { id: 'tc_davibank_a', name: 'Davibank Andre', type: 'credit', initialBalance: 0, initialDebt: 6639066, limit: 5600000, tasaEA: 25.25, cuotaMinima: 313097, fechaLimite: '06/04/2026' },
+      { id: 'tc_bogota', name: 'Banco de Bogotá Andre', type: 'credit', initialBalance: 0, initialDebt: 8301421, limit: 8675000, tasaEA: 25.2, cuotaMinima: 888000, fechaLimite: '06/04/2026' },
+      
+      { id: 'cr_lulo', name: 'Lulo Bank Andre', type: 'loan', initialBalance: 0, initialDebt: 9839488.70, limit: 0, tasaEA: 24.34, cuotaMinima: 392390, cuotasPagadas: 3, cuotasTotales: 34 },
+      { id: 'cr_vehiculo', name: 'Credito de vechiculo Leo', type: 'loan', initialBalance: 0, initialDebt: 48108055.82, limit: 0, tasaEA: 23.95, cuotaMinima: 1043887, hasIBR: true, ibrValue: 11.96, ibrPuntos: 11.99, cuotasPagadas: 52, cuotasTotales: 148 },
+
+      { id: 'inv1', name: 'Nu bank', type: 'pocket', initialBalance: 50339, currentDebt: 0, limit: 0, tasaEA: 8.25, cuotaMinima: 0 },
+      { id: 'inv2', name: 'Global 66', type: 'pocket', initialBalance: 50000, currentDebt: 0, limit: 0, tasaEA: 11, cuotaMinima: 0 },
+      { id: 'inv3', name: 'Lulo L', type: 'pocket', initialBalance: 103239, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
+      { id: 'inv4', name: 'Rappi Ahorros', type: 'pocket', initialBalance: 200105, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+      { id: 'inv5', name: 'Rappi Bolsillo', type: 'pocket', initialBalance: 92627, currentDebt: 0, limit: 0, tasaEA: 9, cuotaMinima: 0 }
+    ]; 
+  });
+  const [transferencias, setTransferencias] = useState(() => { const s = localStorage.getItem('ff_transferencias_v31'); return s ? JSON.parse(s) : []; });
+  const [ingresos, setIngresos] = useState(() => { const s = localStorage.getItem('ff_ingresos_v31'); return s ? JSON.parse(s) : []; });
+  const [egresos, setEgresos] = useState(() => { const s = localStorage.getItem('ff_egresos_v31'); return s ? JSON.parse(s) : []; });
+  
+  const [presupuestos, setPresupuestos] = useState(() => { 
+    const s = localStorage.getItem('ff_presupuestos_v31'); 
+    return s ? JSON.parse(s) : [
+      {id: 'p1', categoria: 'Inversión', limite: 100000}, {id: 'p2', categoria: 'Gasolina', limite: 450000},
+      {id: 'p3', categoria: 'Mercado', limite: 1000000}, {id: 'p4', categoria: 'Mercado Aseo', limite: 200000},
+      {id: 'p5', categoria: 'Aseo hogar', limite: 180000}, {id: 'p6', categoria: 'Botellón Agua', limite: 50000}
+    ]; 
+  });
+
+  const [pagosFijos, setPagosFijos] = useState(() => { 
+    const s = localStorage.getItem('ff_pagosFijos_v31'); 
+    return s ? JSON.parse(s) : [
+      {id: 'f1', descripcion: 'Arriendo', monto: 500000, categoria: 'Hogar', diaPago: 1},
+      {id: 'f2', descripcion: 'Administración', monto: 170000, categoria: 'Hogar', diaPago: 1},
+      {id: 'f3', descripcion: 'Colegio niños', monto: 900000, categoria: 'Tobías y Salomé', diaPago: 1},
+      {id: 'f4', descripcion: 'Deporte Tobías', monto: 0, categoria: 'Tobías y Salomé', diaPago: 1},
+      {id: 'f5', descripcion: 'Deporte Salomé', monto: 0, categoria: 'Tobías y Salomé', diaPago: 1},
+      {id: 'f6', descripcion: 'Aqualia', monto: 30000, categoria: 'Servicios públicos', diaPago: 1},
+      {id: 'f7', descripcion: 'Centrales Eléctricas (luz)', monto: 350000, categoria: 'Servicios públicos', diaPago: 1},
+      {id: 'f8', descripcion: 'Gases del Oriente (gas)', monto: 50000, categoria: 'Servicios públicos', diaPago: 1},
+      {id: 'f9', descripcion: 'Internet Hogar', monto: 120000, categoria: 'Servicios públicos', diaPago: 1},
+      {id: 'f10', descripcion: 'Seguro de vida Leo', monto: 120000, categoria: 'Seguro de vida', diaPago: 1},
+      {id: 'f11', descripcion: 'Seguro de vida Andre', monto: 120000, categoria: 'Seguro de vida', diaPago: 1},
+      {id: 'f12', descripcion: 'Nu Bank Andre', monto: 0, categoria: 'Tarjeta de crédito A', diaPago: 1},
+      {id: 'f13', descripcion: 'Davibank Andre', monto: 313097, categoria: 'Tarjeta de crédito A', diaPago: 6},
+      {id: 'f14', descripcion: 'Banco de Bogotá Andre', monto: 888000, categoria: 'Tarjeta de crédito A', diaPago: 6},
+      {id: 'f15', descripcion: 'Rappi Leo', monto: 0, categoria: 'Tarjeta de crédito L', diaPago: 1},
+      {id: 'f16', descripcion: 'Nu Bank Leo', monto: 229622, categoria: 'Tarjeta de crédito L', diaPago: 6},
+      {id: 'f17', descripcion: 'Falabella Leo', monto: 174586, categoria: 'Tarjeta de crédito L', diaPago: 10},
+      {id: 'f18', descripcion: 'Lulo Bank Andre', monto: 392390, categoria: 'Crédito', diaPago: 1},
+      {id: 'f20', descripcion: 'Credito de vechiculo Leo', monto: 1044000, categoria: 'Vehículo', diaPago: 1},
+      {id: 'f21', descripcion: 'Celular Andrea', monto: 75000, categoria: 'Andre', diaPago: 1},
+      {id: 'f22', descripcion: 'Celular Leo', monto: 50000, categoria: 'Leo', diaPago: 1},
+      {id: 'f23', descripcion: 'HBO Max', monto: 15000, categoria: 'Hogar', diaPago: 1},
+      {id: 'f24', descripcion: 'Mapfre Seguro', monto: 260000, categoria: 'Vehículo', diaPago: 1},
+    ]; 
+  });
+  
+  const [comprasCuotas, setComprasCuotas] = useState(() => { const s = localStorage.getItem('ff_cuotas_v31'); return s ? JSON.parse(s) : []; });
+  const [scoreHistory, setScoreHistory] = useState(() => { const s = localStorage.getItem('ff_score_history_v31'); return s ? JSON.parse(s) : {}; });
+
+  useEffect(() => { localStorage.setItem('ff_cuentas_v31', JSON.stringify(cuentas)); }, [cuentas]);
+  useEffect(() => { localStorage.setItem('ff_transferencias_v31', JSON.stringify(transferencias)); }, [transferencias]);
+  useEffect(() => { localStorage.setItem('ff_ingresos_v31', JSON.stringify(ingresos)); }, [ingresos]);
+  useEffect(() => { localStorage.setItem('ff_egresos_v31', JSON.stringify(egresos)); }, [egresos]);
+  useEffect(() => { localStorage.setItem('ff_presupuestos_v31', JSON.stringify(presupuestos)); }, [presupuestos]);
+  useEffect(() => { localStorage.setItem('ff_pagosFijos_v31', JSON.stringify(pagosFijos)); }, [pagosFijos]);
+  useEffect(() => { localStorage.setItem('ff_cuotas_v31', JSON.stringify(comprasCuotas)); }, [comprasCuotas]);
+
+  const setAllState = (parsed) => {
+    if (parsed.cuentas) setCuentas(parsed.cuentas);
+    if (parsed.transferencias) setTransferencias(parsed.transferencias);
+    if (parsed.ingresos) setIngresos(parsed.ingresos);
+    if (parsed.egresos) setEgresos(parsed.egresos);
+    if (parsed.presupuestos) setPresupuestos(parsed.presupuestos);
+    if (parsed.pagosFijos) setPagosFijos(parsed.pagosFijos);
+    if (parsed.comprasCuotas) setComprasCuotas(parsed.comprasCuotas);
+  };
+
+  const addPagoFijoToState = (pf) => {
+    setPagosFijos(prev => [...prev, { ...pf, id: generateId(), diaPago: pf.diaPago || 1, categoria: pf.categoria || 'Otros' }]);
+  }
+
+  // --- Catálogo de Categorías Dinámico ---
+  const categoriasMaestras = useMemo(() => {
+    const cats = new Set(['Inversión', 'Gasolina', 'Mercado', 'Mercado Aseo', 'Aseo hogar', 'Botellón Agua']);
+    presupuestos.forEach(p => cats.add(String(p.categoria)));
+    egresos.forEach(e => { if (e.categoria && e.categoria !== 'Otros') cats.add(String(e.categoria)); });
+    return Array.from(cats).sort();
+  }, [presupuestos, egresos]);
+
+  // --- Motor Core Base ---
+  const calculatedAccounts = useMemo(() => {
+    const accMap = {};
+    cuentas.forEach(c => { accMap[c.id] = { ...c, currentBalance: Number(c.initialBalance) || 0, currentDebt: Number(c.initialDebt) || 0 }; });
+    ingresos.forEach(i => { if(accMap[i.cuentaId]) accMap[i.cuentaId].currentBalance += Number(i.monto); });
+    egresos.forEach(e => {
+       if(accMap[e.cuentaId]) {
+          if (['credit', 'loan'].includes(accMap[e.cuentaId].type)) accMap[e.cuentaId].currentDebt += Number(e.monto);
+          else accMap[e.cuentaId].currentBalance -= Number(e.monto);
+       }
+       // Reducción automática de deuda si el pago fijo coincide con una TC o Crédito
+       if (e.tipo === 'Fijo' && e.deudaId && accMap[e.deudaId]) {
+           accMap[e.deudaId].currentDebt -= Number(e.monto);
+           if(accMap[e.deudaId].currentDebt < 0) accMap[e.deudaId].currentDebt = 0;
+       }
+    });
+    transferencias.forEach(t => {
+       if(accMap[t.fromId]) {
+           if (['credit', 'loan'].includes(accMap[t.fromId].type)) accMap[t.fromId].currentDebt += Number(t.monto);
+           else accMap[t.fromId].currentBalance -= Number(t.monto);
+       }
+       if(accMap[t.toId]) {
+           if (['credit', 'loan'].includes(accMap[t.toId].type)) {
+               accMap[t.toId].currentDebt -= Number(t.monto);
+               if(accMap[t.toId].currentDebt < 0) accMap[t.toId].currentDebt = 0;
+           }
+           else accMap[t.toId].currentBalance += Number(t.monto);
+       }
+    });
+    return Object.values(accMap);
+  }, [cuentas, ingresos, egresos, transferencias]);
+
+
+  // --- FILTROS ACTIVOS DE VISTA ---
+  const activeCalculatedAccounts = useMemo(() => calculatedAccounts.filter(c => belongsToFilter(getOwner(c.name))), [calculatedAccounts, filtroPersona]);
+
+  const activeIngresos = useMemo(() => ingresos.filter(i => {
+     const ownerAcc = cuentas.find(c => c.id === i.cuentaId) ? getOwner(cuentas.find(c => c.id === i.cuentaId).name) : 'Shared';
+     const ownerStr = getOwner(i.persona + ' ' + i.descripcion);
+     return belongsToFilter(ownerAcc !== 'Shared' ? ownerAcc : ownerStr);
+  }), [ingresos, cuentas, filtroPersona]);
+
+  const activeEgresos = useMemo(() => egresos.filter(e => {
+     const ownerAcc = cuentas.find(c => c.id === e.cuentaId) ? getOwner(cuentas.find(c => c.id === e.cuentaId).name) : 'Shared';
+     const ownerStr = getOwner(e.descripcion + ' ' + e.categoria);
+     return belongsToFilter(ownerAcc !== 'Shared' ? ownerAcc : ownerStr);
+  }), [egresos, cuentas, filtroPersona]);
+
+  const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(getOwner(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
+
+  const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(getOwner(p.categoria))), [presupuestos, filtroPersona]);
+
+  const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => {
+     const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId) ? getOwner(cuentas.find(acc => acc.id === c.tarjetaId).name) : 'Shared';
+     const ownerStr = getOwner(c.descripcion);
+     return belongsToFilter(ownerAcc !== 'Shared' ? ownerAcc : ownerStr);
+  }), [comprasCuotas, cuentas, filtroPersona]);
+  
+  const activeTransferencias = useMemo(() => transferencias.filter(t => {
+     const ownerFrom = cuentas.find(c => c.id === t.fromId) ? getOwner(cuentas.find(c => c.id === t.fromId).name) : 'Shared';
+     const ownerTo = cuentas.find(c => c.id === t.toId) ? getOwner(cuentas.find(c => c.id === t.toId).name) : 'Shared';
+     return belongsToFilter(ownerFrom) || belongsToFilter(ownerTo);
+  }), [transferencias, cuentas, filtroPersona]);
+
+
+  // --- Métricas Mensuales (Basadas en los Filtros Activos) ---
+  const isThisMonth = (fecha) => fecha && fecha.startsWith(selectedMonth);
+  const ingresosMesTotal = useMemo(() => activeIngresos.filter(i => isThisMonth(i.fecha)).reduce((s, i) => s + Number(i.monto), 0), [activeIngresos, selectedMonth]);
+  const egresosMesTotal = useMemo(() => activeEgresos.filter(e => isThisMonth(e.fecha)).reduce((s, e) => s + Number(e.monto), 0), [activeEgresos, selectedMonth]);
+  const egresosMes = activeEgresos.filter(e=>e.fecha.startsWith(selectedMonth));
+  
+  const cuotasMesTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).reduce((s, c) => s + Number(c.cuotaMinima), 0), [activeCalculatedAccounts]);
+  
+  const pagosDeCuotasEsteMes = egresosMes.filter(e => e.tipo === 'Fijo' && (e.categoria.toLowerCase().includes('tarjeta') || e.categoria.toLowerCase().includes('crédito') || e.categoria.toLowerCase().includes('vehículo') || e.categoria.toLowerCase().includes('davibank'))).reduce((sum, e) => sum + e.monto, 0);
+  const cuotasMesRestantes = Math.max(0, cuotasMesTotal - pagosDeCuotasEsteMes);
+
+  const flujoNetoMes = ingresosMesTotal - egresosMesTotal - cuotasMesRestantes;
+  
+  const liquidezTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['bank', 'cash', 'pocket'].includes(c.type)).reduce((s, c) => s + c.currentBalance, 0), [activeCalculatedAccounts]);
+  const deudaTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type)).reduce((s, c) => s + c.currentDebt, 0), [activeCalculatedAccounts]);
+  
+  const tasaEndeudamiento = ingresosMesTotal > 0 ? (cuotasMesTotal / ingresosMesTotal) * 100 : 0;
+  const tasaAhorro = ingresosMesTotal > 0 ? (flujoNetoMes > 0 ? (flujoNetoMes / ingresosMesTotal) * 100 : 0) : 0;
+
+  const pagosPendientesArray = useMemo(() => {
+    const egresosDelMes = activeEgresos.filter(e => e.fecha.startsWith(selectedMonth));
+    return activePagosFijos.filter(pf => !egresosDelMes.some(e => e.pagoFijoId === pf.id));
+  }, [activePagosFijos, activeEgresos, selectedMonth]);
+
+  const movimientosRecientes = useMemo(() => {
+    const all = [
+      ...activeIngresos.map(i => ({...i, globalType: 'ingreso'})),
+      ...activeEgresos.map(e => ({...e, globalType: 'gasto'})),
+      ...activeTransferencias.map(t => ({...t, globalType: 'transferencia'}))
+    ];
+    return all.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+  }, [activeIngresos, activeEgresos, activeTransferencias]);
+
+  // --- Lógica de Score ---
+  const { score, issues, recs } = useMemo(() => {
+    let scr = 100; const iss = []; const rr = [];
+    if (flujoNetoMes < 0) { scr -= 40; iss.push('Flujo mensual negativo'); rr.push({ico: '⚠️', title: 'Flujo Crítico', txt: 'Tus compromisos superan tus ingresos.'}); }
+    if (cuotasMesTotal > ingresosMesTotal * 0.4 && ingresosMesTotal > 0) { scr -= 25; iss.push('Deudas > 40% del ingreso'); rr.push({ico: '🛡️', title: 'Riesgo de Sobreendeudamiento', txt: 'Usa la estrategia Avalancha en la pestaña Deudas para liberar liquidez.'}); }
+    
+    const tieneAhorroProgramado = activePagosFijos.some(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro'));
+    if (!tieneAhorroProgramado) { scr -= 10; iss.push('Sin ahorro programado'); rr.push({ico: '🎯', title: 'Falta de Dirección', txt: 'Usa el Simulador para definir un Plan de Ahorro y asúmelo como pago fijo.'}); }
+    
+    if (tasaAhorro < 10 && ingresosMesTotal > 0) { scr -= 15; iss.push('Tasa de ahorro < 10%'); } 
+    return { score: Math.max(0, scr), issues: iss, recs: rr };
+  }, [flujoNetoMes, cuotasMesTotal, ingresosMesTotal, tasaAhorro, activePagosFijos]);
+
+  useEffect(() => {
+    const currentMonthStr = new Date().toISOString().slice(0, 7);
+    if (selectedMonth === currentMonthStr) {
+      setScoreHistory(prev => {
+        if (prev[selectedMonth] !== score) {
+          const newHist = { ...prev, [selectedMonth]: score };
+          localStorage.setItem('ff_score_history_v31', JSON.stringify(newHist));
+          return newHist;
+        }
+        return prev;
+      });
+    }
+  }, [score, selectedMonth]);
+
+  // --- Menú de Navegación ---
+  const navItems = [
+    { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
+    { id: 'cuentas', label: 'Cuentas', icon: Landmark },
+    { id: 'ingresos', label: 'Ingresos', icon: Wallet },
+    { id: 'egresos', label: 'Egresos', icon: Receipt }, 
+    { id: 'presupuestos', label: 'Presupuestos', icon: PieChart },
+    { id: 'deudas', label: 'Deudas', icon: ShieldAlert },
+    { id: 'simulador', label: 'Simulador', icon: Calculator },
+    { id: 'settings', label: 'Ajustes', icon: Settings2 },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans">
+      <Toast toast={toast} onClose={() => setToast(null)} />
+      
+      {/* Sidebar para PC */}
+      <aside className="hidden md:flex w-64 bg-[#17171a] border-r border-slate-800 flex-shrink-0 flex-col relative z-20">
+        <div className="p-6 border-b border-slate-800">
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-serif">F</div>
+            FinanzasFamilia
+          </h1>
+        </div>
+        <div className="px-4 pt-4 pb-2 border-b border-slate-800/50 bg-slate-900/30">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1">Resumen del Mes</p>
+          <p className={`text-xl font-black ${flujoNetoMes >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>{formatCOP(flujoNetoMes)}</p>
+          <p className="text-[10px] text-slate-400">Flujo Libre {getMonthName(selectedMonth).split(' ')[0]}</p>
+          <div className="mt-3 flex items-center justify-between text-[10px] mb-1">
+            <span className="text-slate-400 font-medium">Score Salud</span>
+            <span className="font-bold text-emerald-400">{score}/100</span>
+          </div>
+          <div className="w-full bg-slate-800 rounded-full h-1.5">
+            <div className={`h-full rounded-full ${score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${score}%`}}></div>
+          </div>
+        </div>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-2 px-4">Diario</div>
+          {navItems.slice(0, 5).map(item => {
+            const Icon = item.icon;
+            return (
+              <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'}`}>
+                <Icon size={18} className={activeTab === item.id ? 'text-indigo-400' : 'text-slate-500'} /> {item.label}
+              </button>
+            );
+          })}
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6 px-4">Futuro y Proyección</div>
+          {navItems.slice(5, 7).map(item => {
+            const Icon = item.icon;
+            return (
+              <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'}`}>
+                <Icon size={18} className={activeTab === item.id ? 'text-indigo-400' : 'text-slate-500'} /> {item.label}
+              </button>
+            );
+          })}
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6 px-4">Sistema</div>
+          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'}`}>
+            <Settings2 size={18} className={activeTab === 'settings' ? 'text-indigo-400' : 'text-slate-500'} /> Ajustes
+          </button>
+        </nav>
+      </aside>
+
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
+        {/* Cabecera de Filtros y Mes */}
+        <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex flex-col md:flex-row justify-between items-center shadow-md gap-4">
+           
+           <div className="flex items-center w-full md:w-auto justify-center md:justify-start">
+             <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 text-xs font-bold w-full md:w-auto shadow-inner">
+               <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-md transition-all duration-200 ${filtroPersona === 'Total' ? 'bg-indigo-600 text-white shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>TOTAL</button>
+               <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-md transition-all duration-200 ${filtroPersona === 'Andre' ? 'bg-rose-600 text-white shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>ANDRE</button>
+               <button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-md transition-all duration-200 ${filtroPersona === 'Leo' ? 'bg-emerald-600 text-white shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>LEO</button>
+             </div>
+           </div>
+
+           <div className="flex-1 flex justify-center md:justify-end w-full md:w-auto">
+             <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-full md:max-w-[240px] justify-between shadow-inner">
+               <button onClick={() => changeMonth(-1)} className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors"><ChevronLeft size={18}/></button>
+               <span className="font-bold text-white capitalize px-2 text-sm text-center truncate">{getMonthName(selectedMonth)}</span>
+               <button onClick={() => changeMonth(1)} className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors"><ChevronRight size={18}/></button>
+             </div>
+           </div>
+        </div>
+
+        {/* Contenido de la pestaña */}
+        <div className="p-4 md:p-8 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="max-w-6xl mx-auto">
+            {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} scoreData={{score, issues, recs}} scoreHistory={scoreHistory} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} />}
+            {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} transferencias={activeTransferencias} setTransferencias={setTransferencias} egresos={egresos} setEgresos={setEgresos} showToast={showToast} />}
+            {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} />}
+            {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} setEgresos={setEgresos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} comprasCuotas={activeComprasCuotas} setComprasCuotas={setComprasCuotas} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
+            {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} setPresupuestos={setPresupuestos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
+            {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} showToast={showToast} />}
+            {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} />}
+            {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas}} setAllState={setAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+          </div>
+        </div>
+      </main>
+
+      {/* Bottom Nav para Móviles */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-50 flex overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {navItems.slice(0, 4).map(item => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button key={item.id} onClick={() => { setActiveTab(item.id); setShowMobileMore(false); }} className={`flex-1 flex flex-col items-center justify-center p-3 transition-colors ${isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Icon size={22} className={isActive ? 'mb-1' : 'mb-1 opacity-70'} />
+              <span className={`text-[10px] font-medium ${isActive ? 'font-bold' : ''}`}>{item.label}</span>
+            </button>
+          );
+        })}
+        {/* Botón "Más" */}
+        <div className="relative flex-1">
+          <button onClick={() => setShowMobileMore(!showMobileMore)} className={`w-full h-full flex flex-col items-center justify-center p-3 transition-colors ${showMobileMore ? 'text-indigo-400' : 'text-slate-500'}`}>
+            <MoreHorizontal size={22} className="mb-1" />
+            <span className="text-[10px] font-medium">Más</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Overlay y Bottom Sheet para menú expandido móvil */}
+      {showMobileMore && (
+        <div className="md:hidden fixed inset-0 bg-black/60 z-40" onClick={() => setShowMobileMore(false)} />
+      )}
+      <div className={`md:hidden fixed bottom-[60px] left-0 right-0 bg-[#17171a] border-t border-slate-800 rounded-t-3xl z-50 transition-transform transform ${showMobileMore ? 'translate-y-0' : 'translate-y-full'}`}>
+        <div className="p-4 grid grid-cols-3 gap-2">
+           {navItems.slice(4).map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button key={item.id} onClick={() => { setActiveTab(item.id); setShowMobileMore(false); }} className={`flex flex-col items-center justify-center p-4 rounded-xl transition-colors ${isActive ? 'bg-indigo-600/10 text-indigo-400' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}>
+                  <Icon size={24} className="mb-2" />
+                  <span className="text-[11px] font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+        </div>
+      </div>
+
+    </div>
+  );
+}
