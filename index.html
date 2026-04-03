@@ -258,7 +258,7 @@
     };
 
     // --- Componentes de Pestañas ---
-    const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos }) => {
+    const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos }) => {
       const [chartFilter, setChartFilter] = useState('Todos');
       
       const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
@@ -289,31 +289,42 @@
       const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
       const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
       
-      const proyeccionIngresosMes = ingresosMesTotal; 
+      const proyeccionIngresosMes = ingresosFijos ? ingresosFijos.reduce((sum, item) => sum + Number(item.monto), 0) : 0; 
       const proyeccionPagoMes = totalPresupuestadoFijo + totalPresupuestadoVar;
       const totalProyeccionMes = proyeccionIngresosMes - proyeccionPagoMes;
 
       const gastadoFijo = egresosMes.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + e.monto, 0);
       const gastadoVar = egresosMes.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
-      const totalPagos = gastadoFijo + gastadoVar;
-      const totalPagoMasTC = totalPagos + cuotasMesRestantes;
+      
+      // Separamos los pagos reales hechos a Tarjetas y Créditos
+      const pagosTCReales = egresosMes.filter(e => e.tipo === 'Fijo' && (e.categoria.toLowerCase().includes('tarjeta') || e.categoria.toLowerCase().includes('crédito') || e.categoria.toLowerCase().includes('vehículo') || e.categoria.toLowerCase().includes('davibank'))).reduce((sum, e) => sum + e.monto, 0);
+      const gastadoFijoSinTC = Math.max(0, gastadoFijo - pagosTCReales);
+      
+      const totalPagosBase = gastadoFijoSinTC + gastadoVar;
+      const totalPagoRealMasTC = totalPagosBase + pagosTCReales;
+
+      // --- CÁLCULOS DE NUEVAS TARJETAS (PENDIENTES) ---
+      const ingresosMesActual = ingresos.filter(i => i.fecha.startsWith(selectedMonth));
+      const ingresosPendientesTotal = ingresosFijos ? ingresosFijos.filter(inf => !ingresosMesActual.some(i => i.ingresoFijoId === inf.id)).reduce((sum, inf) => sum + Number(inf.monto), 0) : 0;
+
+      const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => {
+        const isPagado = egresosMes.some(e => e.pagoFijoId === pf.id);
+        const isCredit = pf.categoria.toLowerCase().includes('tarjeta') || pf.categoria.toLowerCase().includes('crédito') || pf.categoria.toLowerCase().includes('vehículo') || pf.categoria.toLowerCase().includes('davibank');
+        return !isPagado && !isCredit;
+      }).reduce((sum, pf) => sum + pf.monto, 0) : 0;
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Inicio y Dashboard Global</h1><p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, PowerBI de egresos y salud financiera.</p></header>
+          <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Inicio y Dashboard Global</h1><p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, PowerBI de egresos y proyecciones.</p></header>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500">
               <h3 className="text-slate-400 text-xs md:text-sm font-medium">Ingresos del Mes</h3>
               <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
             </Card>
-            <Card className="p-3 md:p-5 border-t-4 border-t-rose-500">
-              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
-              <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
-            </Card>
-            <Card className="p-3 md:p-5 border-t-4 border-t-amber-500">
-              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Cuotas (Pendientes)</h3>
-              <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(cuotasMesRestantes)} <span className="text-[10px] text-slate-500 font-normal block">De {formatCOP(cuotasMesTotal)}</span></p>
+            <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500/50">
+              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Ingresos Esperados</h3>
+              <p className="text-lg md:text-2xl font-bold text-emerald-400/80 mt-1">{formatCOP(ingresosPendientesTotal)}</p>
             </Card>
             <Card className={`p-3 md:p-5 border-t-4 ${flujoNetoMes >= 0 ? 'border-t-indigo-500' : 'border-t-rose-500'}`}>
               <h3 className="text-slate-400 text-xs md:text-sm font-medium">Flujo Libre (Caja)</h3>
@@ -321,22 +332,37 @@
                 {formatCOP(flujoNetoMes)}
               </p>
             </Card>
+
+            <Card className="p-3 md:p-5 border-t-4 border-t-rose-500">
+              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
+              <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
+            </Card>
+            <Card className="p-3 md:p-5 border-t-4 border-t-amber-500">
+              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Pagos Fijos Pendientes</h3>
+              <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(pagosFijosPendientesTotal)}</p>
+            </Card>
+            <Card className="p-3 md:p-5 border-t-4 border-t-amber-500">
+              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Pagos Créditos Pendientes</h3>
+              <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(cuotasMesRestantes)} <span className="text-[10px] text-slate-500 font-normal block">De {formatCOP(cuotasMesTotal)}</span></p>
+            </Card>
           </div>
 
+          {/* --- PANEL DE DETALLE DE PAGOS Y PROYECCIONES --- */}
           <Card className="flex flex-col border-t-4 border-t-indigo-500 bg-slate-900/80">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Calculator size={18} className="text-indigo-400" /> Resumen y Proyección Detallada</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-950 p-4 md:p-6 rounded-xl border border-slate-800">
               <div className="space-y-4">
                 <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Proyección ingresos mes</span> <span className="font-bold text-emerald-400">{formatCOP(proyeccionIngresosMes)}</span></div>
-                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Proyección pago mes (Fijo+Var)</span> <span className="font-bold text-rose-400">{formatCOP(proyeccionPagoMes)}</span></div>
+                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Proyección pago mes (fijo)</span> <span className="font-bold text-rose-400">{formatCOP(totalPresupuestadoFijo)}</span></div>
+                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Proyección pago mes (variable)</span> <span className="font-bold text-rose-400">{formatCOP(totalPresupuestadoVar)}</span></div>
                 <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL proyección mes</span> <span className={totalProyeccionMes >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(totalProyeccionMes)}</span></div>
               </div>
               <div className="space-y-4 md:border-l md:border-slate-800 md:pl-6">
                 <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total Ingresos mes</span> <span className="font-bold text-emerald-400">{formatCOP(ingresosMesTotal)}</span></div>
-                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos fijos</span> <span className="font-bold text-rose-400">{formatCOP(gastadoFijo)}</span></div>
+                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos fijos (Sin TC)</span> <span className="font-bold text-rose-400">{formatCOP(gastadoFijoSinTC)}</span></div>
+                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos con T. crédito</span> <span className="font-bold text-rose-400">{formatCOP(pagosTCReales)}</span></div>
                 <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos variables</span> <span className="font-bold text-rose-400">{formatCOP(gastadoVar)}</span></div>
-                <div className="flex justify-between text-sm font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL PAGOS</span> <span className="text-rose-500">{formatCOP(totalPagos)}</span></div>
-                <div className="flex justify-between text-sm font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL PAGO + PAGOS TC</span> <span className="text-rose-500">{formatCOP(totalPagoMasTC)}</span></div>
+                <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL PAGOS</span> <span className="text-rose-500">{formatCOP(totalPagoRealMasTC)}</span></div>
               </div>
             </div>
           </Card>
@@ -403,8 +429,8 @@
       );
     };
 
-    const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egresosMes }) => {
-      const { score, issues, recs } = scoreData;
+    const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egresosMes, cuentas, ingresosMesTotal, egresosMesTotal, cuotasMesTotal }) => {
+      const { score } = scoreData;
 
       const prevMonthDate = new Date(`${selectedMonth}-01T12:00:00`);
       prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
@@ -414,71 +440,116 @@
       const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-rose-400';
       const scoreBg = score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-rose-500';
 
-      const alertasPresupuesto = useMemo(() => {
-        return presupuestos.map(p => {
-           const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
-           return { ...p, gastado, porcentaje: p.limite > 0 ? (gastado / p.limite) * 100 : 0 };
-        }).filter(p => p.porcentaje >= 75).sort((a,b) => b.porcentaje - a.porcentaje);
-      }, [presupuestos, egresosMes]);
+      // Análisis Avanzado para Score Familia
+      const tasaAhorro = ingresosMesTotal > 0 ? ((ingresosMesTotal - egresosMesTotal - cuotasMesTotal) / ingresosMesTotal) * 100 : 0;
+      const nivelEndeudamiento = ingresosMesTotal > 0 ? (cuotasMesTotal / ingresosMesTotal) * 100 : 0;
+      
+      const deudasPeligrosas = cuentas.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0 && c.tasaEA >= 25).sort((a,b) => b.tasaEA - a.tasaEA);
+      
+      const alertasPresupuesto = presupuestos.map(p => {
+         const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
+         return { ...p, gastado, porcentaje: p.limite > 0 ? (gastado / p.limite) * 100 : 0 };
+      }).filter(p => p.porcentaje >= 75).sort((a,b) => b.porcentaje - a.porcentaje);
+
+      // Generador Dinámico de Recomendaciones
+      const dynamicRecs = useMemo(() => {
+        let items = [];
+        
+        if (deudasPeligrosas.length > 0) {
+            items.push({
+                ico: <ShieldAlert size={24} className="text-rose-500" />,
+                title: "Deuda de Alto Riesgo Detectada",
+                txt: `Tu cuenta "${deudasPeligrosas[0].name}" tiene un interés muy alto (${deudasPeligrosas[0].tasaEA}% E.A.). Te recomendamos aplicar pagos extra (Estrategia Avalancha) urgentemente a esta obligación para ahorrar intereses.`
+            });
+        }
+        if (nivelEndeudamiento > 40) {
+            items.push({
+                ico: <AlertCircle size={24} className="text-amber-500" />,
+                title: "Peligro de Sobreendeudamiento",
+                txt: `Tus cuotas mensuales representan el ${nivelEndeudamiento.toFixed(1)}% de tus ingresos. El límite saludable es el 30-40%. Intenta no adquirir nuevas deudas y consolida las actuales.`
+            });
+        }
+        if (tasaAhorro < 10 && ingresosMesTotal > 0) {
+            items.push({
+                ico: <TrendingUp size={24} className="text-amber-500" />,
+                title: "Impulsa tu Ahorro",
+                txt: `Tu flujo de caja actual solo te permite ahorrar un ${tasaAhorro.toFixed(1)}%. Intenta aplicar la regla 50-30-20 (Necesidades-Deseos-Ahorro) para llegar al menos a un 10% u optimiza tus gastos variables.`
+            });
+        }
+        if (tasaAhorro >= 20) {
+            items.push({
+                ico: <PiggyBank size={24} className="text-emerald-500" />,
+                title: "¡Excelente capacidad de ahorro!",
+                txt: `Estás reteniendo un ${tasaAhorro.toFixed(1)}% de lo que ganas. Te sugerimos abrir la pestaña Simuladores y automatizar transferencias hacia tus Bolsillos o cuentas de Inversión.`
+            });
+        }
+        if (alertasPresupuesto.some(p => p.porcentaje >= 100)) {
+            items.push({
+                ico: <Target size={24} className="text-rose-500" />,
+                title: "Presupuestos Rotos",
+                txt: `Has excedido el límite en algunas categorías variables este mes. Revisa tus gastos impulsivos en la pestaña Presupuestos.`
+            });
+        }
+        if (items.length === 0) {
+            items.push({
+                ico: <CheckCircle2 size={24} className="text-emerald-500" />,
+                title: "Todo en orden",
+                txt: "Tus indicadores son saludables. Mantén tus presupuestos al día y tus deudas controladas."
+            });
+        }
+        return items;
+      }, [deudasPeligrosas, nivelEndeudamiento, tasaAhorro, alertasPresupuesto, ingresosMesTotal]);
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
           <header>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><Activity className="text-emerald-400 w-8 h-8"/> Score Familia</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><Activity className="text-indigo-400 w-8 h-8"/> Score Familia</h1>
             <p className="text-sm md:text-base text-slate-400 mt-1">Diagnóstico, alertas y recomendaciones sobre tu salud financiera.</p>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-            <Card className="flex flex-col items-center justify-center py-8 bg-slate-900/50 relative overflow-hidden h-full">
-              {prevScore !== null && (
-                <div className="absolute top-4 right-4 flex items-center gap-1 text-xs font-bold bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800" title="Comparado con el mes anterior">
-                  {score > prevScore ? <span className="text-emerald-400 flex items-center gap-1"><ArrowUpRight size={14}/> +{score - prevScore} pts</span> :
-                   score < prevScore ? <span className="text-rose-400 flex items-center gap-1"><ArrowDownRight size={14}/> {prevScore - score} pts</span> :
-                   <span className="text-slate-400 flex items-center gap-1"><Minus size={14}/> = pts</span>}
-                </div>
-              )}
-              <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><Activity size={18} className="text-emerald-400"/> Score de Salud Financiera</h2>
-              <div className={`text-6xl md:text-7xl font-black font-mono mt-2 ${scoreColor}`}>{score}</div>
-              <p className={`font-bold mt-2 ${scoreColor}`}>{score >= 80 ? 'Excelente Salud' : score >= 50 ? 'Requiere Atención' : 'Situación Crítica'}</p>
-              <div className="w-full max-w-xs bg-slate-800 rounded-full h-2 mt-6">
-                <div className={`h-full rounded-full ${scoreBg}`} style={{width: `${score}%`}}></div>
-              </div>
-            </Card>
-
-            <div className="space-y-6 h-full">
-              <Card className="h-full">
-                <h2 className="text-lg font-semibold text-white mb-4 border-b border-slate-800 pb-2 flex items-center gap-2"><AlertCircle size={18} className="text-amber-400"/> Diagnóstico y Alertas</h2>
-                
-                {alertasPresupuesto.length > 0 && (
-                  <div className="mb-4 space-y-2">
-                    {alertasPresupuesto.map((p, i) => {
-                      const isOver = p.porcentaje >= 100;
-                      return (
-                        <div key={i} className={`${isOver ? 'bg-rose-500/20 border-rose-500' : 'bg-amber-500/10 border-amber-500/30'} border rounded-lg p-3 flex justify-between items-center`}>
-                          <div>
-                            <p className={`text-xs font-bold ${isOver ? 'text-rose-400' : 'text-amber-400'} flex items-center gap-1`}><AlertCircle size={12}/> {isOver ? 'Presupuesto excedido' : 'Presupuesto al límite'}</p>
-                            <p className="text-sm font-medium text-slate-200 mt-0.5">{p.categoria}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-white">{p.porcentaje.toFixed(0)}%</p>
-                            <p className="text-[10px] text-slate-400">gastado</p>
-                          </div>
-                        </div>
-                      )
-                    })}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
+            
+            {/* Columna Izquierda: Score y Signos Vitales */}
+            <div className="lg:col-span-4 space-y-6">
+              <Card className="flex flex-col items-center justify-center py-10 bg-slate-900/50 relative overflow-hidden">
+                {prevScore !== null && (
+                  <div className="absolute top-4 right-4 flex items-center gap-1 text-xs font-bold bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800" title="Comparado con el mes anterior">
+                    {score > prevScore ? <span className="text-emerald-400 flex items-center gap-1"><ArrowUpRight size={14}/> +{score - prevScore} pts</span> :
+                     score < prevScore ? <span className="text-rose-400 flex items-center gap-1"><ArrowDownRight size={14}/> {prevScore - score} pts</span> :
+                     <span className="text-slate-400 flex items-center gap-1"><Minus size={14}/> = pts</span>}
                   </div>
                 )}
+                <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><Activity size={18} className="text-emerald-400"/> Salud Financiera</h2>
+                <div className={`text-7xl font-black font-mono mt-2 ${scoreColor}`}>{score}</div>
+                <p className={`font-bold mt-2 ${scoreColor}`}>{score >= 80 ? 'Excelente Salud' : score >= 50 ? 'Requiere Atención' : 'Situación Crítica'}</p>
+                <div className="w-full max-w-[200px] bg-slate-800 rounded-full h-2 mt-6">
+                  <div className={`h-full rounded-full ${scoreBg}`} style={{width: `${score}%`}}></div>
+                </div>
+              </Card>
 
-                <div className="space-y-3">
-                  {recs.map((r, i) => (
-                    <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex gap-4 items-start">
-                      <div className="text-2xl mt-1">{r.ico}</div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center flex flex-col items-center justify-center">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Tasa de Ahorro</p>
+                    <p className={`text-2xl font-bold ${tasaAhorro >= 15 ? 'text-emerald-400' : tasaAhorro > 0 ? 'text-amber-400' : 'text-rose-400'}`}>{tasaAhorro.toFixed(1)}%</p>
+                 </div>
+                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center flex flex-col items-center justify-center">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Carga de Deuda</p>
+                    <p className={`text-2xl font-bold ${nivelEndeudamiento <= 30 ? 'text-emerald-400' : nivelEndeudamiento <= 45 ? 'text-amber-400' : 'text-rose-400'}`}>{nivelEndeudamiento.toFixed(1)}%</p>
+                 </div>
+              </div>
+            </div>
+
+            {/* Columna Derecha: Plan de Acción y Alertas */}
+            <div className="lg:col-span-8 space-y-6">
+              <Card className="h-full border-t-4 border-t-indigo-500">
+                <h2 className="text-lg font-semibold text-white mb-4 border-b border-slate-800 pb-3 flex items-center gap-2"><Target size={18} className="text-indigo-400"/> Plan de Acción Sugerido</h2>
+                <div className="space-y-4">
+                  {dynamicRecs.map((r, i) => (
+                    <div key={i} className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 flex gap-4 items-start hover:border-slate-700 transition-colors">
+                      <div className="mt-1 bg-slate-900 p-2 rounded-lg shadow-inner">{r.ico}</div>
                       <div><h3 className="font-bold text-sm text-slate-200">{r.title}</h3><p className="text-xs text-slate-400 mt-1 leading-relaxed">{r.txt}</p></div>
                     </div>
                   ))}
-                  {recs.length === 0 && alertasPresupuesto.length === 0 && (
-                     <p className="text-sm text-slate-500 text-center py-6">Todo en orden por ahora. ¡Buen trabajo!</p>
-                  )}
                 </div>
               </Card>
             </div>
@@ -898,6 +969,7 @@
       const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: '', descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '' });
       const [errorsVar, setErrorsVar] = useState({});
       const varRef = useRef(null);
+      const fileInputRef = useRef(null);
 
       const isCreditCard = gastoForm.metodoPago === 'credit';
 
@@ -1058,6 +1130,44 @@
         return [];
       }, [cuentas, gastoForm.metodoPago]);
 
+      const handleExport = async () => {
+        try {
+          const xlsx = await loadSheetJS();
+          const wb = xlsx.utils.book_new();
+          const data = egresos.map(e => ({ Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: cuentas.find(c=>c.id===e.cuentaId)?.name || e.cuentaId, Monto: e.monto }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(data), "Egresos");
+          xlsx.writeFile(wb, `Egresos_Historial_${new Date().toISOString().split('T')[0]}.xlsx`);
+          showToast("Historial exportado con éxito.");
+        } catch(e) { showToast("Error al exportar a Excel.", "error"); }
+      };
+
+      const handleImport = async (e) => {
+        const file = e.target.files[0]; if(!file) return;
+        try {
+          const xlsx = await loadSheetJS();
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const wb = xlsx.read(evt.target.result, { type: 'binary' });
+              const sheetName = wb.Sheets["Egresos"] ? "Egresos" : wb.SheetNames[0];
+              const importedData = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
+              const mapped = importedData.filter(i=>i.Monto).map(i => {
+                const cuentaEncontrada = cuentas.find(c => c.name === i.Cuenta)?.id || cuentas[0]?.id;
+                return {
+                  id: generateId(), fecha: i.Fecha || new Date().toISOString().split('T')[0],
+                  descripcion: i.Descripcion || 'Egreso Importado', categoria: i.Categoria || 'Otros',
+                  tipo: i.Tipo || 'Variable', monto: Number(i.Monto) || 0, cuentaId: cuentaEncontrada
+                };
+              });
+              setEgresos(prev => [...prev, ...mapped]);
+              showToast(`${mapped.length} egresos importados correctamente.`);
+            } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
+          };
+          reader.readAsBinaryString(file);
+        } catch(err) { showToast("Error al abrir herramienta de Excel.", "error"); }
+        e.target.value = '';
+      };
+
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
           <header className="flex justify-between items-end">
@@ -1080,10 +1190,10 @@
             <form onSubmit={guardarGasto} className="grid grid-cols-2 md:grid-cols-12 gap-3 items-end">
               
               {gastoForm.editSource !== 'cuotas' && (
-                <>
+                <React.Fragment>
                   <Input type="date" label="Fecha" value={gastoForm.fecha} onChange={e=>setGastoForm({...gastoForm, fecha: e.target.value})} error={errorsVar.fecha} className="col-span-1 md:col-span-2"/>
                   <Select label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={gastoForm.categoria} onChange={e=>setGastoForm({...gastoForm, categoria: e.target.value})} required className="col-span-1 md:col-span-2" />
-                </>
+                </React.Fragment>
               )}
               
               <Input label="Descripción del Gasto / Compra" placeholder="Ej: Supermercado o Televisor" value={gastoForm.descripcion} onChange={e=>setGastoForm({...gastoForm, descripcion: e.target.value})} error={errorsVar.descripcion} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-4' : 'md:col-span-3'}`} />
@@ -1183,7 +1293,14 @@
 
           {/* SECCIÓN 4: TABLA DE HISTORIAL */}
           <div className="mt-8 pt-8 border-t border-slate-800">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Historial Completo de Egresos (Fijos y Variables)</h3>
+            <div className="flex justify-between items-end mb-4">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Historial Completo de Egresos (Fijos y Variables)</h3>
+              <div className="flex gap-2">
+                <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
+                <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> Importar</button>
+                <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> Exportar</button>
+              </div>
+            </div>
             <div className="overflow-x-auto bg-slate-900 rounded-xl border border-slate-800">
               <table className="w-full text-sm text-left min-w-[600px]">
                 <thead className="text-xs text-slate-400 uppercase bg-slate-950">
@@ -1224,7 +1341,52 @@
       const [editId, setEditId] = useState(null);
       const [errors, setErrors] = useState({});
       const [filtroLista, setFiltroLista] = useState('Todos'); 
+      const [showForm, setShowForm] = useState(false);
       const formRef = useRef(null);
+      const fileInputRef = useRef(null);
+
+      const handleExport = async () => {
+        try {
+          const xlsx = await loadSheetJS();
+          const wb = xlsx.utils.book_new();
+          const dataFijos = pagosFijos.map(f => ({ Descripcion: f.descripcion, Categoria: f.categoria, Monto: f.monto, DiaPago: f.diaPago }));
+          const dataVar = presupuestos.map(p => ({ Categoria: p.categoria, Limite: p.limite }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataFijos), "Fijos");
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataVar), "Variables");
+          xlsx.writeFile(wb, `Presupuestos_${new Date().toISOString().split('T')[0]}.xlsx`);
+          showToast("Presupuestos exportados con éxito.");
+        } catch(e) { showToast("Error al exportar a Excel.", "error"); }
+      };
+
+      const handleImport = async (e) => {
+        const file = e.target.files[0]; if(!file) return;
+        try {
+          const xlsx = await loadSheetJS();
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const wb = xlsx.read(evt.target.result, { type: 'binary' });
+              if (wb.Sheets["Fijos"]) {
+                const dataFijos = xlsx.utils.sheet_to_json(wb.Sheets["Fijos"]);
+                const mappedFijos = dataFijos.filter(i=>i.Monto).map(i => ({
+                  id: generateId(), descripcion: i.Descripcion || 'Fijo Importado', categoria: i.Categoria || 'Otros', monto: Number(i.Monto) || 0, diaPago: Number(i.DiaPago) || 1
+                }));
+                setPagosFijos(prev => [...prev, ...mappedFijos]);
+              }
+              if (wb.Sheets["Variables"]) {
+                const dataVar = xlsx.utils.sheet_to_json(wb.Sheets["Variables"]);
+                const mappedVar = dataVar.filter(i=>i.Limite).map(i => ({
+                  id: generateId(), categoria: i.Categoria || 'Otros', limite: Number(i.Limite) || 0
+                }));
+                setPresupuestos(prev => [...prev, ...mappedVar]);
+              }
+              showToast("Presupuestos importados correctamente.");
+            } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
+          };
+          reader.readAsBinaryString(file);
+        } catch(err) { showToast("Error al abrir herramienta de Excel.", "error"); }
+        e.target.value = '';
+      };
 
       const guardar = (e) => {
         e.preventDefault();
@@ -1274,7 +1436,8 @@
           setTipoForm('variable');
           setNuevoVar({ categoria: p.categoria, limite: p.limite.toString() });
         }
-        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setShowForm(true);
+        setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       }
 
       const cancelarEdicion = () => {
@@ -1282,6 +1445,7 @@
         setNuevoVar({ categoria: '', limite: '' });
         setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
         setErrors({});
+        setShowForm(false);
       }
 
       const egresosMes = egresos.filter(g => g.fecha.startsWith(selectedMonth));
@@ -1311,74 +1475,82 @@
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><PieChart className="text-indigo-400 w-8 h-8"/> Presupuestos y Ejecución</h1>
-            <p className="text-sm md:text-base text-slate-400 mt-1">Controla cómo se está gastando el dinero vs lo que tenías planificado.</p>
+          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><PieChart className="text-indigo-400 w-8 h-8"/> Presupuestos y Ejecución</h1>
+              <p className="text-sm md:text-base text-slate-400 mt-1">Controla cómo se está gastando el dinero vs lo que tenías planificado.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                <Plus size={16}/> {showForm ? 'Ocultar' : 'Añadir presupuesto'}
+              </button>
+              <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
+              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+            </div>
           </header>
 
           {/* Resumen Global Presupuestal */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-              <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Presupuesto Fijo</p>
+              <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
               <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
             </div>
-            <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
-              <p className="text-[10px] text-amber-500 uppercase font-bold mb-1">Gastado Fijo</p>
-              <p className="text-lg font-bold text-amber-400">{formatCOP(gastadoFijo)}</p>
-            </div>
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-              <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Límite Variable</p>
+              <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
               <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
             </div>
             <div className="bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
-              <p className="text-[10px] text-indigo-400 uppercase font-bold mb-1">Gastado Variable</p>
-              <p className="text-lg font-bold text-indigo-400">{formatCOP(gastadoVar)}</p>
+              <p className="text-[10px] text-indigo-400 uppercase font-bold mb-1">Total Presupuesto Egreso</p>
+              <p className="text-lg font-bold text-indigo-400">{formatCOP(totalFijo + totalVar)}</p>
             </div>
           </div>
 
-          <Card className={editId ? "border-t-4 border-t-amber-500 bg-amber-950/10" : ""}>
-            <div className="flex justify-between items-center mb-4" ref={formRef}>
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => { if(!editId) setTipoForm('variable') }} 
-                  type="button"
-                  className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
-                >
-                  {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
-                </button>
-                {!editId && <span className="text-slate-700">|</span>}
-                <button 
-                  onClick={() => { if(!editId) setTipoForm('fijo') }} 
-                  type="button"
-                  className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
-                >
-                  {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
-                </button>
+          {showForm && (
+            <Card className={editId ? "border-t-4 border-t-amber-500 bg-amber-950/10" : "border-t-4 border-t-indigo-500 bg-slate-900/80"}>
+              <div className="flex justify-between items-center mb-4" ref={formRef}>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => { if(!editId) setTipoForm('variable') }} 
+                    type="button"
+                    className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
+                  >
+                    {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
+                  </button>
+                  {!editId && <span className="text-slate-700">|</span>}
+                  <button 
+                    onClick={() => { if(!editId) setTipoForm('fijo') }} 
+                    type="button"
+                    className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+                  >
+                    {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
+                  </button>
+                </div>
+                {editId && <button onClick={cancelarEdicion} className="text-xs text-amber-400 hover:underline">Cancelar Edición</button>}
               </div>
-              {editId && <button onClick={cancelarEdicion} className="text-xs text-amber-400 hover:underline">Cancelar Edición</button>}
-            </div>
-            <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-              {tipoForm === 'variable' ? (
-                <>
-                  <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} disabled={!!editId} className="sm:col-span-5" />
-                  <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
-                  <div className="sm:col-span-3 flex gap-2">
-                     <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Input label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} className="sm:col-span-4" />
-                  <Select label="Categoría Fija" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-3" />
-                  <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
-                  <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
-                  <div className="sm:col-span-2 flex gap-2">
-                     <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
-                  </div>
-                </>
-              )}
-            </form>
-          </Card>
+              <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                {tipoForm === 'variable' ? (
+                  <React.Fragment>
+                    <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} disabled={!!editId} className="sm:col-span-5" />
+                    <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
+                    <div className="sm:col-span-3 flex gap-2">
+                       <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
+                    </div>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment>
+                    <Input label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} className="sm:col-span-4" />
+                    <Select label="Categoría Fija" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-3" />
+                    <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
+                    <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
+                    <div className="sm:col-span-2 flex gap-2">
+                       <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
+                    </div>
+                  </React.Fragment>
+                )}
+              </form>
+            </Card>
+          )}
 
           {/* Selector de Filtro */}
           <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium w-full md:w-max">
@@ -1434,9 +1606,15 @@
     };
 
     const DeudasTab = ({ cuentas, setCuentas, showToast }) => {
-      const [cardForm, setCardForm] = useState(null);
-      const [loanForm, setLoanForm] = useState(null);
-      const [errors, setErrors] = useState({});
+      const [showNewCard, setShowNewCard] = useState(false);
+      const [showNewLoan, setShowNewLoan] = useState(false);
+      
+      const [newCardData, setNewCardData] = useState({ name: '', limit: '', initialDebt: '', tasaEA: '', cuotaMinima: '' });
+      const [newLoanData, setNewLoanData] = useState({ name: '', montoPrestado: '', initialDebt: '', totalPagadoPrevio: '', tasaEA: '', cuotaMinima: '', cuotasTotales: '', cuotasPagadas: '', hasIBR: false, ibrValue: '', ibrPuntos: '' });
+      
+      // Estado para la edición "en línea" (Inline Edit)
+      const [editId, setEditId] = useState(null);
+      const [editData, setEditData] = useState({});
 
       const deudasAnalizadas = cuentas
         .filter(c => ['credit', 'loan'].includes(c.type))
@@ -1447,91 +1625,101 @@
         })
         .sort((a, b) => b.tasaEA - a.tasaEA);
 
-      const guardarTarjeta = (e) => {
-        e.preventDefault();
-        let errs = {};
-        if(!cardForm.name) errs.name = "Obligatorio";
-        if(Object.keys(errs).length > 0) { setErrors(errs); return; }
+      const tcDeudas = deudasAnalizadas.filter(c => c.type === 'credit' && c.currentDebt > 0);
+      const loanDeudas = deudasAnalizadas.filter(c => c.type === 'loan' && c.currentDebt > 0);
 
-        let baseData = {
-          name: cardForm.name,
+      const handleAddCard = (e) => {
+        e.preventDefault();
+        if(!newCardData.name) return showToast("El nombre es obligatorio", "error");
+
+        setCuentas(prev => [...prev, {
+          id: generateId(),
+          name: newCardData.name,
           type: 'credit',
           initialBalance: 0,
-          initialDebt: Number(cardForm.initialDebt) || 0,
-          limit: Number(cardForm.limit) || 0,
-          cuotaMinima: Number(cardForm.cuotaMinima) || 0,
-          tasaEA: Number(cardForm.tasaEA) || 0
-        };
-
-        if (cardForm.id) {
-          setCuentas(prev => prev.map(c => c.id === cardForm.id ? { ...c, ...baseData } : c));
-          showToast("Tarjeta actualizada correctamente.");
-        } else {
-          setCuentas(prev => [...prev, { id: generateId(), ...baseData }]);
-          showToast("Tarjeta creada correctamente.");
-        }
-        setCardForm(null);
-        setErrors({});
+          initialDebt: Number(newCardData.initialDebt) || 0,
+          limit: Number(newCardData.limit) || 0,
+          cuotaMinima: Number(newCardData.cuotaMinima) || 0,
+          tasaEA: Number(newCardData.tasaEA) || 0
+        }]);
+        showToast("Tarjeta creada correctamente.");
+        setShowNewCard(false);
+        setNewCardData({ name: '', limit: '', initialDebt: '', tasaEA: '', cuotaMinima: '' });
       };
 
-      const guardarPrestamo = (e) => {
+      const handleAddLoan = (e) => {
         e.preventDefault();
-        let errs = {};
-        if(!loanForm.name) errs.name = "Obligatorio";
-        if(Object.keys(errs).length > 0) { setErrors(errs); return; }
+        if(!newLoanData.name) return showToast("El nombre es obligatorio", "error");
 
-        let baseData = {
-          name: loanForm.name,
+        let tasaFinal = Number(newLoanData.tasaEA) || 0;
+        if(newLoanData.hasIBR) {
+            const namv = Number(newLoanData.ibrValue) + Number(newLoanData.ibrPuntos);
+            tasaFinal = (Math.pow(1 + (namv/100)/12, 12) - 1) * 100;
+        }
+
+        setCuentas(prev => [...prev, {
+          id: generateId(),
+          name: newLoanData.name,
           type: 'loan',
           initialBalance: 0,
-          montoPrestado: Number(loanForm.montoPrestado) || 0,
-          initialDebt: Number(loanForm.initialDebt) || 0,
-          totalPagadoPrevio: Number(loanForm.totalPagadoPrevio) || 0,
-          tasaEA: Number(loanForm.tasaEA) || 0,
-          cuotaMinima: Number(loanForm.cuotaMinima) || 0,
-          cuotasTotales: Number(loanForm.cuotasTotales) || 0,
-          cuotasPagadas: Number(loanForm.cuotasPagadas) || 0,
-          hasIBR: loanForm.hasIBR || false,
-          ibrValue: Number(loanForm.ibrValue) || 0,
-          ibrPuntos: Number(loanForm.ibrPuntos) || 0
-        };
-
-        if(loanForm.hasIBR) {
-            const namv = baseData.ibrValue + baseData.ibrPuntos;
-            baseData.tasaEA = (Math.pow(1 + (namv/100)/12, 12) - 1) * 100;
-        }
-
-        if (loanForm.id) {
-          setCuentas(prev => prev.map(c => c.id === loanForm.id ? { ...c, ...baseData } : c));
-          showToast("Préstamo actualizado.");
-        } else {
-          setCuentas(prev => [...prev, { id: generateId(), ...baseData }]);
-          showToast("Préstamo creado.");
-        }
-        setLoanForm(null);
-        setErrors({});
+          montoPrestado: Number(newLoanData.montoPrestado) || 0,
+          initialDebt: Number(newLoanData.initialDebt) || 0,
+          totalPagadoPrevio: Number(newLoanData.totalPagadoPrevio) || 0,
+          tasaEA: tasaFinal,
+          cuotaMinima: Number(newLoanData.cuotaMinima) || 0,
+          cuotasTotales: Number(newLoanData.cuotasTotales) || 0,
+          cuotasPagadas: Number(newLoanData.cuotasPagadas) || 0,
+          hasIBR: newLoanData.hasIBR,
+          ibrValue: Number(newLoanData.ibrValue) || 0,
+          ibrPuntos: Number(newLoanData.ibrPuntos) || 0
+        }]);
+        showToast("Préstamo creado.");
+        setShowNewLoan(false);
+        setNewLoanData({ name: '', montoPrestado: '', initialDebt: '', totalPagadoPrevio: '', tasaEA: '', cuotaMinima: '', cuotasTotales: '', cuotasPagadas: '', hasIBR: false, ibrValue: '', ibrPuntos: '' });
       };
 
-      const cargarParaEditar = (c) => {
-        if(c.type === 'credit') {
-           setCardForm({
-             id: c.id, name: c.name, initialDebt: c.initialDebt, limit: c.limit, tasaEA: c.tasaEA, cuotaMinima: c.cuotaMinima
-           });
-        } else {
-           setLoanForm({
-             id: c.id, name: c.name, 
-             montoPrestado: c.montoPrestado || c.initialDebt, initialDebt: c.initialDebt, 
-             totalPagadoPrevio: c.totalPagadoPrevio || 0, tasaEA: c.tasaEA, cuotaMinima: c.cuotaMinima,
-             cuotasTotales: c.cuotasTotales || 0, cuotasPagadas: c.cuotasPagadas || 0,
-             hasIBR: c.hasIBR || false, ibrValue: c.ibrValue || 0, ibrPuntos: c.ibrPuntos || 0
-           });
+      const startEdit = (c) => {
+        setEditId(c.id);
+        setEditData({
+          ...c,
+          montoPrestado: c.montoPrestado || c.initialDebt || 0,
+          totalPagadoPrevio: c.totalPagadoPrevio || 0,
+          ibrValue: c.ibrValue || 0,
+          ibrPuntos: c.ibrPuntos || 0
+        });
+      };
+
+      const saveInlineEdit = () => {
+        if (!editData.name) return showToast("El nombre es obligatorio", "error");
+        
+        let dataToSave = { ...editData };
+        if (dataToSave.type === 'loan' && dataToSave.hasIBR) {
+            const namv = Number(dataToSave.ibrValue) + Number(dataToSave.ibrPuntos);
+            dataToSave.tasaEA = (Math.pow(1 + (namv/100)/12, 12) - 1) * 100;
         }
-        setErrors({});
+
+        setCuentas(prev => prev.map(c => c.id === editId ? {
+            ...c,
+            name: dataToSave.name,
+            limit: Number(dataToSave.limit) || 0,
+            initialDebt: Number(dataToSave.initialDebt) || 0,
+            montoPrestado: Number(dataToSave.montoPrestado) || 0,
+            totalPagadoPrevio: Number(dataToSave.totalPagadoPrevio) || 0,
+            tasaEA: Number(dataToSave.tasaEA) || 0,
+            cuotaMinima: Number(dataToSave.cuotaMinima) || 0,
+            cuotasTotales: Number(dataToSave.cuotasTotales) || 0,
+            cuotasPagadas: Number(dataToSave.cuotasPagadas) || 0,
+            hasIBR: dataToSave.hasIBR || false,
+            ibrValue: Number(dataToSave.ibrValue) || 0,
+            ibrPuntos: Number(dataToSave.ibrPuntos) || 0
+        } : c));
+        setEditId(null);
+        showToast("Registro actualizado correctamente.");
       };
 
       const actualizarCampo = (id, field, val) => {
         setCuentas(prev => prev.map(c => c.id === id ? {...c, [field]: Number(val)} : c));
-      }
+      };
 
       const actualizarIBR = (id, ibrValue, ibrPuntos) => {
         const val = Number(ibrValue);
@@ -1539,7 +1727,7 @@
         const namv = val + pts;
         const nuevaEA = (Math.pow(1 + (namv/100)/12, 12) - 1) * 100;
         setCuentas(prev => prev.map(c => c.id === id ? {...c, ibrValue: val, tasaEA: nuevaEA} : c));
-      }
+      };
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
@@ -1549,72 +1737,69 @@
           </header>
 
           <div className="flex gap-2">
-            <button onClick={() => {setCardForm({id: null, name: '', initialDebt: '', limit: '', tasaEA: '', cuotaMinima: ''}); setLoanForm(null);}} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16}/> Agregar Tarjeta
+            <button onClick={() => {setShowNewCard(!showNewCard); setShowNewLoan(false);}} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+              <Plus size={16}/> {showNewCard ? 'Ocultar' : 'Agregar Tarjeta'}
             </button>
-            <button onClick={() => {setLoanForm({id: null, name: '', montoPrestado: '', initialDebt: '', totalPagadoPrevio: '', tasaEA: '', cuotaMinima: '', cuotasTotales: '', cuotasPagadas: '', hasIBR: false, ibrValue: '', ibrPuntos: ''}); setCardForm(null);}} className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16}/> Agregar Préstamo
+            <button onClick={() => {setShowNewLoan(!showNewLoan); setShowNewCard(false);}} className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+              <Plus size={16}/> {showNewLoan ? 'Ocultar' : 'Agregar Préstamo'}
             </button>
           </div>
 
-          {cardForm && (
+          {/* FORMULARIOS DE NUEVAS CUENTAS */}
+          {showNewCard && (
             <div className="bg-slate-950 border border-indigo-500/50 p-4 rounded-xl mb-4 animate-in slide-in-from-top-2">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-bold text-indigo-400">{cardForm.id ? 'Editar Tarjeta' : 'Nueva Tarjeta'}</h3>
-                <button onClick={() => setCardForm(null)} className="text-xs text-slate-400 hover:text-slate-200">Cancelar</button>
+                <h3 className="text-sm font-bold text-indigo-400">Nueva Tarjeta de Crédito</h3>
+                <button onClick={() => setShowNewCard(false)} className="text-xs text-slate-400 hover:text-slate-200">Cerrar</button>
               </div>
-              <form onSubmit={guardarTarjeta} className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
-                <Input label="Nombre de Tarjeta" value={cardForm.name} onChange={e=>setCardForm({...cardForm, name: e.target.value})} error={errors.name} className="col-span-2" />
-                <Input type="number" label="Cupo Total ($)" value={cardForm.limit} onChange={e=>setCardForm({...cardForm, limit: e.target.value})} className="col-span-1" />
-                <Input type="number" label="Deuda Actual ($)" value={cardForm.initialDebt} onChange={e=>setCardForm({...cardForm, initialDebt: e.target.value})} className="col-span-1" />
-                <Input type="number" label="Tasa E.A. (%)" value={cardForm.tasaEA} onChange={e=>setCardForm({...cardForm, tasaEA: e.target.value})} step="0.01" className="col-span-1" />
-                <Input type="number" label="Cuota Mínima ($)" value={cardForm.cuotaMinima} onChange={e=>setCardForm({...cardForm, cuotaMinima: e.target.value})} className="col-span-1" />
+              <form onSubmit={handleAddCard} className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+                <Input label="Nombre de Tarjeta" value={newCardData.name} onChange={e=>setNewCardData({...newCardData, name: e.target.value})} className="col-span-2" />
+                <Input type="number" label="Cupo Total ($)" value={newCardData.limit} onChange={e=>setNewCardData({...newCardData, limit: e.target.value})} className="col-span-1" />
+                <Input type="number" label="Deuda Actual ($)" value={newCardData.initialDebt} onChange={e=>setNewCardData({...newCardData, initialDebt: e.target.value})} className="col-span-1" />
+                <Input type="number" label="Tasa E.A. (%)" value={newCardData.tasaEA} onChange={e=>setNewCardData({...newCardData, tasaEA: e.target.value})} step="0.01" className="col-span-1" />
+                <Input type="number" label="Cuota Mín. Estimada" value={newCardData.cuotaMinima} onChange={e=>setNewCardData({...newCardData, cuotaMinima: e.target.value})} className="col-span-1" />
                 <div className="col-span-2 md:col-span-6 mt-1 flex justify-end">
-                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded transition-colors">
-                    {cardForm.id ? 'Guardar Cambios' : 'Crear Tarjeta'}
-                  </button>
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded transition-colors">Crear Tarjeta</button>
                 </div>
               </form>
             </div>
           )}
 
-          {loanForm && (
+          {showNewLoan && (
             <div className="bg-slate-950 border border-rose-500/50 p-4 md:p-6 rounded-xl mb-4 animate-in slide-in-from-top-2">
               <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-rose-400">{loanForm.id ? 'Editar Préstamo / Crédito' : 'Nuevo Préstamo'}</h3>
-                <button onClick={() => setLoanForm(null)} className="text-xs text-slate-400 hover:text-slate-200">Cancelar</button>
+                <h3 className="text-base font-bold text-rose-400">Nuevo Préstamo / Crédito</h3>
+                <button onClick={() => setShowNewLoan(false)} className="text-xs text-slate-400 hover:text-slate-200">Cerrar</button>
               </div>
-              <form onSubmit={guardarPrestamo} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                <Input label="Banco / Entidad (Nombre)" value={loanForm.name} onChange={e=>setLoanForm({...loanForm, name: e.target.value})} error={errors.name} className="sm:col-span-2" />
-                <Input type="number" label="Monto Inicial Prestado ($)" value={loanForm.montoPrestado} onChange={e=>setLoanForm({...loanForm, montoPrestado: e.target.value})} className="sm:col-span-1" />
-                <Input type="number" label="Deuda Restante Actual ($)" value={loanForm.initialDebt} onChange={e=>setLoanForm({...loanForm, initialDebt: e.target.value})} className="sm:col-span-1" />
+              <form onSubmit={handleAddLoan} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                <Input label="Banco / Entidad (Nombre)" value={newLoanData.name} onChange={e=>setNewLoanData({...newLoanData, name: e.target.value})} className="sm:col-span-2" />
+                <Input type="number" label="Monto Inicial Prestado ($)" value={newLoanData.montoPrestado} onChange={e=>setNewLoanData({...newLoanData, montoPrestado: e.target.value})} className="sm:col-span-1" />
+                <Input type="number" label="Deuda Restante Actual ($)" value={newLoanData.initialDebt} onChange={e=>setNewLoanData({...newLoanData, initialDebt: e.target.value})} className="sm:col-span-1" />
                 
-                <Input type="number" label="Total Pagado Previo ($)" placeholder="Dinero abonado antes de usar la app" value={loanForm.totalPagadoPrevio} onChange={e=>setLoanForm({...loanForm, totalPagadoPrevio: e.target.value})} className="sm:col-span-1" />
-                <Input type="number" label="Valor Cuota Fija ($)" value={loanForm.cuotaMinima} onChange={e=>setLoanForm({...loanForm, cuotaMinima: e.target.value})} className="sm:col-span-1" />
+                <Input type="number" label="Total Pagado Previo ($)" placeholder="Dinero abonado antes de usar la app" value={newLoanData.totalPagadoPrevio} onChange={e=>setNewLoanData({...newLoanData, totalPagadoPrevio: e.target.value})} className="sm:col-span-1" />
+                <Input type="number" label="Valor Cuota Fija ($)" value={newLoanData.cuotaMinima} onChange={e=>setNewLoanData({...newLoanData, cuotaMinima: e.target.value})} className="sm:col-span-1" />
                 <div className="sm:col-span-2 flex gap-4 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-                   <Input type="number" label="Cuotas Pagadas" value={loanForm.cuotasPagadas} onChange={e=>setLoanForm({...loanForm, cuotasPagadas: e.target.value})} className="w-full" />
-                   <Input type="number" label="Cuotas Totales" value={loanForm.cuotasTotales} onChange={e=>setLoanForm({...loanForm, cuotasTotales: e.target.value})} className="w-full" />
+                   <Input type="number" label="Cuotas Pagadas" value={newLoanData.cuotasPagadas} onChange={e=>setNewLoanData({...newLoanData, cuotasPagadas: e.target.value})} className="w-full" />
+                   <Input type="number" label="Cuotas Totales" value={newLoanData.cuotasTotales} onChange={e=>setNewLoanData({...newLoanData, cuotasTotales: e.target.value})} className="w-full" />
                 </div>
 
                 <div className="sm:col-span-4 bg-indigo-950/20 p-4 rounded-lg border border-indigo-500/30 flex flex-col md:flex-row gap-4 items-center">
                   <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-indigo-300 w-full md:w-auto">
-                    <input type="checkbox" checked={loanForm.hasIBR} onChange={(e) => setLoanForm({...loanForm, hasIBR: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
+                    <input type="checkbox" checked={newLoanData.hasIBR} onChange={(e) => setNewLoanData({...newLoanData, hasIBR: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
                     ¿Tiene Tasa Variable (IBR)?
                   </label>
-                  {loanForm.hasIBR ? (
+                  {newLoanData.hasIBR ? (
                     <div className="flex w-full gap-3">
-                      <Input type="number" step="0.01" label="IBR Actual (%)" value={loanForm.ibrValue} onChange={e=>setLoanForm({...loanForm, ibrValue: e.target.value})} className="flex-1" />
-                      <Input type="number" step="0.01" label="Puntos Adicionales" value={loanForm.ibrPuntos} onChange={e=>setLoanForm({...loanForm, ibrPuntos: e.target.value})} className="flex-1" />
+                      <Input type="number" step="0.01" label="IBR Actual (%)" value={newLoanData.ibrValue} onChange={e=>setNewLoanData({...newLoanData, ibrValue: e.target.value})} className="flex-1" />
+                      <Input type="number" step="0.01" label="Puntos Adicionales" value={newLoanData.ibrPuntos} onChange={e=>setNewLoanData({...newLoanData, ibrPuntos: e.target.value})} className="flex-1" />
                     </div>
                   ) : (
-                    <Input type="number" step="0.01" label="Tasa de Interés (E.A. %)" value={loanForm.tasaEA} onChange={e=>setLoanForm({...loanForm, tasaEA: e.target.value})} className="w-full md:w-1/3" />
+                    <Input type="number" step="0.01" label="Tasa de Interés (E.A. %)" value={newLoanData.tasaEA} onChange={e=>setNewLoanData({...newLoanData, tasaEA: e.target.value})} className="w-full md:w-1/3" />
                   )}
                 </div>
 
                 <div className="sm:col-span-4 mt-2 flex justify-end">
-                  <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-8 py-3 rounded-lg transition-colors w-full md:w-auto">
-                    {loanForm.id ? 'Guardar Cambios del Préstamo' : 'Crear Préstamo'}
-                  </button>
+                  <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-8 py-3 rounded-lg transition-colors w-full md:w-auto">Crear Préstamo</button>
                 </div>
               </form>
             </div>
@@ -1622,24 +1807,49 @@
 
           {/* TABLA DE TARJETAS DE CRÉDITO */}
           <Card className="border-t-4 border-t-indigo-500">
-            <h2 className="text-lg font-bold text-white mb-4">Tarjetas de Crédito</h2>
+            <h2 className="text-lg font-bold text-white mb-4">Tarjetas de Crédito Registradas</h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left min-w-[800px]">
+              <table className="w-full text-sm text-left min-w-[700px]">
                 <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50">
                   <tr>
                     <th className="px-3 py-3 rounded-tl-lg">Tarjeta</th>
                     <th className="px-3 py-3 text-right">Cupo Total</th>
                     <th className="px-3 py-3 text-right">Cupo Disp.</th>
-                    <th className="px-3 py-3 text-right">Deuda Actual</th>
+                    <th className="px-3 py-3 text-right">Deuda Base Actual</th>
                     <th className="px-3 py-3 text-center">Tasa M.V.</th>
                     <th className="px-3 py-3 text-center">Tasa E.A.</th>
-                    <th className="px-3 py-3 text-center">Cuota Mín.</th>
                     <th className="px-3 py-3 text-center rounded-tr-lg">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {deudasAnalizadas.filter(d=>d.type==='credit').map(d => {
+                    const isEditing = editId === d.id;
                     const tasaMV = getTasaMensual(d.tasaEA) * 100;
+                    
+                    // Fila Modo Edición (Inline Edit)
+                    if (isEditing) {
+                       return (
+                         <tr key={d.id} className="bg-indigo-950/40">
+                           <td className="px-2 py-2"><input type="text" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="w-full bg-slate-900 border border-indigo-500 rounded px-2 py-1 text-xs text-white outline-none" placeholder="Nombre" /></td>
+                           <td className="px-2 py-2"><input type="number" value={editData.limit} onChange={e=>setEditData({...editData, limit: e.target.value})} className="w-full bg-slate-900 border border-indigo-500 rounded px-2 py-1 text-xs text-white outline-none text-right" placeholder="Cupo" /></td>
+                           <td className="px-2 py-2 text-right text-slate-500">-</td>
+                           <td className="px-2 py-2"><input type="number" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="w-full bg-slate-900 border border-rose-500 rounded px-2 py-1 text-xs text-white outline-none text-right" placeholder="Deuda" title="Ajusta la deuda base" /></td>
+                           <td className="px-2 py-2 text-center text-slate-500">-</td>
+                           <td className="px-2 py-2">
+                             <div className="flex gap-1 items-center">
+                                <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-16 bg-slate-900 border border-indigo-500 rounded px-2 py-1 text-xs text-white outline-none text-center" title="Tasa E.A." />
+                                <input type="number" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} className="w-16 bg-slate-900 border border-amber-500 rounded px-2 py-1 text-xs text-white outline-none text-right" placeholder="Cta. Min" title="Cuota mínima oculta para Avalancha" />
+                             </div>
+                           </td>
+                           <td className="px-2 py-2 text-center flex justify-center gap-1">
+                             <button onClick={saveInlineEdit} className="text-emerald-400 p-1.5 bg-slate-900 rounded border border-slate-700 hover:border-emerald-500/50" title="Guardar Cambios"><Check size={14}/></button>
+                             <button onClick={() => setEditId(null)} className="text-rose-400 p-1.5 bg-slate-900 rounded border border-slate-700 hover:border-rose-500/50" title="Cancelar"><Minus size={14}/></button>
+                           </td>
+                         </tr>
+                       )
+                    }
+
+                    // Fila Normal
                     return (
                       <tr key={d.id} className="hover:bg-slate-800/20 transition-colors">
                         <td className="px-3 py-3 font-medium text-slate-200">{d.name}</td>
@@ -1648,26 +1858,76 @@
                         <td className="px-3 py-3 text-right font-bold text-rose-400">{formatCOP(d.currentDebt)}</td>
                         <td className="px-3 py-3 text-center text-amber-400">{tasaMV.toFixed(2)}%</td>
                         <td className="px-3 py-3 text-center text-slate-300">{d.tasaEA}%</td>
-                        <td className="px-3 py-3 text-center text-slate-300">{formatCOP(d.cuotaMinima)}</td>
                         <td className="px-3 py-3 text-center flex justify-center gap-2">
-                          <button onClick={() => cargarParaEditar(d)} className="text-slate-400 hover:text-indigo-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-indigo-500/50 transition-colors"><Edit3 size={14}/></button>
+                          <button onClick={() => startEdit(d)} className="text-slate-400 hover:text-indigo-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-indigo-500/50 transition-colors"><Edit3 size={14}/></button>
                           <button onClick={() => {deleteItem(setCuentas, d.id); showToast("Tarjeta eliminada");}} className="text-slate-400 hover:text-rose-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-rose-500/50 transition-colors"><Trash2 size={14}/></button>
                         </td>
                       </tr>
                     )
                   })}
                   {deudasAnalizadas.filter(d=>d.type==='credit').length === 0 && (
-                    <tr><td colSpan="8" className="px-3 py-6 text-center text-slate-500">No hay tarjetas de crédito registradas.</td></tr>
+                    <tr><td colSpan="7" className="px-3 py-6 text-center text-slate-500">No hay tarjetas de crédito registradas.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
           </Card>
 
+          {/* CRÉDITOS Y PRÉSTAMOS DETALLADOS */}
           <Card className="border-t-4 border-t-rose-500">
             <h2 className="text-lg font-bold text-white mb-6">Créditos y Préstamos Detallados</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {deudasAnalizadas.filter(d=>d.type==='loan').map(d => {
+                const isEditing = editId === d.id;
+
+                // Tarjeta en Modo Edición (Inline Edit)
+                if (isEditing) {
+                   return (
+                      <div key={d.id} className="bg-slate-950 p-5 rounded-xl border border-indigo-500 shadow-xl flex flex-col gap-4">
+                         <div className="flex justify-between items-center mb-2 border-b border-indigo-500/30 pb-3">
+                           <h3 className="font-bold text-indigo-400 flex items-center gap-2"><Edit3 size={16}/> Editando Préstamo</h3>
+                           <div className="flex gap-2">
+                             <button onClick={saveInlineEdit} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Guardar</button>
+                             <button onClick={() => setEditId(null)} className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 px-3 py-1.5 rounded text-xs font-bold transition-colors">Cancelar</button>
+                           </div>
+                         </div>
+                         
+                         <Input label="Banco / Entidad (Nombre)" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} />
+                         
+                         <div className="grid grid-cols-2 gap-4">
+                           <Input type="number" label="Préstamo Inicial ($)" value={editData.montoPrestado} onChange={e=>setEditData({...editData, montoPrestado: e.target.value})} />
+                           <Input type="number" label="Deuda Restante Base ($)" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} />
+                         </div>
+                         
+                         <div className="grid grid-cols-2 gap-4">
+                           <Input type="number" label="Total Pagado Previo ($)" value={editData.totalPagadoPrevio} onChange={e=>setEditData({...editData, totalPagadoPrevio: e.target.value})} />
+                           <Input type="number" label="Valor Cuota Fija ($)" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} />
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-4">
+                            <Input type="number" label="Cuotas Pagadas" value={editData.cuotasPagadas} onChange={e=>setEditData({...editData, cuotasPagadas: e.target.value})} />
+                            <Input type="number" label="Cuotas Totales" value={editData.cuotasTotales} onChange={e=>setEditData({...editData, cuotasTotales: e.target.value})} />
+                         </div>
+
+                         <div className="bg-indigo-950/30 p-3 rounded-lg border border-indigo-500/30 mt-2">
+                           <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-indigo-300 mb-3">
+                             <input type="checkbox" checked={editData.hasIBR} onChange={(e) => setEditData({...editData, hasIBR: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
+                             ¿Tiene Tasa Variable (IBR)?
+                           </label>
+                           {editData.hasIBR ? (
+                             <div className="flex w-full gap-3">
+                               <Input type="number" step="0.01" label="IBR Actual (%)" value={editData.ibrValue} onChange={e=>setEditData({...editData, ibrValue: e.target.value})} className="flex-1" />
+                               <Input type="number" step="0.01" label="Puntos Adicionales" value={editData.ibrPuntos} onChange={e=>setEditData({...editData, ibrPuntos: e.target.value})} className="flex-1" />
+                             </div>
+                           ) : (
+                             <Input type="number" step="0.01" label="Tasa de Interés (E.A. %)" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} className="w-1/2" />
+                           )}
+                         </div>
+                      </div>
+                   )
+                }
+
+                // Tarjeta en Vista Normal
                 const capitalPagado = (d.montoPrestado || 0) - d.currentDebt;
                 const totalIntereses = (d.totalPagado || 0) - capitalPagado;
 
@@ -1680,29 +1940,33 @@
                         {d.hasIBR && <span className="mt-2 inline-block text-[9px] text-indigo-400 font-bold uppercase tracking-wider bg-indigo-400/10 px-2 py-1 rounded border border-indigo-500/20">Tasa Variable (IBR)</span>}
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => cargarParaEditar(d)} className="text-slate-400 hover:text-indigo-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-indigo-500/50 transition-colors"><Edit3 size={16}/></button>
+                        <button onClick={() => startEdit(d)} className="text-slate-400 hover:text-indigo-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-indigo-500/50 transition-colors" title="Editar préstamo"><Edit3 size={16}/></button>
                         <button onClick={() => {deleteItem(setCuentas, d.id); showToast("Préstamo eliminado");}} className="text-slate-400 hover:text-rose-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-rose-500/50 transition-colors"><Trash2 size={16}/></button>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 pt-1">
+                    <div className="grid grid-cols-3 gap-4 pt-1">
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Préstamo Inicial</p>
+                        <p className="text-base md:text-lg font-bold text-slate-300">{formatCOP(d.montoPrestado)}</p>
+                      </div>
                       <div>
                         <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Deuda Restante</p>
-                        <p className="text-xl font-black text-rose-400">{formatCOP(d.currentDebt)}</p>
+                        <p className="text-lg md:text-xl font-black text-rose-400">{formatCOP(d.currentDebt)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Valor Cuota</p>
-                        <p className="text-xl font-bold text-slate-200">{formatCOP(d.cuotaMinima)}</p>
+                        <p className="text-base md:text-lg font-bold text-slate-200">{formatCOP(d.cuotaMinima)}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 mt-2 bg-slate-900 p-4 rounded-lg border border-slate-800/50">
                       <div>
-                        <p className="text-[10px] text-emerald-500/80 uppercase font-bold mb-1" title="Monto Original - Deuda Restante">Capital Pago (Abono)</p>
+                        <p className="text-[10px] text-emerald-500/80 uppercase font-bold mb-1" title="Monto Original - Deuda Restante">Total Pago a Capital</p>
                         <p className="text-base font-bold text-emerald-400">{formatCOP(Math.max(0, capitalPagado))}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-amber-500/80 uppercase font-bold mb-1" title="Total Histórico Pagado - Capital Pago">Total Intereses Pagados</p>
+                        <p className="text-[10px] text-amber-500/80 uppercase font-bold mb-1" title="Total Histórico Pagado - Capital Pago">Total Pago Intereses y Otros</p>
                         <p className="text-base font-bold text-amber-400">{formatCOP(Math.max(0, totalIntereses))}</p>
                       </div>
                     </div>
@@ -1711,9 +1975,9 @@
                        <div className="flex flex-col gap-1 w-1/2">
                          <span className="text-[10px] text-slate-500 uppercase font-bold">Progreso Cuotas</span>
                          <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-2 rounded-lg border border-slate-700 w-max">
-                           <input type="number" value={d.cuotasPagadas || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasPagadas', e.target.value)} className="w-10 bg-transparent text-emerald-400 text-sm font-bold outline-none text-right" />
+                           <input type="number" value={d.cuotasPagadas || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasPagadas', e.target.value)} className="w-10 bg-transparent text-emerald-400 text-sm font-bold outline-none text-right" title="Edición rápida" />
                            <span className="text-slate-500 text-[10px]">/</span>
-                           <input type="number" value={d.cuotasTotales || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasTotales', e.target.value)} className="w-10 bg-transparent text-slate-300 text-sm font-bold outline-none" />
+                           <input type="number" value={d.cuotasTotales || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasTotales', e.target.value)} className="w-10 bg-transparent text-slate-300 text-sm font-bold outline-none" title="Edición rápida" />
                          </div>
                        </div>
                        
@@ -1722,7 +1986,7 @@
                              <div className="flex flex-col items-end">
                                <span className="text-[10px] text-slate-500 uppercase font-bold">IBR Actual (%) + Puntos</span>
                                <div className="flex items-center gap-1 mt-1">
-                                 <input type="number" step="0.01" value={d.ibrValue} onChange={(e)=>actualizarIBR(d.id, e.target.value, d.ibrPuntos)} className="w-16 bg-slate-950 border border-slate-700 text-white text-sm font-bold px-2 py-1.5 rounded outline-none text-center focus:border-indigo-500" />
+                                 <input type="number" step="0.01" value={d.ibrValue} onChange={(e)=>actualizarIBR(d.id, e.target.value, d.ibrPuntos)} className="w-16 bg-slate-950 border border-slate-700 text-white text-sm font-bold px-2 py-1.5 rounded outline-none text-center focus:border-indigo-500" title="Edición rápida" />
                                  <span className="text-sm text-slate-400 font-bold">+{d.ibrPuntos}</span>
                                </div>
                                <span className="text-[10px] text-indigo-400 mt-2 block font-medium">Tasa E.A: {d.tasaEA.toFixed(2)}%</span>
@@ -1731,7 +1995,7 @@
                              <div className="flex flex-col items-end">
                                <span className="text-[10px] text-slate-500 uppercase font-bold">Tasa Interés (E.A.)</span>
                                <div className="flex items-center gap-1 mt-1">
-                                  <input type="number" step="0.1" value={d.tasaEA.toFixed(2)} onChange={(e)=>actualizarCampo(d.id, 'tasaEA', e.target.value)} className="w-20 bg-slate-950 border border-slate-700 text-white text-sm font-bold px-2 py-1.5 rounded outline-none text-center focus:border-indigo-500" />
+                                  <input type="number" step="0.1" value={d.tasaEA.toFixed(2)} onChange={(e)=>actualizarCampo(d.id, 'tasaEA', e.target.value)} className="w-20 bg-slate-950 border border-slate-700 text-white text-sm font-bold px-2 py-1.5 rounded outline-none text-center focus:border-indigo-500" title="Edición rápida" />
                                   <span className="text-slate-400 font-bold">%</span>
                                </div>
                              </div>
@@ -1741,32 +2005,86 @@
                   </div>
                 )
               })}
+              {loanDeudas.length === 0 && <p className="text-slate-500 text-sm col-span-1 lg:col-span-2 text-center py-6">No hay préstamos configurados.</p>}
             </div>
           </Card>
 
+          {/* ESTRATEGIA AVALANCHA SEPARADA: Tarjetas */}
           <Card>
-            <h2 className="text-lg font-bold text-white mb-4">Estrategia Avalancha Global (Resumen)</h2>
+            <h2 className="text-lg font-bold text-white mb-4">Estrategia Avalancha: Tarjetas de Crédito</h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left min-w-[600px]">
+              <table className="w-full text-sm text-left min-w-[700px]">
                 <thead className="text-xs text-slate-400 uppercase bg-slate-950">
                   <tr>
                     <th className="px-4 py-3 rounded-tl-lg">Prio</th>
-                    <th className="px-4 py-3">Obligación</th>
+                    <th className="px-4 py-3">Tarjeta</th>
                     <th className="px-4 py-3 text-right">Deuda Real</th>
                     <th className="px-4 py-3 text-center">Tasa E.A.</th>
-                    <th className="px-4 py-3 text-right rounded-tr-lg">Cuota Mínima</th>
+                    <th className="px-4 py-3 text-right">Int. Mensual Aprox</th>
+                    <th className="px-4 py-3 rounded-tr-lg">Acción Sugerida</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {deudasAnalizadas.filter(c => c.currentDebt > 0).map((d, i) => (
-                    <tr key={d.id} className={`border-b border-slate-800/50 hover:bg-slate-800/20 ${i===0 ? 'bg-indigo-950/20' : ''}`}>
-                      <td className="px-4 py-3"><div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${i===0 ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>{i+1}</div></td>
-                      <td className="px-4 py-3 text-slate-200 font-medium">{d.name} {i===0 && <span className="text-[9px] md:text-[10px] uppercase tracking-wider text-indigo-400 font-bold mt-1 block">Objetivo Avalancha (Abonar extra aquí)</span>}</td>
-                      <td className="px-4 py-3 text-right text-slate-300 font-bold">{formatCOP(d.currentDebt)}</td>
-                      <td className="px-4 py-3 text-center font-bold text-rose-400">{d.tasaEA.toFixed(2)}%</td>
-                      <td className="px-4 py-3 text-right text-slate-300">{formatCOP(d.cuotaMinima)}</td>
-                    </tr>
-                  ))}
+                  {tcDeudas.map((d, i) => {
+                    let estrategia = "Mantener al día";
+                    let colorEst = "text-slate-400";
+                    if (i === 0) { estrategia = "🔥 Foco Avalancha (Abonar extra)"; colorEst = "text-indigo-400 font-bold"; }
+                    else if (d.tasaEA > 30) { estrategia = "⚠️ Tasa usura. Evitar uso."; colorEst = "text-rose-400 font-bold"; }
+
+                    return (
+                      <tr key={d.id} className={`border-b border-slate-800/50 hover:bg-slate-800/20 ${i===0 ? 'bg-indigo-950/20' : ''}`}>
+                        <td className="px-4 py-3"><div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${i===0 ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>{i+1}</div></td>
+                        <td className="px-4 py-3 text-slate-200 font-medium">{d.name}</td>
+                        <td className="px-4 py-3 text-right text-slate-300 font-bold">{formatCOP(d.currentDebt)}</td>
+                        <td className="px-4 py-3 text-center font-bold text-rose-400">{d.tasaEA.toFixed(2)}%</td>
+                        <td className="px-4 py-3 text-right text-amber-400">{formatCOP(d.interesMes)}</td>
+                        <td className={`px-4 py-3 ${colorEst}`}>{estrategia}</td>
+                      </tr>
+                    );
+                  })}
+                  {tcDeudas.length === 0 && <tr><td colSpan="6" className="text-center py-4 text-slate-500">No hay deudas en tarjetas de crédito.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* ESTRATEGIA AVALANCHA SEPARADA: Préstamos */}
+          <Card>
+            <h2 className="text-lg font-bold text-white mb-4">Estrategia Avalancha: Créditos y Préstamos</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left min-w-[700px]">
+                <thead className="text-xs text-slate-400 uppercase bg-slate-950">
+                  <tr>
+                    <th className="px-4 py-3 rounded-tl-lg">Prio</th>
+                    <th className="px-4 py-3">Crédito</th>
+                    <th className="px-4 py-3 text-right">Deuda Real</th>
+                    <th className="px-4 py-3 text-center">Tasa E.A.</th>
+                    <th className="px-4 py-3 text-right">Intereses Pagados (Histórico)</th>
+                    <th className="px-4 py-3 rounded-tr-lg">Acción Sugerida</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loanDeudas.map((d, i) => {
+                    const capitalPagado = (d.montoPrestado || 0) - d.currentDebt;
+                    const intHist = Math.max(0, (d.totalPagado || 0) - capitalPagado);
+                    
+                    let estrategia = "Mantener al día";
+                    let colorEst = "text-slate-400";
+                    if (i === 0) { estrategia = "🔥 Foco Avalancha (Abonar extra)"; colorEst = "text-indigo-400 font-bold"; }
+                    else if (intHist > ((d.montoPrestado || 0) * 0.3)) { estrategia = "⚠️ Costo de intereses alto. Evaluar compra cartera."; colorEst = "text-amber-400 font-bold"; }
+
+                    return (
+                      <tr key={d.id} className={`border-b border-slate-800/50 hover:bg-slate-800/20 ${i===0 ? 'bg-indigo-950/20' : ''}`}>
+                        <td className="px-4 py-3"><div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${i===0 ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>{i+1}</div></td>
+                        <td className="px-4 py-3 text-slate-200 font-medium">{d.name}</td>
+                        <td className="px-4 py-3 text-right text-slate-300 font-bold">{formatCOP(d.currentDebt)}</td>
+                        <td className="px-4 py-3 text-center font-bold text-rose-400">{d.tasaEA.toFixed(2)}%</td>
+                        <td className="px-4 py-3 text-right text-amber-400">{formatCOP(intHist)}</td>
+                        <td className={`px-4 py-3 ${colorEst}`}>{estrategia}</td>
+                      </tr>
+                    );
+                  })}
+                  {loanDeudas.length === 0 && <tr><td colSpan="6" className="text-center py-4 text-slate-500">No hay deudas en préstamos.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -2192,7 +2510,7 @@
         {id: 'f24', descripcion: 'Mapfre Seguro', monto: 260000, categoria: 'Vehículo', diaPago: 1},
       ]));
 
-      // ESTADO DE INGRESOS FIJOS (Añadido para el checklist de Ingresos)
+      // ESTADO DE INGRESOS FIJOS
       const [ingresosFijos, setIngresosFijos] = useState(() => safeGetLocal('ff_ingresosFijos_v31', [
         { id: 'if1', descripcion: 'Salario Leo', monto: 5765251, persona: 'L', tipo: 'Fijo', cuentaName: 'Bancolombia Leo' },
         { id: 'if2', descripcion: 'Salario Andre (Q1)', monto: 1200000, persona: 'A', tipo: 'Fijo', cuentaName: 'Banco de Bogotá Andre' },
@@ -2307,7 +2625,18 @@
       }), [egresos, cuentas, filtroPersona]);
 
       const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(getOwner(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
-      const activeIngresosFijos = useMemo(() => ingresosFijos.filter(inf => belongsToFilter(getOwner(inf.descripcion + ' ' + inf.persona))), [ingresosFijos, filtroPersona]);
+      
+      const activeIngresosFijos = useMemo(() => {
+        const currentMonthNum = selectedMonth.split('-')[1];
+        return ingresosFijos.filter(inf => {
+           const passFilter = belongsToFilter(getOwner(inf.descripcion + ' ' + inf.persona));
+           // Regla inteligente: Si contiene "prima", solo aparece en Julio (07) y Diciembre (12)
+           const isPrima = inf.descripcion.toLowerCase().includes('prima');
+           const passMonth = isPrima ? (currentMonthNum === '07' || currentMonthNum === '12') : true;
+           return passFilter && passMonth;
+        });
+      }, [ingresosFijos, filtroPersona, selectedMonth]);
+      
       const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(getOwner(p.categoria))), [presupuestos, filtroPersona]);
 
       const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => {
@@ -2459,8 +2788,8 @@
             <div className="p-4 md:p-8 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="max-w-6xl mx-auto">
                 <ErrorBoundary>
-                  {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} />}
-                  {activeTab === 'score' && <ScoreTab scoreData={{score, issues, recs}} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} />}
+                  {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} />}
+                  {activeTab === 'score' && <ScoreTab scoreData={{score, issues, recs}} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} />}
                   {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} transferencias={activeTransferencias} setTransferencias={setTransferencias} egresos={egresos} setEgresos={setEgresos} showToast={showToast} />}
                   {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} />}
                   {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} setEgresos={setEgresos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} comprasCuotas={activeComprasCuotas} setComprasCuotas={setComprasCuotas} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
