@@ -1,6 +1,7 @@
 // --- Componentes de Pestañas ---
 const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
   const [chartFilter, setChartFilter] = useState('Todos');
+  const [showLiquidezDetail, setShowLiquidezDetail] = useState(false); // ✨ Estado para controlar el clic
   
   // Helpers para identificar dueños
   const identifyOwner = (cuentaId, itemPersona, textDesc) => {
@@ -22,6 +23,12 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   };
 
   const idsTarjetas = cuentas.filter(c => c.type === 'credit').map(c => c.id);
+
+  // --- CÁLCULOS DE LIQUIDEZ (Bancos, Efectivo, Bolsillos) ---
+  const cuentasLiquidez = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
+  const liquidezLeo = cuentasLiquidez.filter(c => identifyOwner(c.id, null, c.name) === 'Leo').reduce((s, c) => s + c.currentBalance, 0);
+  const liquidezAndre = cuentasLiquidez.filter(c => identifyOwner(c.id, null, c.name) === 'Andre').reduce((s, c) => s + c.currentBalance, 0);
+  const liquidezCompartida = liquidezTotal - liquidezLeo - liquidezAndre;
 
   // --- CÁLCULOS DE PROYECCIÓN ---
   const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
@@ -84,34 +91,64 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Inicio y Dashboard Global</h1><p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, PowerBI de egresos y proyecciones.</p></header>
 
-      {/* TARJETAS PRINCIPALES (MODIFICADAS SEGÚN SOLICITUD) */}
+      {/* TARJETAS PRINCIPALES */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500">
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Ingresos Totales (Mes)</h3>
           <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
         </Card>
+        
         <Card className="p-3 md:p-5 border-t-4 border-t-rose-500">
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
           <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
         </Card>
-        <Card className={`p-3 md:p-5 border-t-4 ${dineroDisponible >= 0 ? 'border-t-indigo-500' : 'border-t-rose-500'}`}>
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero Disponible (Ing - Egr)</h3>
-          <p className={`text-lg md:text-2xl font-bold mt-1 ${dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
-            {formatCOP(dineroDisponible)}
+        
+        {/* ✨ NUEVO: Tarjeta de Liquidez Clickeable */}
+        <Card className="p-3 md:p-5 border-t-4 border-t-indigo-500 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => setShowLiquidezDetail(!showLiquidezDetail)}>
+          <div className="flex justify-between items-start">
+            <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero en Cuentas</h3>
+            <Info size={14} className={`transition-colors ${showLiquidezDetail ? 'text-indigo-400' : 'text-slate-500'}`} />
+          </div>
+          <p className="text-lg md:text-2xl font-bold mt-1 text-indigo-400">
+            {formatCOP(liquidezTotal)}
           </p>
+          
+          {showLiquidezDetail && (
+            <div className="mt-3 pt-3 border-t border-slate-800 space-y-1.5 animate-in slide-in-from-top-2">
+              <div className="flex justify-between text-[11px] md:text-xs text-slate-300">
+                <span>Leo:</span> <span className="font-bold text-emerald-400">{formatCOP(liquidezLeo)}</span>
+              </div>
+              <div className="flex justify-between text-[11px] md:text-xs text-slate-300">
+                <span>Andre:</span> <span className="font-bold text-emerald-400">{formatCOP(liquidezAndre)}</span>
+              </div>
+              {liquidezCompartida > 0 && (
+                <div className="flex justify-between text-[11px] md:text-xs text-slate-400">
+                  <span>Compartido:</span> <span className="font-bold">{formatCOP(liquidezCompartida)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </Card>
+
         <Card className="p-3 md:p-5 border-t-4 border-t-amber-500">
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Pagos Fijos Pendientes (Todos)</h3>
           <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(pagosFijosPendientesTotal)}</p>
         </Card>
+        
         <Card className="p-3 md:p-5 border-t-4 border-t-slate-500">
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Presupuesto Configurado</h3>
           <p className="text-lg md:text-2xl font-bold text-slate-200 mt-1">{formatCOP(presupuestoTotal)}</p>
         </Card>
+        
+        {/* ✨ ACTUALIZADO: Tarjeta de Presupuesto con texto explicativo */}
         <Card className={`p-3 md:p-5 border-t-4 ${presupuestoTotal - egresosMesTotal >= 0 ? 'border-t-emerald-500/50' : 'border-t-rose-500/50'}`}>
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Presupuesto Restante</h3>
           <p className={`text-lg md:text-2xl font-bold mt-1 ${presupuestoTotal - egresosMesTotal >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
             {formatCOP(presupuestoTotal - egresosMesTotal)}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-2 leading-tight">
+            De {formatCOP(presupuestoTotal)} total planificado<br/>
+            (-) Se han gastado {formatCOP(egresosMesTotal)}
           </p>
         </Card>
       </div>
@@ -138,11 +175,12 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos variables (Sin TC)</span> <span className="font-bold text-rose-400">{formatCOP(gastadoVarSinTC)}</span></div>
             <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos TC Leo</span> <span className="font-bold text-rose-400">{formatCOP(pagosTCLeo)}</span></div>
             <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos TC Andre</span> <span className="font-bold text-rose-400">{formatCOP(pagosTCAndre)}</span></div>
-            <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL REAL</span> <span className={dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(dineroDisponible)}</span></div>
+            <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL REAL (Flujo)</span> <span className={dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(dineroDisponible)}</span></div>
           </div>
         </div>
       </Card>
 
+      {/* GRAFICAS (Tendencia e Histograma) se mantienen igual... */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="flex flex-col">
           <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2"><BarChart size={18} className="text-emerald-400" /> Tendencia Histórica (6 Meses)</h2>
