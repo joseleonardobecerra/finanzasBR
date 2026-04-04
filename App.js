@@ -486,10 +486,10 @@
                       cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta}
                       showToast={showToast} />}
                   {activeTab === 'inversiones' && <InversionesTab
-                      cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta}
+                      cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta}
                       ingresos={ingresos} addIngreso={addIngreso}
                       egresos={egresos} transferencias={transferencias}
-                      selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} />}
+                      selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} />}                  
                   {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} />}
                   {activeTab === 'settings' && <SettingsTab
                       stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}}
