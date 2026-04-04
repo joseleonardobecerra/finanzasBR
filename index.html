@@ -63,6 +63,18 @@
       firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
+    
+    // ✨ HABILITAR PERSISTENCIA OFFLINE (Magia pura)
+    db.enablePersistence()
+      .catch((err) => {
+          if (err.code == 'failed-precondition') {
+              console.warn("Múltiples pestañas abiertas, la persistencia offline solo funciona en una a la vez.");
+          } else if (err.code == 'unimplemented') {
+              console.warn("El navegador actual no soporta persistencia offline.");
+          }
+      });
+
+    const auth = firebase.auth(); 
     const cloudDocRef = db.collection('finanzas').doc('datos_familia');
 
     // --- ÍCONOS ---
@@ -3034,14 +3046,33 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
       );
     };
 
-// --- MAIN APP (CON FIREBASE, FILTROS Y SCORE CORREGIDO) ---
+// --- MAIN APP (CON FIREBASE: FASE 1 - COLECCIONES Y TIEMPO REAL) ---
     function App() {
+      // ✨ ESTADOS DE AUTENTICACIÓN
+      const [user, setUser] = useState(null);
+      const [authLoading, setAuthLoading] = useState(true);
+      
       const [appCargando, setAppCargando] = useState(true);
+      
+      // ✨ NUEVO ESTADO: Detector de Internet
+      const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+      useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+        };
+      }, []);
+
       const [activeTab, setActiveTab] = useState('dashboard');
       const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
       const [showMobileMore, setShowMobileMore] = useState(false);
       const [toast, setToast] = useState(null);
-      const [filtroPersona, setFiltroPersona] = useState('Total'); 
+      const [filtroPersona, setFiltroPersona] = useState('Total');
 
       const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
       const changeMonth = (offset) => { const [year, month] = selectedMonth.split('-'); const date = new Date(year, parseInt(month) - 1 + offset, 1); setSelectedMonth(date.toISOString().slice(0, 7)); };
@@ -3373,7 +3404,14 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
       ];
 
       return (
-        <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans">
+        <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans pt-[24px]">
+          {/* ✨ BANNER OFFLINE INTELIGENTE */}
+          {isOffline && (
+            <div className="fixed top-0 left-0 right-0 bg-amber-600 text-white text-[11px] font-bold text-center py-1 z-[100] flex justify-center items-center gap-2 shadow-md">
+              <AlertCircle size={14} /> Sin conexión. Trabajando offline (Los cambios se guardarán solos al reconectar).
+            </div>
+          )}
+          
           <Toast toast={toast} onClose={() => setToast(null)} />
           
           <aside className="hidden md:flex w-64 bg-[#17171a] border-r border-slate-800 flex-shrink-0 flex-col relative z-20">
