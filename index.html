@@ -431,16 +431,16 @@
       );
     };
 
-    const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egresosMes, cuentas, ingresosMesTotal, egresosMesTotal, cuotasMesTotal }) => {
-      const { score, issues, recs } = scoreData;
+const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egresosMes, cuentas, ingresosMesTotal, egresosMesTotal, cuotasMesTotal }) => {
+      const { score, desglose, recs } = scoreData;
 
       const prevMonthDate = new Date(`${selectedMonth}-01T12:00:00`);
       prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
       const prevMonthStr = prevMonthDate.toISOString().slice(0, 7);
       const prevScore = scoreHistory[prevMonthStr] || null;
 
-      const scoreColor = score >= 80 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-rose-400';
-      const scoreBg = score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+      const scoreColor = score === 0 && desglose.length === 1 ? 'text-slate-500' : score >= 80 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-rose-400';
+      const scoreBg = score === 0 && desglose.length === 1 ? 'bg-slate-700' : score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-rose-500';
 
       const tasaAhorro = ingresosMesTotal > 0 ? ((ingresosMesTotal - egresosMesTotal - cuotasMesTotal) / ingresosMesTotal) * 100 : 0;
       const nivelEndeudamiento = ingresosMesTotal > 0 ? (cuotasMesTotal / ingresosMesTotal) * 100 : 0;
@@ -452,8 +452,9 @@
          return { ...p, gastado, porcentaje: p.limite > 0 ? (gastado / p.limite) * 100 : 0 };
       }).filter(p => p.porcentaje >= 75).sort((a,b) => b.porcentaje - a.porcentaje);
 
+      // Combinamos las recomendaciones del algoritmo principal con las alertas dinámicas de deudas/presupuestos
       const dynamicRecs = useMemo(() => {
-        let items = [];
+        let items = [...recs];
         if (deudasPeligrosas.length > 0) {
             items.push({
                 ico: <ShieldAlert size={24} className="text-rose-500" />,
@@ -479,7 +480,7 @@
             items.push({
                 ico: <PiggyBank size={24} className="text-emerald-500" />,
                 title: "¡Excelente capacidad de ahorro!",
-                txt: `Estás reteniendo un ${tasaAhorro.toFixed(1)}% de lo que ganas. Te sugerimos abrir la pestaña Simuladores y automatizar transferencias.`
+                txt: `Estás reteniendo un ${tasaAhorro.toFixed(1)}% de lo que ganas. Te sugerimos abrir la pestaña Simuladores y automatizar transferencias a inversión.`
             });
         }
         if (alertasPresupuesto.some(p => p.porcentaje >= 100)) {
@@ -493,23 +494,23 @@
             items.push({
                 ico: <CheckCircle2 size={24} className="text-emerald-500" />,
                 title: "Todo en orden",
-                txt: "Tus indicadores son saludables. Mantén tus presupuestos al día y tus deudas controladas."
+                txt: "Tus indicadores principales son saludables. Mantén tus presupuestos al día y tus deudas controladas."
             });
         }
         return items;
-      }, [deudasPeligrosas, nivelEndeudamiento, tasaAhorro, alertasPresupuesto, ingresosMesTotal]);
+      }, [deudasPeligrosas, nivelEndeudamiento, tasaAhorro, alertasPresupuesto, ingresosMesTotal, recs]);
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
           <header>
             <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><Activity className="text-indigo-400 w-8 h-8"/> Score Familia</h1>
-            <p className="text-sm md:text-base text-slate-400 mt-1">Diagnóstico, alertas y recomendaciones sobre tu salud financiera.</p>
+            <p className="text-sm md:text-base text-slate-400 mt-1">Diagnóstico, alertas y el porqué de tu calificación financiera.</p>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
             <div className="lg:col-span-4 space-y-6">
-              <Card className="flex flex-col items-center justify-center py-10 bg-slate-900/50 relative overflow-hidden">
-                {prevScore !== null && (
+              <Card className="flex flex-col items-center justify-center py-8 bg-slate-900/50 relative overflow-hidden">
+                {prevScore !== null && score > 0 && (
                   <div className="absolute top-4 right-4 flex items-center gap-1 text-xs font-bold bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800">
                     {score > prevScore ? <span className="text-emerald-400 flex items-center gap-1"><ArrowUpRight size={14}/> +{score - prevScore} pts</span> :
                      score < prevScore ? <span className="text-rose-400 flex items-center gap-1"><ArrowDownRight size={14}/> {prevScore - score} pts</span> :
@@ -518,9 +519,26 @@
                 )}
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2"><Activity size={18} className="text-emerald-400"/> Salud Financiera</h2>
                 <div className={`text-7xl font-black font-mono mt-2 ${scoreColor}`}>{score}</div>
-                <p className={`font-bold mt-2 ${scoreColor}`}>{score >= 80 ? 'Excelente Salud' : score >= 50 ? 'Requiere Atención' : 'Situación Crítica'}</p>
+                <p className={`font-bold mt-2 ${scoreColor}`}>
+                  {score === 0 && desglose.length === 1 ? 'Faltan Datos' : score >= 80 ? 'Excelente Salud' : score >= 50 ? 'Requiere Atención' : 'Situación Crítica'}
+                </p>
                 <div className="w-full max-w-[200px] bg-slate-800 rounded-full h-2 mt-6">
-                  <div className={`h-full rounded-full ${scoreBg}`} style={{width: `${score}%`}}></div>
+                  <div className={`h-full rounded-full transition-all duration-1000 ${scoreBg}`} style={{width: `${score}%`}}></div>
+                </div>
+              </Card>
+
+              {/* ✨ NUEVO: Explicación matemática del Score */}
+              <Card className="border-t-4 border-t-indigo-500">
+                <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2"><Info size={16} className="text-indigo-400"/> ¿Por qué este puntaje?</h3>
+                <div className="space-y-3">
+                  {desglose.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm border-b border-slate-800/50 pb-2 last:border-0 last:pb-0">
+                      <span className="text-slate-300 pr-2">{item.text}</span>
+                      <span className={`font-bold whitespace-nowrap ${item.type === 'success' ? 'text-emerald-400' : item.type === 'danger' ? 'text-rose-400' : item.type === 'warning' ? 'text-amber-400' : 'text-slate-400'}`}>
+                        {item.pts > 0 ? `+${item.pts}` : item.pts < 0 ? `${item.pts}` : item.pts === 0 && item.type !== 'neutral' ? '0' : ''}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </Card>
 
@@ -537,8 +555,8 @@
             </div>
 
             <div className="lg:col-span-8 space-y-6">
-              <Card className="h-full border-t-4 border-t-indigo-500">
-                <h2 className="text-lg font-semibold text-white mb-4 border-b border-slate-800 pb-3 flex items-center gap-2"><Target size={18} className="text-indigo-400"/> Plan de Acción Sugerido</h2>
+              <Card className="h-full border-t-4 border-t-amber-500">
+                <h2 className="text-lg font-semibold text-white mb-4 border-b border-slate-800 pb-3 flex items-center gap-2"><Target size={18} className="text-amber-400"/> Plan de Acción Sugerido</h2>
                 <div className="space-y-4">
                   {dynamicRecs.map((r, i) => (
                     <div key={i} className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 flex gap-4 items-start hover:border-slate-700 transition-colors">
@@ -3304,30 +3322,70 @@
       const tasaEndeudamiento = ingresosMesTotal > 0 ? (cuotasMesTotal / ingresosMesTotal) * 100 : 0;
       const tasaAhorro = ingresosMesTotal > 0 ? (flujoNetoMes > 0 ? (flujoNetoMes / ingresosMesTotal) * 100 : 0) : 0;
 
-      const { score, issues, recs } = useMemo(() => {
-        let scr = 100; const iss = []; const rr = [];
-        if (flujoNetoMes < 0) { scr -= 40; iss.push('Flujo mensual negativo'); rr.push({ico: '⚠️', title: 'Flujo Crítico', txt: 'Tus compromisos superan tus ingresos.'}); }
-        if (cuotasMesTotal > ingresosMesTotal * 0.4 && ingresosMesTotal > 0) { scr -= 25; iss.push('Deudas > 40% del ingreso'); rr.push({ico: '🛡️', title: 'Riesgo de Sobreendeudamiento', txt: 'Usa la estrategia Avalancha en la pestaña Deudas para liberar liquidez.'}); }
-        
-        const tieneAhorroProgramado = activePagosFijos.some(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro'));
-        if (!tieneAhorroProgramado) { scr -= 10; iss.push('Sin ahorro programado'); rr.push({ico: '🎯', title: 'Falta de Dirección', txt: 'Usa el Simulador para definir un Plan de Ahorro y asúmelo como pago fijo.'}); }
-        
-        if (tasaAhorro < 10 && ingresosMesTotal > 0) { scr -= 15; iss.push('Tasa de ahorro < 10%'); } 
-        return { score: Math.max(0, scr), issues: iss, recs: rr };
-      }, [flujoNetoMes, cuotasMesTotal, ingresosMesTotal, tasaAhorro, activePagosFijos]);
+// ✨ NUEVO ALGORITMO DE SCORE (Con desglose matemático y estado vacío)
+      const scoreData = useMemo(() => {
+        // 1. Validar si la base de datos está vacía para el mes
+        if (ingresosMesTotal === 0 && egresosMesTotal === 0 && cuotasMesTotal === 0 && liquidezTotal === 0) {
+          return {
+            score: 0,
+            desglose: [{ text: 'Aún no hay datos registrados este mes.', pts: 0, type: 'neutral' }],
+            recs: [{ico: '📝', title: 'Empieza tu registro', txt: 'Añade ingresos y gastos para que el sistema evalúe tu salud financiera.'}]
+          };
+        }
 
+        let scr = 100;
+        const desgloseArr = [{ text: 'Puntaje Base Ideal', pts: 100, type: 'success' }];
+        const rr = [];
+
+        // 2. Penalización por flujo negativo
+        if (flujoNetoMes < 0) {
+          scr -= 40;
+          desgloseArr.push({ text: 'Flujo de caja mensual negativo', pts: -40, type: 'danger' });
+          rr.push({ico: '⚠️', title: 'Flujo Crítico', txt: 'Tus compromisos superan tus ingresos.'});
+        }
+
+        // 3. Penalización por exceso de deudas
+        if (cuotasMesTotal > ingresosMesTotal * 0.4 && ingresosMesTotal > 0) {
+          scr -= 25;
+          desgloseArr.push({ text: 'Deudas superan el 40% del ingreso', pts: -25, type: 'danger' });
+          rr.push({ico: '🛡️', title: 'Riesgo de Sobreendeudamiento', txt: 'Usa la estrategia Avalancha en la pestaña Deudas para liberar liquidez.'});
+        }
+
+        // 4. Penalización por falta de dirección (Sin inversión programada)
+        const tieneAhorroProgramado = activePagosFijos.some(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro'));
+        if (!tieneAhorroProgramado && ingresosMesTotal > 0) {
+          scr -= 10;
+          desgloseArr.push({ text: 'No hay ahorros/inversión programados', pts: -10, type: 'warning' });
+          rr.push({ico: '🎯', title: 'Falta de Dirección', txt: 'Usa el Simulador para definir un Plan de Ahorro y asúmelo como pago fijo.'});
+        }
+
+        // 5. Penalización por baja retención de dinero
+        if (tasaAhorro < 10 && ingresosMesTotal > 0 && tieneAhorroProgramado) {
+          scr -= 15;
+          desgloseArr.push({ text: 'Tasa de ahorro mensual muy baja (< 10%)', pts: -15, type: 'warning' });
+        }
+
+        if (scr === 100) {
+           desgloseArr.push({ text: '¡Sin penalizaciones!', pts: 0, type: 'success' });
+        }
+
+        return { score: Math.max(0, scr), desglose: desgloseArr, recs: rr };
+      }, [flujoNetoMes, cuotasMesTotal, ingresosMesTotal, tasaAhorro, activePagosFijos, liquidezTotal]);
+
+      // Guardado del historial (Actualizado para leer de scoreData)
       useEffect(() => {
         const currentMonthStr = new Date().toISOString().slice(0, 7);
         if (selectedMonth === currentMonthStr && !appCargando) {
           setScoreHistory(prev => {
-            if (prev[selectedMonth] !== score) {
-              return { ...prev, [selectedMonth]: score };
+            if (prev[selectedMonth] !== scoreData.score) {
+              const next = { ...prev, [selectedMonth]: scoreData.score };
+              db.collection('sistema').doc('scoreHistory').set(next, {merge: true});
+              return next;
             }
             return prev;
           });
         }
-      }, [score, selectedMonth, appCargando]);
-
+      }, [scoreData.score, selectedMonth, appCargando]);      
       if (appCargando) {
         return (
           <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]">
@@ -3367,10 +3425,10 @@
               <p className="text-[10px] text-slate-400">Flujo Libre {getMonthName(selectedMonth).split(' ')[0]}</p>
               <div className="mt-3 flex items-center justify-between text-[10px] mb-1">
                 <span className="text-slate-400 font-medium">Score Salud</span>
-                <span className="font-bold text-emerald-400">{score}/100</span>
+                <span className="font-bold text-emerald-400">{scoreData.score}/100</span>
               </div>
               <div className="w-full bg-slate-800 rounded-full h-1.5">
-                <div className={`h-full rounded-full ${score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${score}%`}}></div>
+                <div className={`h-full rounded-full ${scoreData.score >= 80 ? 'bg-emerald-500' : scoreData.score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${scoreData.score}%`}}></div>
               </div>
             </div>
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -3427,7 +3485,7 @@
               <div className="max-w-6xl mx-auto">
                 <ErrorBoundary>
                   {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} />}
-                  {activeTab === 'score' && <ScoreTab scoreData={{score, issues, recs}} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} />}
+                  {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} />}
                   {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} transferencias={activeTransferencias} setTransferencias={setTransferencias} egresos={egresos} setEgresos={setEgresos} showToast={showToast} />}
                   {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
                   {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} setEgresos={setEgresos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} comprasCuotas={activeComprasCuotas} setComprasCuotas={setComprasCuotas} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
