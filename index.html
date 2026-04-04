@@ -19,7 +19,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 
   <script>
     window.onerror = function(message, source, lineno, colno, error) {
@@ -65,17 +64,11 @@
     }
     const db = firebase.firestore();
     
-    // ✨ HABILITAR PERSISTENCIA OFFLINE (Magia pura)
-    db.enablePersistence()
-      .catch((err) => {
-          if (err.code == 'failed-precondition') {
-              console.warn("Múltiples pestañas abiertas, la persistencia offline solo funciona en una a la vez.");
-          } else if (err.code == 'unimplemented') {
-              console.warn("El navegador actual no soporta persistencia offline.");
-          }
-      });
-
-    const auth = firebase.auth(); 
+    // ✨ ACTIVAR MODO OFFLINE
+    db.enablePersistence().catch((err) => {
+        console.warn("Error habilitando persistencia offline:", err.code);
+    });
+    
     const cloudDocRef = db.collection('finanzas').doc('datos_familia');
 
     // --- ÍCONOS ---
@@ -276,7 +269,7 @@
       );
     };
 
-// --- Componentes de Pestañas ---
+    // --- Componentes de Pestañas ---
     const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
       const [chartFilter, setChartFilter] = useState('Todos');
       
