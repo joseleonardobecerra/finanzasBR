@@ -3459,40 +3459,27 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
             </div>
           </main>
 
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-50 flex overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] h-[72px]">
-            {navItems.slice(0, 3).map(item => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button key={item.id} onClick={() => { setActiveTab(item.id); setShowMobileMore(false); }} className={`flex-1 flex flex-col items-center justify-center p-2 transition-colors ${isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                  <Icon size={24} className={isActive ? 'mb-1 text-indigo-400' : 'mb-1 opacity-70 text-slate-500'} />
-                  <span className={`text-[10px] font-medium ${isActive ? 'font-bold text-indigo-400' : 'text-slate-500'}`}>{item.label}</span>
-                </button>
-              );
-            })}
-            <div className="relative flex-1">
-              <button onClick={() => setShowMobileMore(!showMobileMore)} className={`w-full h-full flex flex-col items-center justify-center p-2 transition-colors ${showMobileMore ? 'text-indigo-400' : 'text-slate-500'}`}>
-                <MoreHorizontal size={24} className={`mb-1 ${showMobileMore ? 'text-indigo-400' : 'text-slate-500'}`} />
-                <span className={`text-[10px] font-medium ${showMobileMore ? 'font-bold text-indigo-400' : 'text-slate-500'}`}>Más</span>
-              </button>
+          {/* ✨ NUEVA BARRA DE NAVEGACIÓN MÓVIL DESLIZABLE (Swipe) */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-50 flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] h-[72px]">
+            <div className="flex px-1 min-w-max w-full">
+              {navItems.map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button 
+                    key={item.id} 
+                    onClick={() => setActiveTab(item.id)} 
+                    className={`w-[76px] flex flex-col items-center justify-center p-2 transition-colors flex-shrink-0 ${isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    <Icon size={24} className={isActive ? 'mb-1 text-indigo-400' : 'mb-1 opacity-70 text-slate-500'} />
+                    <span className={`text-[10px] font-medium truncate w-full text-center ${isActive ? 'font-bold text-indigo-400' : 'text-slate-500'}`}>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </nav>
-
-          {showMobileMore && <div className="md:hidden fixed inset-0 bg-black/60 z-40" onClick={() => setShowMobileMore(false)} />}
-          <div className={`md:hidden fixed bottom-[72px] left-0 right-0 bg-[#17171a] border-t border-slate-800 rounded-t-3xl z-50 transition-transform transform duration-300 ${showMobileMore ? 'translate-y-0' : 'translate-y-full'}`}>
-            <div className="p-4 grid grid-cols-3 gap-2 pb-6">
-               {navItems.slice(3).map(item => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button key={item.id} onClick={() => { setActiveTab(item.id); setShowMobileMore(false); }} className={`flex flex-col items-center justify-center p-4 rounded-xl transition-colors ${isActive ? 'bg-indigo-600/10 text-indigo-400' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}>
-                      <Icon size={24} className={`mb-2 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`} />
-                      <span className="text-[11px] font-medium text-center leading-tight">{item.label}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
         </div>
       );
     }
