@@ -3028,7 +3028,7 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
       );
     };
 
- // --- MAIN APP (CON FIREBASE: FASE 1 - COLECCIONES Y TIEMPO REAL) ---
+// --- MAIN APP (CON FIREBASE, FILTROS Y SCORE CORREGIDO) ---
     function App() {
       const [appCargando, setAppCargando] = useState(true);
       const [activeTab, setActiveTab] = useState('dashboard');
@@ -3042,20 +3042,16 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
       const getMonthName = (ym) => { const [year, month] = ym.split('-'); const date = new Date(year, parseInt(month) - 1, 1); return date.toLocaleString('es-ES', { month: 'long', year: 'numeric' }); };
 
       // ============================================================================
-      // 🚀 MOTOR DE SINCRONIZACIÓN FIREBASE (Anti-colisiones y sin límite de tamaño)
+      // 🚀 MOTOR DE SINCRONIZACIÓN FIREBASE (Anti-colisiones)
       // ============================================================================
-      
-      // Compara el estado anterior con el nuevo y sube solo las diferencias a la nube
       const syncToFirestore = async (collectionName, prevArray, nextArray) => {
          const prevMap = new Map(prevArray.map(item => [item.id, item]));
          const nextMap = new Map(nextArray.map(item => [item.id, item]));
          const operations = [];
 
-         // Detectar Borrados
          prevArray.forEach(item => {
              if (!nextMap.has(item.id)) operations.push({ type: 'delete', id: item.id });
          });
-         // Detectar Nuevos y Actualizados
          nextArray.forEach(item => {
              const prevItem = prevMap.get(item.id);
              if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(item)) {
@@ -3063,7 +3059,6 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
              }
          });
 
-         // Subir a la nube en bloques (Firestore soporta máximo 500 a la vez, por eso dividimos de 450 en 450)
          for (let i = 0; i < operations.length; i += 450) {
              const batch = db.batch();
              const chunk = operations.slice(i, i + 450);
@@ -3076,7 +3071,6 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
          }
       };
 
-      // Custom Hook que intercepta los cambios de estado en la UI para enviarlos a la nube
       const useFirestoreState = (collectionName) => {
           const [state, _setState] = useState([]);
           const setState = (action) => {
@@ -3089,7 +3083,6 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
           return [state, setState, _setState];
       };
 
-      // Estados de la App conectados al nuevo Motor
       const [cuentas, setCuentas, _setCuentas] = useFirestoreState('cuentas');
       const [transferencias, setTransferencias, _setTransferencias] = useFirestoreState('transferencias');
       const [ingresos, setIngresos, _setIngresos] = useFirestoreState('ingresos');
@@ -3100,7 +3093,6 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
       const [ingresosFijos, setIngresosFijos, _setIngresosFijos] = useFirestoreState('ingresosFijos');
       const [scoreHistory, setScoreHistory] = useState({});
 
-      // Escucha de datos en TIEMPO REAL (Si Andre agrega algo, Leo lo ve al instante)
       useEffect(() => {
         const unsubCuentas = db.collection('cuentas').onSnapshot(snap => _setCuentas(snap.docs.map(d => d.data())));
         const unsubTrans = db.collection('transferencias').onSnapshot(snap => _setTransferencias(snap.docs.map(d => d.data())));
@@ -3115,7 +3107,7 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
             if(snap.exists) setScoreHistory(snap.data());
         });
 
-        setTimeout(() => setAppCargando(false), 1500); // Dar tiempo a la primera descarga
+        setTimeout(() => setAppCargando(false), 1500); 
 
         return () => {
             unsubCuentas(); unsubTrans(); unsubIngresos(); unsubEgresos(); 
@@ -3123,21 +3115,6 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
         };
       }, []);
 
-      useEffect(() => {
-        const currentMonthStr = new Date().toISOString().slice(0, 7);
-        if (selectedMonth === currentMonthStr && !appCargando) {
-          setScoreHistory(prev => {
-            if (prev[selectedMonth] !== score) {
-              const next = { ...prev, [selectedMonth]: score };
-              db.collection('sistema').doc('scoreHistory').set(next, {merge: true});
-              return next;
-            }
-            return prev;
-          });
-        }
-      }, [score, selectedMonth, appCargando]);
-
-      // Función que se activa cuando subes tu Excel Maestro
       const setAllState = (parsed) => {
         if (parsed.cuentas) setCuentas(parsed.cuentas);
         if (parsed.transferencias) setTransferencias(parsed.transferencias);
@@ -3170,57 +3147,42 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
                 currentDebt: Number(c.initialDebt) || 0,
                 montoPrestado: Number(c.montoPrestado) || Number(c.initialDebt) || 0, 
                 totalPagado: Number(c.totalPagadoPrevio) || 0,
-                lastPaymentDate: null // ✨ NUEVO: Guardaremos la fecha exacta del último pago
+                lastPaymentDate: c.lastPaymentDate || null
             }; 
         });
         
         ingresos.forEach(i => { if(accMap[i.cuentaId]) accMap[i.cuentaId].currentBalance += Number(i.monto); });
         
-        // Ordenamos los gastos desde el más antiguo hasta el más nuevo para calcular cronológicamente
         const sortedEgresos = [...egresos].sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
         
         sortedEgresos.forEach(e => {
-           // 1. Descontar el dinero de la cuenta de origen
            if(accMap[e.cuentaId]) {
               if (['credit', 'loan'].includes(accMap[e.cuentaId].type)) accMap[e.cuentaId].currentDebt += Number(e.monto);
               else accMap[e.cuentaId].currentBalance -= Number(e.monto);
            }
            
-           // 2. Si es el pago de una deuda, calcular la amortización
            if (e.deudaId && accMap[e.deudaId]) {
                let account = accMap[e.deudaId];
                account.totalPagado += Number(e.monto);
                
                if (account.type === 'loan') {
                    let capital = Number(e.monto);
-                   
-                   // ✨ NUEVA MATEMÁTICA: Cálculo de interés por día exacto
                    if (account.lastPaymentDate) {
-                       // Calculamos cuántos días han pasado desde el último abono
                        const diffTime = Math.abs(new Date(e.fecha) - new Date(account.lastPaymentDate));
                        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                       
-                       // Calculamos la Tasa Diaria (Fórmula bancaria base 360)
                        const tasaDiaria = Math.pow(1 + account.tasaEA / 100, 1 / 360) - 1;
-                       
-                       // El interés es: Saldo * Tasa Diaria * Días
                        const interes = account.currentDebt * tasaDiaria * diffDays;
                        capital = Number(e.monto) - interes;
                    } else {
-                       // Si es el primerísimo pago registrado, asumimos 30 días de cobro
                        const tasaMensual = getTasaMensual(account.tasaEA);
                        const interes = account.currentDebt * tasaMensual;
                        capital = Number(e.monto) - interes;
                    }
-                   
-                   account.lastPaymentDate = e.fecha; // Guardamos la fecha de este pago para el próximo cálculo
-                   account.currentDebt -= capital;    // Restamos el capital a la deuda
+                   account.lastPaymentDate = e.fecha; 
+                   account.currentDebt -= capital;    
                } else {
-                   // Si es Tarjeta de Crédito, el manejo es directo
                    account.currentDebt -= Number(e.monto);
                }
-               
-               // La deuda nunca puede ser negativa
                if(account.currentDebt < 0) account.currentDebt = 0;
            }
         });
@@ -3241,7 +3203,7 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
         return Object.values(accMap);
       }, [cuentas, ingresos, egresos, transferencias]);
 
-      const getOwner = (text) => {
+      const getOwnerFallback = (text) => {
          if (!text) return 'Shared';
          const t = text.toUpperCase();
          const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
@@ -3251,56 +3213,57 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
          return 'Shared';
       };
 
-      const belongsToFilter = (owner) => filtroPersona === 'Total' || owner === 'Shared' || owner === filtroPersona;
+      const belongsToFilter = (itemOwner) => filtroPersona === 'Total' || itemOwner === 'Shared' || itemOwner === filtroPersona;
 
-      const activeCalculatedAccounts = useMemo(() => calculatedAccounts.filter(c => belongsToFilter(getOwner(c.name))), [calculatedAccounts, filtroPersona]);
+      const activeCalculatedAccounts = useMemo(() => calculatedAccounts.filter(c => belongsToFilter(c.ownerId || getOwnerFallback(c.name))), [calculatedAccounts, filtroPersona]);
 
       const activeIngresos = useMemo(() => ingresos.filter(i => {
-         const ownerAcc = cuentas.find(c => c.id === i.cuentaId) ? getOwner(cuentas.find(c => c.id === i.cuentaId).name) : 'Shared';
-         const ownerStr = getOwner(i.persona + ' ' + i.descripcion);
-         return belongsToFilter(ownerAcc !== 'Shared' ? ownerAcc : ownerStr);
+         const ownerAcc = cuentas.find(c => c.id === i.cuentaId);
+         const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared';
+         const itemOwner = i.ownerId || getOwnerFallback(i.persona + ' ' + i.descripcion);
+         return belongsToFilter(accOwner !== 'Shared' ? accOwner : itemOwner);
       }), [ingresos, cuentas, filtroPersona]);
 
       const activeEgresos = useMemo(() => egresos.filter(e => {
-         const ownerAcc = cuentas.find(c => c.id === e.cuentaId) ? getOwner(cuentas.find(c => c.id === e.cuentaId).name) : 'Shared';
-         const ownerStr = getOwner(e.descripcion + ' ' + e.categoria);
-         return belongsToFilter(ownerAcc !== 'Shared' ? ownerAcc : ownerStr);
+         const ownerAcc = cuentas.find(c => c.id === e.cuentaId);
+         const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared';
+         const itemOwner = e.ownerId || getOwnerFallback(e.descripcion + ' ' + e.categoria);
+         return belongsToFilter(accOwner !== 'Shared' ? accOwner : itemOwner);
       }), [egresos, cuentas, filtroPersona]);
 
-      const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(getOwner(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
+      const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(pf.ownerId || getOwnerFallback(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
       
       const activeIngresosFijos = useMemo(() => {
         const currentMonthNum = selectedMonth.split('-')[1];
         return ingresosFijos.filter(inf => {
-           const passFilter = belongsToFilter(getOwner(inf.descripcion + ' ' + inf.persona));
+           const passFilter = belongsToFilter(inf.ownerId || getOwnerFallback(inf.descripcion + ' ' + inf.persona));
            const descLower = inf.descripcion.toLowerCase();
            const isPrima1 = descLower.includes('prima 1');
            const isPrima2 = descLower.includes('prima 2');
            
            let passMonth = true;
-           if (isPrima1) {
-             passMonth = currentMonthNum === '07';
-           } else if (isPrima2) {
-             passMonth = currentMonthNum === '12';
-           } else if (descLower.includes('prima')) {
-             passMonth = currentMonthNum === '07' || currentMonthNum === '12';
-           }
+           if (isPrima1) passMonth = currentMonthNum === '07';
+           else if (isPrima2) passMonth = currentMonthNum === '12';
+           else if (descLower.includes('prima')) passMonth = currentMonthNum === '07' || currentMonthNum === '12';
            
            return passFilter && passMonth;
         });
       }, [ingresosFijos, filtroPersona, selectedMonth]);
       
-      const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(getOwner(p.categoria))), [presupuestos, filtroPersona]);
+      const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(p.ownerId || getOwnerFallback(p.categoria))), [presupuestos, filtroPersona]);
 
       const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => {
-         const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId) ? getOwner(cuentas.find(acc => acc.id === c.tarjetaId).name) : 'Shared';
-         const ownerStr = getOwner(c.descripcion);
-         return belongsToFilter(ownerAcc !== 'Shared' ? ownerAcc : ownerStr);
+         const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId);
+         const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared';
+         const itemOwner = c.ownerId || getOwnerFallback(c.descripcion);
+         return belongsToFilter(accOwner !== 'Shared' ? accOwner : itemOwner);
       }), [comprasCuotas, cuentas, filtroPersona]);
       
       const activeTransferencias = useMemo(() => transferencias.filter(t => {
-         const ownerFrom = cuentas.find(c => c.id === t.fromId) ? getOwner(cuentas.find(c => c.id === t.fromId).name) : 'Shared';
-         const ownerTo = cuentas.find(c => c.id === t.toId) ? getOwner(cuentas.find(c => c.id === t.toId).name) : 'Shared';
+         const ownerFromAcc = cuentas.find(c => c.id === t.fromId);
+         const ownerToAcc = cuentas.find(c => c.id === t.toId);
+         const ownerFrom = ownerFromAcc ? (ownerFromAcc.ownerId || getOwnerFallback(ownerFromAcc.name)) : 'Shared';
+         const ownerTo = ownerToAcc ? (ownerToAcc.ownerId || getOwnerFallback(ownerToAcc.name)) : 'Shared';
          return belongsToFilter(ownerFrom) || belongsToFilter(ownerTo);
       }), [transferencias, cuentas, filtroPersona]);
 
@@ -3322,9 +3285,8 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
       const tasaEndeudamiento = ingresosMesTotal > 0 ? (cuotasMesTotal / ingresosMesTotal) * 100 : 0;
       const tasaAhorro = ingresosMesTotal > 0 ? (flujoNetoMes > 0 ? (flujoNetoMes / ingresosMesTotal) * 100 : 0) : 0;
 
-// ✨ NUEVO ALGORITMO DE SCORE (Con desglose matemático y estado vacío)
+      // ✨ NUEVO ALGORITMO DE SCORE
       const scoreData = useMemo(() => {
-        // 1. Validar si la base de datos está vacía para el mes
         if (ingresosMesTotal === 0 && egresosMesTotal === 0 && cuotasMesTotal === 0 && liquidezTotal === 0) {
           return {
             score: 0,
@@ -3337,21 +3299,18 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
         const desgloseArr = [{ text: 'Puntaje Base Ideal', pts: 100, type: 'success' }];
         const rr = [];
 
-        // 2. Penalización por flujo negativo
         if (flujoNetoMes < 0) {
           scr -= 40;
           desgloseArr.push({ text: 'Flujo de caja mensual negativo', pts: -40, type: 'danger' });
           rr.push({ico: '⚠️', title: 'Flujo Crítico', txt: 'Tus compromisos superan tus ingresos.'});
         }
 
-        // 3. Penalización por exceso de deudas
         if (cuotasMesTotal > ingresosMesTotal * 0.4 && ingresosMesTotal > 0) {
           scr -= 25;
           desgloseArr.push({ text: 'Deudas superan el 40% del ingreso', pts: -25, type: 'danger' });
           rr.push({ico: '🛡️', title: 'Riesgo de Sobreendeudamiento', txt: 'Usa la estrategia Avalancha en la pestaña Deudas para liberar liquidez.'});
         }
 
-        // 4. Penalización por falta de dirección (Sin inversión programada)
         const tieneAhorroProgramado = activePagosFijos.some(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro'));
         if (!tieneAhorroProgramado && ingresosMesTotal > 0) {
           scr -= 10;
@@ -3359,7 +3318,6 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
           rr.push({ico: '🎯', title: 'Falta de Dirección', txt: 'Usa el Simulador para definir un Plan de Ahorro y asúmelo como pago fijo.'});
         }
 
-        // 5. Penalización por baja retención de dinero
         if (tasaAhorro < 10 && ingresosMesTotal > 0 && tieneAhorroProgramado) {
           scr -= 15;
           desgloseArr.push({ text: 'Tasa de ahorro mensual muy baja (< 10%)', pts: -15, type: 'warning' });
@@ -3372,7 +3330,6 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
         return { score: Math.max(0, scr), desglose: desgloseArr, recs: rr };
       }, [flujoNetoMes, cuotasMesTotal, ingresosMesTotal, tasaAhorro, activePagosFijos, liquidezTotal]);
 
-      // Guardado del historial (Actualizado para leer de scoreData)
       useEffect(() => {
         const currentMonthStr = new Date().toISOString().slice(0, 7);
         if (selectedMonth === currentMonthStr && !appCargando) {
@@ -3385,7 +3342,8 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
             return prev;
           });
         }
-      }, [scoreData.score, selectedMonth, appCargando]);      
+      }, [scoreData.score, selectedMonth, appCargando]);
+
       if (appCargando) {
         return (
           <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]">
@@ -3425,10 +3383,11 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
               <p className="text-[10px] text-slate-400">Flujo Libre {getMonthName(selectedMonth).split(' ')[0]}</p>
               <div className="mt-3 flex items-center justify-between text-[10px] mb-1">
                 <span className="text-slate-400 font-medium">Score Salud</span>
+                {/* ✨ CORRECCIÓN EN EL SIDEBAR */}
                 <span className="font-bold text-emerald-400">{scoreData.score}/100</span>
               </div>
               <div className="w-full bg-slate-800 rounded-full h-1.5">
-                <div className={`h-full rounded-full ${scoreData.score >= 80 ? 'bg-emerald-500' : scoreData.score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${scoreData.score}%`}}></div>
+                <div className={`h-full rounded-full transition-all duration-1000 ${scoreData.score >= 80 ? 'bg-emerald-500' : scoreData.score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{width: `${scoreData.score}%`}}></div>
               </div>
             </div>
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -3485,13 +3444,14 @@ const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egreso
               <div className="max-w-6xl mx-auto">
                 <ErrorBoundary>
                   {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} />}
+                  {/* ✨ CORRECCIÓN EN EL LLAMADO A SCORETAB */}
                   {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} />}
                   {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} transferencias={activeTransferencias} setTransferencias={setTransferencias} egresos={egresos} setEgresos={setEgresos} showToast={showToast} />}
                   {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
                   {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} setEgresos={setEgresos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} comprasCuotas={activeComprasCuotas} setComprasCuotas={setComprasCuotas} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
                   {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} setPresupuestos={setPresupuestos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
                   {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} showToast={showToast} />}
-                  {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} ingresos={ingresos} setIngresos={setIngresos} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwner} />}
+                  {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} ingresos={ingresos} setIngresos={setIngresos} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} />}
                   {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} />}
                   {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}} setAllState={setAllState} selectedMonth={selectedMonth} showToast={showToast} />}
                 </ErrorBoundary>
