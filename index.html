@@ -263,32 +263,52 @@
       );
     };
 
-    // --- Componentes de Pestañas ---
-const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
+// --- Componentes de Pestañas ---
+    const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
       const [chartFilter, setChartFilter] = useState('Todos');
       
-      // ✨ NUEVA LÓGICA DE PRECISIÓN:
-      // 1. Identificamos cuáles IDs de cuenta pertenecen a Tarjetas de Crédito
+      // ✨ LÓGICA DE PRECISIÓN PARA PAGOS Y TARJETAS:
       const idsTarjetas = cuentas.filter(c => c.type === 'credit').map(c => c.id);
 
-      // 2. Total pagos con T. crédito: Todo lo que se pagó usando una cuenta de crédito (Fijo o Variable)
       const totalPagosConTC = egresosMes
         .filter(e => idsTarjetas.includes(e.cuentaId))
         .reduce((s, e) => s + e.monto, 0);
 
-      // 3. Total pagos fijos (Sin TC): Gastos tipo 'Fijo' que salieron de Efectivo o Bancos (NO de TC)
       const gastadoFijoSinTC = egresosMes
         .filter(e => e.tipo === 'Fijo' && !idsTarjetas.includes(e.cuentaId))
         .reduce((s, e) => s + e.monto, 0);
 
-      // 4. Total pagos variables: Todo lo que no sea 'Fijo'
       const gastadoVar = egresosMes
         .filter(e => e.tipo !== 'Fijo')
         .reduce((s, e) => s + e.monto, 0);
 
-      // --- El resto de cálculos de proyección se mantienen igual ---
+      const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
+      const gastosPorCategoria = {};
+      gastosFiltrados.forEach(g => {
+        const cat = g.categoria || 'Otros';
+        gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + g.monto;
+      });
+      
+      const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
+      const maxMonto = chartData.length > 0 ? chartData[0][1] : 1;
+
+      const trendData = useMemo(() => {
+        return Array.from({length: 6}, (_, i) => {
+          const d = new Date(`${selectedMonth}-01T12:00:00`);
+          d.setMonth(d.getMonth() - 5 + i);
+          const mStr = d.toISOString().slice(0, 7);
+          const label = d.toLocaleString('es-ES', { month: 'short' }).replace(/^\w/, c=>c.toUpperCase());
+          const tIng = ingresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
+          const tEgr = egresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
+          return { mes: mStr, label, ing: tIng, egr: tEgr };
+        });
+      }, [ingresos, egresos, selectedMonth]);
+
+      const maxTrendVal = Math.max(...trendData.map(d => Math.max(d.ing, d.egr)), 1);
+
       const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
       const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
+      
       const proyeccionIngresosMes = ingresosFijos ? ingresosFijos.reduce((sum, item) => sum + Number(item.monto), 0) : 0; 
       const proyeccionPagoMes = totalPresupuestadoFijo + totalPresupuestadoVar;
       const totalProyeccionMes = proyeccionIngresosMes - proyeccionPagoMes;
@@ -298,18 +318,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
       const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => {
         const isPagado = egresosMes.some(e => e.pagoFijoId === pf.id);
-        return !isPagado;
+        const isCredit = idsTarjetas.includes(pf.cuentaId) || pf.categoria.toLowerCase().includes('tarjeta') || pf.categoria.toLowerCase().includes('crédito');
+        return !isPagado && !isCredit;
       }).reduce((sum, pf) => sum + pf.monto, 0) : 0;
-
-      // Lógica para las gráficas
-      const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
-      const gastosPorCategoria = {};
-      gastosFiltrados.forEach(g => {
-        const cat = g.categoria || 'Otros';
-        gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + g.monto;
-      });
-      const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
-      const maxMonto = chartData.length > 0 ? chartData[0][1] : 1;
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
@@ -354,12 +365,12 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Proyección pago mes (variable)</span> <span className="font-bold text-rose-400">{formatCOP(totalPresupuestadoVar)}</span></div>
                 <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL proyección mes</span> <span className={totalProyeccionMes >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(totalProyeccionMes)}</span></div>
               </div>
-         <div className="space-y-4 md:border-l md:border-slate-800 md:pl-6">
+              <div className="space-y-4 md:border-l md:border-slate-800 md:pl-6">
                 <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total Ingresos mes</span> <span className="font-bold text-emerald-400">{formatCOP(ingresosMesTotal)}</span></div>
                 <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos fijos (Sin TC)</span> <span className="font-bold text-rose-400">{formatCOP(gastadoFijoSinTC)}</span></div>
-                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos con T. crédito</span> <span className="font-bold text-rose-400">{formatCOP(pagosTCReales)}</span></div>
+                <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos con T. crédito</span> <span className="font-bold text-rose-400">{formatCOP(totalPagosConTC)}</span></div>
                 <div className="flex justify-between text-sm items-center"><span className="text-slate-400">Total pagos variables</span> <span className="font-bold text-rose-400">{formatCOP(gastadoVar)}</span></div>
-                <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL PAGOS</span> <span className="text-rose-500">{formatCOP(totalPagoRealMasTC)}</span></div>
+                <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center"><span className="text-slate-200">TOTAL PAGOS</span> <span className="text-rose-500">{formatCOP(egresosMesTotal)}</span></div>
               </div>
             </div>
           </Card>
