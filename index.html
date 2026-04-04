@@ -3010,7 +3010,7 @@
       );
     };
 
-    // --- MAIN APP (CON FIREBASE Y CARGA POR DEFECTO) ---
+ // --- MAIN APP (CON FIREBASE: FASE 1 - COLECCIONES Y TIEMPO REAL) ---
     function App() {
       const [appCargando, setAppCargando] = useState(true);
       const [activeTab, setActiveTab] = useState('dashboard');
@@ -3023,139 +3023,103 @@
       const changeMonth = (offset) => { const [year, month] = selectedMonth.split('-'); const date = new Date(year, parseInt(month) - 1 + offset, 1); setSelectedMonth(date.toISOString().slice(0, 7)); };
       const getMonthName = (ym) => { const [year, month] = ym.split('-'); const date = new Date(year, parseInt(month) - 1, 1); return date.toLocaleString('es-ES', { month: 'long', year: 'numeric' }); };
 
-      // Estados de datos
-      const [cuentas, setCuentas] = useState([]);
-      const [transferencias, setTransferencias] = useState([]);
-      const [ingresos, setIngresos] = useState([]);
-      const [egresos, setEgresos] = useState([]);
-      const [comprasCuotas, setComprasCuotas] = useState([]);
-      const [presupuestos, setPresupuestos] = useState([]);
-      const [pagosFijos, setPagosFijos] = useState([]);
-      const [ingresosFijos, setIngresosFijos] = useState([]);
+      // ============================================================================
+      // 🚀 MOTOR DE SINCRONIZACIÓN FIREBASE (Anti-colisiones y sin límite de tamaño)
+      // ============================================================================
+      
+      // Compara el estado anterior con el nuevo y sube solo las diferencias a la nube
+      const syncToFirestore = async (collectionName, prevArray, nextArray) => {
+         const prevMap = new Map(prevArray.map(item => [item.id, item]));
+         const nextMap = new Map(nextArray.map(item => [item.id, item]));
+         const operations = [];
+
+         // Detectar Borrados
+         prevArray.forEach(item => {
+             if (!nextMap.has(item.id)) operations.push({ type: 'delete', id: item.id });
+         });
+         // Detectar Nuevos y Actualizados
+         nextArray.forEach(item => {
+             const prevItem = prevMap.get(item.id);
+             if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(item)) {
+                 operations.push({ type: 'set', id: item.id, data: item });
+             }
+         });
+
+         // Subir a la nube en bloques (Firestore soporta máximo 500 a la vez, por eso dividimos de 450 en 450)
+         for (let i = 0; i < operations.length; i += 450) {
+             const batch = db.batch();
+             const chunk = operations.slice(i, i + 450);
+             chunk.forEach(op => {
+                 const docRef = db.collection(collectionName).doc(op.id);
+                 if (op.type === 'delete') batch.delete(docRef);
+                 else batch.set(docRef, op.data);
+             });
+             await batch.commit().catch(err => console.error(`Error sincronizando ${collectionName}`, err));
+         }
+      };
+
+      // Custom Hook que intercepta los cambios de estado en la UI para enviarlos a la nube
+      const useFirestoreState = (collectionName) => {
+          const [state, _setState] = useState([]);
+          const setState = (action) => {
+              _setState(prev => {
+                  const next = typeof action === 'function' ? action(prev) : action;
+                  syncToFirestore(collectionName, prev, next);
+                  return next;
+              });
+          };
+          return [state, setState, _setState];
+      };
+
+      // Estados de la App conectados al nuevo Motor
+      const [cuentas, setCuentas, _setCuentas] = useFirestoreState('cuentas');
+      const [transferencias, setTransferencias, _setTransferencias] = useFirestoreState('transferencias');
+      const [ingresos, setIngresos, _setIngresos] = useFirestoreState('ingresos');
+      const [egresos, setEgresos, _setEgresos] = useFirestoreState('egresos');
+      const [comprasCuotas, setComprasCuotas, _setComprasCuotas] = useFirestoreState('comprasCuotas');
+      const [presupuestos, setPresupuestos, _setPresupuestos] = useFirestoreState('presupuestos');
+      const [pagosFijos, setPagosFijos, _setPagosFijos] = useFirestoreState('pagosFijos');
+      const [ingresosFijos, setIngresosFijos, _setIngresosFijos] = useFirestoreState('ingresosFijos');
       const [scoreHistory, setScoreHistory] = useState({});
 
-      // ============================================================================
-      // 🚀 LÓGICA DE FIREBASE (Cargar y Guardar)
-      // ============================================================================
-
+      // Escucha de datos en TIEMPO REAL (Si Andre agrega algo, Leo lo ve al instante)
       useEffect(() => {
-        cloudDocRef.get().then((doc) => {
-          if (doc.exists) {
-            const data = doc.data();
-            setCuentas(data.cuentas || []);
-            setTransferencias(data.transferencias || []);
-            setIngresos(data.ingresos || []);
-            setEgresos(data.egresos || []);
-            setComprasCuotas(data.comprasCuotas || []);
-            setPresupuestos(data.presupuestos || []);
-            setPagosFijos(data.pagosFijos || []);
-            setIngresosFijos(data.ingresosFijos || []);
-            setScoreHistory(data.scoreHistory || {});
-          } else {
-            // BASE DE DATOS VACÍA: Cargamos pastillas y configuración por defecto
-            const defaultCuentas = [
-              { id: 'bancolombia_l', name: 'Bancolombia Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 }, 
-              { id: 'bogota_a', name: 'Banco de Bogotá Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'efectivo_l', name: 'Efectivo Leo', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'efectivo_a', name: 'Efectivo Andre', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'nequi_l', name: 'Nequi Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'nequi_a', name: 'Nequi Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'daviplata_a', name: 'Daviplata Andre', type: 'pocket', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
-              { id: 'daviplata_l', name: 'Daviplata Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'rappicuenta_l', name: 'Rappicuenta Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'tc_rappi', name: 'Rappi Leo', type: 'credit', initialBalance: 0, initialDebt: 1632734, limit: 6000000, tasaEA: 34.5, cuotaMinima: 100000 },
-              { id: 'tc_nu_l', name: 'Nu Bank Leo', type: 'credit', initialBalance: 0, initialDebt: 4794863.37, limit: 5000000, tasaEA: 24.6, cuotaMinima: 229622 },
-              { id: 'tc_falabella', name: 'Falabella Leo', type: 'credit', initialBalance: 0, initialDebt: 174586, limit: 1550000, tasaEA: 25.22, cuotaMinima: 174586 },
-              { id: 'tc_nu_a', name: 'Nu Bank Andre', type: 'credit', initialBalance: 0, initialDebt: 0, limit: 900000, tasaEA: 34.5, cuotaMinima: 0 },
-              { id: 'tc_davibank_a', name: 'Davibank Andre', type: 'credit', initialBalance: 0, initialDebt: 6639066, limit: 5600000, tasaEA: 25.25, cuotaMinima: 313097 },
-              { id: 'tc_bogota', name: 'Banco de Bogotá Andre', type: 'credit', initialBalance: 0, initialDebt: 8301421, limit: 8675000, tasaEA: 25.2, cuotaMinima: 888000 },
-              { id: 'cr_lulo', name: 'Lulo Bank Andre', type: 'loan', initialBalance: 0, initialDebt: 9839488.70, limit: 0, tasaEA: 24.34, cuotaMinima: 392390, cuotasPagadas: 3, cuotasTotales: 34, montoPrestado: 10500000, totalPagadoPrevio: 1177170 },
-              { id: 'cr_vehiculo', name: 'Credito de vechiculo Leo', type: 'loan', initialBalance: 0, initialDebt: 48108055.82, limit: 0, tasaEA: 23.95, cuotaMinima: 1043887, hasIBR: true, ibrValue: 11.96, ibrPuntos: 11.99, cuotasPagadas: 52, cuotasTotales: 148, montoPrestado: 60000000, totalPagadoPrevio: 54282124 },
-              { id: 'inv1', name: 'Nu bank Leo', type: 'pocket', initialBalance: 50339, currentDebt: 0, limit: 0, tasaEA: 8.25, cuotaMinima: 0 },
-              { id: 'inv2', name: 'Global 66', type: 'pocket', initialBalance: 50000, currentDebt: 0, limit: 0, tasaEA: 11, cuotaMinima: 0 },
-              { id: 'inv3', name: 'Lulo Leo', type: 'pocket', initialBalance: 103239, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
-              { id: 'inv4', name: 'Rappi Ahorros', type: 'pocket', initialBalance: 200105, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-              { id: 'inv5', name: 'Rappi Bolsillo Leo', type: 'pocket', initialBalance: 92627, currentDebt: 0, limit: 0, tasaEA: 9, cuotaMinima: 0 }
-            ];
-            
-            const defaultPresupuestos = [
-              {id: 'p1', categoria: 'Inversión', limite: 100000}, {id: 'p2', categoria: 'Gasolina', limite: 450000},
-              {id: 'p3', categoria: 'Mercado', limite: 1000000}, {id: 'p4', categoria: 'Mercado Aseo', limite: 200000},
-              {id: 'p5', categoria: 'Aseo hogar', limite: 180000}, {id: 'p6', categoria: 'Botellón Agua', limite: 50000}
-            ];
-
-            const defaultPagosFijos = [
-              {id: 'f1', descripcion: 'Arriendo', monto: 500000, categoria: 'Hogar', diaPago: 1},
-              {id: 'f2', descripcion: 'Administración', monto: 170000, categoria: 'Hogar', diaPago: 1},
-              {id: 'f3', descripcion: 'Colegio niños', monto: 900000, categoria: 'Tobías y Salomé', diaPago: 1},
-              {id: 'f4', descripcion: 'Deporte Tobías', monto: 0, categoria: 'Tobías y Salomé', diaPago: 1},
-              {id: 'f5', descripcion: 'Deporte Salomé', monto: 0, categoria: 'Tobías y Salomé', diaPago: 1},
-              {id: 'f6', descripcion: 'Aqualia', monto: 30000, categoria: 'Servicios públicos', diaPago: 1},
-              {id: 'f7', descripcion: 'Centrales Eléctricas (luz)', monto: 350000, categoria: 'Servicios públicos', diaPago: 1},
-              {id: 'f8', descripcion: 'Gases del Oriente (gas)', monto: 50000, categoria: 'Servicios públicos', diaPago: 1},
-              {id: 'f9', descripcion: 'Internet Hogar', monto: 120000, categoria: 'Servicios públicos', diaPago: 1},
-              {id: 'f10', descripcion: 'Seguro de vida Leo', monto: 120000, categoria: 'Seguro de vida', diaPago: 1},
-              {id: 'f11', descripcion: 'Seguro de vida Andre', monto: 120000, categoria: 'Seguro de vida', diaPago: 1},
-              {id: 'f12', descripcion: 'Nu Bank Andre', monto: 0, categoria: 'Tarjeta de crédito A', diaPago: 1},
-              {id: 'f13', descripcion: 'Davibank Andre', monto: 313097, categoria: 'Tarjeta de crédito A', diaPago: 6},
-              {id: 'f14', descripcion: 'Banco de Bogotá Andre', monto: 888000, categoria: 'Tarjeta de crédito A', diaPago: 6},
-              {id: 'f15', descripcion: 'Rappi Leo', monto: 0, categoria: 'Tarjeta de crédito L', diaPago: 1},
-              {id: 'f16', descripcion: 'Nu Bank Leo', monto: 229622, categoria: 'Tarjeta de crédito L', diaPago: 6},
-              {id: 'f17', descripcion: 'Falabella Leo', monto: 174586, categoria: 'Tarjeta de crédito L', diaPago: 10},
-              {id: 'f18', descripcion: 'Lulo Bank Andre', monto: 392390, categoria: 'Crédito', diaPago: 1},
-              {id: 'f20', descripcion: 'Credito de vehiculo Leo', monto: 1044000, categoria: 'Vehículo', diaPago: 1},
-              {id: 'f21', descripcion: 'Celular Andrea', monto: 75000, categoria: 'Andre', diaPago: 1},
-              {id: 'f22', descripcion: 'Celular Leo', monto: 50000, categoria: 'Leo', diaPago: 1},
-              {id: 'f23', descripcion: 'HBO Max', monto: 15000, categoria: 'Hogar', diaPago: 1},
-              {id: 'f24', descripcion: 'Mapfre Seguro', monto: 260000, categoria: 'Vehículo', diaPago: 1},
-            ];
-
-            const defaultIngresosFijos = [
-              { id: 'if1', descripcion: 'Salario Leo', monto: 5765251, persona: 'L', tipo: 'Fijo', cuentaName: 'Bancolombia Leo' },
-              { id: 'if2', descripcion: 'Salario Andre (Q1)', monto: 1200000, persona: 'A', tipo: 'Fijo', cuentaName: 'Banco de Bogotá Andre' },
-              { id: 'if3', descripcion: 'Salario Andre (Q2)', monto: 1200000, persona: 'A', tipo: 'Fijo', cuentaName: 'Banco de Bogotá Andre' },
-              { id: 'if4', descripcion: 'Bono Salario Andre', monto: 500000, persona: 'A', tipo: 'Variable', cuentaName: 'Banco de Bogotá Andre' },
-              { id: 'if5', descripcion: 'Prima 1 Leo', monto: 2800000, persona: 'L', tipo: 'Bono', cuentaName: 'Bancolombia Leo' },
-              { id: 'if6', descripcion: 'Prima 2 Leo', monto: 2800000, persona: 'L', tipo: 'Bono', cuentaName: 'Bancolombia Leo' },
-              { id: 'if7', descripcion: 'Prima 1 Andre', monto: 1200000, persona: 'A', tipo: 'Bono', cuentaName: 'Banco de Bogotá Andre' },
-              { id: 'if8', descripcion: 'Prima 2 Andre', monto: 1200000, persona: 'A', tipo: 'Bono', cuentaName: 'Banco de Bogotá Andre' }
-            ];
-
-            const defaultData = {
-              cuentas: defaultCuentas, transferencias: [], ingresos: [], egresos: [], 
-              comprasCuotas: [], presupuestos: defaultPresupuestos, pagosFijos: defaultPagosFijos, ingresosFijos: defaultIngresosFijos, scoreHistory: {}
-            };
-
-            cloudDocRef.set(defaultData);
-            
-            setCuentas(defaultCuentas);
-            setPresupuestos(defaultPresupuestos);
-            setPagosFijos(defaultPagosFijos);
-            setIngresosFijos(defaultIngresosFijos);
-          }
-          setAppCargando(false);
-        }).catch((error) => {
-          console.error("Error cargando de Firebase:", error);
-          showToast("Error de conexión a la base de datos.", "error");
-          setAppCargando(false);
+        const unsubCuentas = db.collection('cuentas').onSnapshot(snap => _setCuentas(snap.docs.map(d => d.data())));
+        const unsubTrans = db.collection('transferencias').onSnapshot(snap => _setTransferencias(snap.docs.map(d => d.data())));
+        const unsubIngresos = db.collection('ingresos').onSnapshot(snap => _setIngresos(snap.docs.map(d => d.data())));
+        const unsubEgresos = db.collection('egresos').onSnapshot(snap => _setEgresos(snap.docs.map(d => d.data())));
+        const unsubCuotas = db.collection('comprasCuotas').onSnapshot(snap => _setComprasCuotas(snap.docs.map(d => d.data())));
+        const unsubPres = db.collection('presupuestos').onSnapshot(snap => _setPresupuestos(snap.docs.map(d => d.data())));
+        const unsubPagos = db.collection('pagosFijos').onSnapshot(snap => _setPagosFijos(snap.docs.map(d => d.data())));
+        const unsubIngFijos = db.collection('ingresosFijos').onSnapshot(snap => _setIngresosFijos(snap.docs.map(d => d.data())));
+        
+        const unsubScore = db.collection('sistema').doc('scoreHistory').onSnapshot(snap => {
+            if(snap.exists) setScoreHistory(snap.data());
         });
+
+        setTimeout(() => setAppCargando(false), 1500); // Dar tiempo a la primera descarga
+
+        return () => {
+            unsubCuentas(); unsubTrans(); unsubIngresos(); unsubEgresos(); 
+            unsubCuotas(); unsubPres(); unsubPagos(); unsubIngFijos(); unsubScore();
+        };
       }, []);
 
       useEffect(() => {
-        if (appCargando) return; 
-        
-        const timeoutId = setTimeout(() => {
-          cloudDocRef.set({ 
-            cuentas, transferencias, ingresos, egresos, 
-            comprasCuotas, presupuestos, pagosFijos, ingresosFijos, scoreHistory 
-          }, { merge: true })
-          .then(() => console.log("Datos sincronizados en la nube ✅"))
-          .catch(err => showToast("Error al guardar en la nube", "error"));
-        }, 2000); 
-        
-        return () => clearTimeout(timeoutId);
-      }, [cuentas, transferencias, ingresos, egresos, comprasCuotas, presupuestos, pagosFijos, ingresosFijos, scoreHistory, appCargando]);
+        const currentMonthStr = new Date().toISOString().slice(0, 7);
+        if (selectedMonth === currentMonthStr && !appCargando) {
+          setScoreHistory(prev => {
+            if (prev[selectedMonth] !== score) {
+              const next = { ...prev, [selectedMonth]: score };
+              db.collection('sistema').doc('scoreHistory').set(next, {merge: true});
+              return next;
+            }
+            return prev;
+          });
+        }
+      }, [score, selectedMonth, appCargando]);
 
+      // Función que se activa cuando subes tu Excel Maestro
       const setAllState = (parsed) => {
         if (parsed.cuentas) setCuentas(parsed.cuentas);
         if (parsed.transferencias) setTransferencias(parsed.transferencias);
@@ -3183,40 +3147,62 @@
         const accMap = {};
         cuentas.forEach(c => { 
             accMap[c.id] = { 
-                ...c, currentBalance: Number(c.initialBalance) || 0, currentDebt: Number(c.initialDebt) || 0,
-                montoPrestado: Number(c.montoPrestado) || Number(c.initialDebt) || 0, totalPagado: Number(c.totalPagadoPrevio) || 0,
-                lastInterestMonth: null
+                ...c, 
+                currentBalance: Number(c.initialBalance) || 0, 
+                currentDebt: Number(c.initialDebt) || 0,
+                montoPrestado: Number(c.montoPrestado) || Number(c.initialDebt) || 0, 
+                totalPagado: Number(c.totalPagadoPrevio) || 0,
+                lastPaymentDate: null // ✨ NUEVO: Guardaremos la fecha exacta del último pago
             }; 
         });
         
         ingresos.forEach(i => { if(accMap[i.cuentaId]) accMap[i.cuentaId].currentBalance += Number(i.monto); });
         
+        // Ordenamos los gastos desde el más antiguo hasta el más nuevo para calcular cronológicamente
         const sortedEgresos = [...egresos].sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+        
         sortedEgresos.forEach(e => {
+           // 1. Descontar el dinero de la cuenta de origen
            if(accMap[e.cuentaId]) {
               if (['credit', 'loan'].includes(accMap[e.cuentaId].type)) accMap[e.cuentaId].currentDebt += Number(e.monto);
               else accMap[e.cuentaId].currentBalance -= Number(e.monto);
            }
            
+           // 2. Si es el pago de una deuda, calcular la amortización
            if (e.deudaId && accMap[e.deudaId]) {
                let account = accMap[e.deudaId];
                account.totalPagado += Number(e.monto);
                
                if (account.type === 'loan') {
-                   const transMonth = e.fecha.substring(0, 7);
                    let capital = Number(e.monto);
                    
-                   if (account.lastInterestMonth !== transMonth) {
-                       let tasaMensual = getTasaMensual(account.tasaEA);
-                       let interes = account.currentDebt * tasaMensual;
+                   // ✨ NUEVA MATEMÁTICA: Cálculo de interés por día exacto
+                   if (account.lastPaymentDate) {
+                       // Calculamos cuántos días han pasado desde el último abono
+                       const diffTime = Math.abs(new Date(e.fecha) - new Date(account.lastPaymentDate));
+                       const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                       
+                       // Calculamos la Tasa Diaria (Fórmula bancaria base 360)
+                       const tasaDiaria = Math.pow(1 + account.tasaEA / 100, 1 / 360) - 1;
+                       
+                       // El interés es: Saldo * Tasa Diaria * Días
+                       const interes = account.currentDebt * tasaDiaria * diffDays;
                        capital = Number(e.monto) - interes;
-                       account.lastInterestMonth = transMonth;
+                   } else {
+                       // Si es el primerísimo pago registrado, asumimos 30 días de cobro
+                       const tasaMensual = getTasaMensual(account.tasaEA);
+                       const interes = account.currentDebt * tasaMensual;
+                       capital = Number(e.monto) - interes;
                    }
                    
-                   account.currentDebt -= capital;
+                   account.lastPaymentDate = e.fecha; // Guardamos la fecha de este pago para el próximo cálculo
+                   account.currentDebt -= capital;    // Restamos el capital a la deuda
                } else {
+                   // Si es Tarjeta de Crédito, el manejo es directo
                    account.currentDebt -= Number(e.monto);
                }
+               
+               // La deuda nunca puede ser negativa
                if(account.currentDebt < 0) account.currentDebt = 0;
            }
         });
