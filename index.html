@@ -3,25 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>Finanzas Familia</title>
+  <title>Finanzas Familia - Cloud & Excel Master</title>
 
-  <!-- 1. Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- 2. Librerías de React -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-  <!-- 3. Babel para JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- 4. SheetJS para Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-  <!-- Detector de errores global -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
   <script>
     window.onerror = function(message, source, lineno, colno, error) {
       document.getElementById('root').innerHTML = `
@@ -40,7 +35,7 @@
   <div id="root">
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif;">
       <div style="width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #4f46e5; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
-      <p style="color: #94a3b8; font-size: 14px; font-weight: 500;">Cargando FinanzasFamilia...</p>
+      <p style="color: #94a3b8; font-size: 14px; font-weight: 500;">Conectando con la nube...</p>
       <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
     </div>
   </div>
@@ -48,11 +43,28 @@
   <script type="text/babel">
     const { useState, useMemo, useEffect, useRef } = React;
 
-    // --- ÍCONOS 100% NATIVOS (Cero dependencias de red) ---
+    // ============================================================================
+    // ☁️ CONFIGURACIÓN DE FIREBASE
+    // ============================================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyDRreZW3bVZG7h7frWeOy0jqrgqLpTw6cw",
+      authDomain: "finanzasbr2026.firebaseapp.com",
+      projectId: "finanzasbr2026",
+      storageBucket: "finanzasbr2026.firebasestorage.app",
+      messagingSenderId: "718446857856",
+      appId: "1:718446857856:web:9720f19c580a464d616065",
+      measurementId: "G-8XXLCBGP0Z"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    const cloudDocRef = db.collection('finanzas').doc('datos_familia');
+
+    // --- ÍCONOS ---
     const SvgWrapper = ({ size=18, className="", children }) => (
-      <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </svg>
+      <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
     );
 
     const LayoutDashboard = (p) => <SvgWrapper {...p}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></SvgWrapper>;
@@ -91,18 +103,17 @@
     const Minus = (p) => <SvgWrapper {...p}><path d="M5 12h14"/></SvgWrapper>;
     const BarChart = (p) => <SvgWrapper {...p}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></SvgWrapper>;
 
-    // --- Sistema Anticaídas de React ---
+    // --- Sistema Anticaídas ---
     class ErrorBoundary extends React.Component {
       constructor(props) { super(props); this.state = { hasError: false, error: null }; }
       static getDerivedStateFromError(error) { return { hasError: true, error }; }
-      componentDidCatch(error, errorInfo) { console.error("Error en pestaña:", error, errorInfo); }
       render() {
         if (this.state.hasError) {
           return (
-            <div className="p-6 bg-rose-950/30 border border-rose-500 rounded-xl m-4 md:m-8 text-rose-400">
-              <h2 className="font-bold text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error en esta sección</h2>
+            <div className="p-6 bg-rose-950/30 border border-rose-500 rounded-xl m-4 text-rose-400">
+              <h2 className="font-bold text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error visual</h2>
               <p className="text-sm opacity-80">{this.state.error.toString()}</p>
-              <button onClick={() => this.setState({hasError: false})} className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded text-sm font-bold">Intentar cargar de nuevo</button>
+              <button onClick={() => this.setState({hasError: false})} className="mt-4 px-4 py-2 bg-rose-600 text-white rounded text-sm font-bold">Reintentar</button>
             </div>
           );
         }
@@ -114,17 +125,17 @@
     const formatCOP = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
     const getTasaMensual = (tasaEA) => Math.pow(1 + tasaEA / 100, 1 / 12) - 1;
     const deleteItem = (setter, id) => setter(prev => prev.filter(item => item.id !== id));
-    const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
-    // Función para obtener la fecha de hoy real ajustada a la zona horaria local
+    const generateId = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+      return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+    };
+    
     const getLocalToday = () => {
       const d = new Date();
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       return d.toISOString().split('T')[0];
     };
-
-    const safeGetLocal = (key, defaultVal) => { try { const val = localStorage.getItem(key); return val ? JSON.parse(val) : defaultVal; } catch (e) { return defaultVal; } };
-    const safeSetLocal = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} };
 
     const loadSheetJS = async () => {
       if (window.XLSX) return window.XLSX;
@@ -145,7 +156,6 @@
         {label && <label className={`text-xs font-medium ${error ? 'text-rose-400' : 'text-slate-400'}`}>{label}</label>}
         <input type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} max={max} step={step} disabled={disabled} title={title}
           className={`bg-slate-950 border ${error ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-800 focus:ring-indigo-500'} rounded-lg px-3 py-2.5 md:py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 transition-colors disabled:opacity-50`} />
-        {error && <span className="text-[10px] text-rose-400 mt-0.5">{error}</span>}
       </div>
     );
 
@@ -161,7 +171,6 @@
             return <option key={i} value={val}>{lbl}</option>;
           })}
         </select>
-        {error && <span className="text-[10px] text-rose-400 mt-0.5">{error}</span>}
       </div>
     );
 
@@ -188,7 +197,7 @@
               <div><p className="font-bold text-white text-base">{pf.descripcion}</p><p className="text-xs text-slate-400">{pf.categoria}</p></div>
               <div className="text-right">
                 {!editMonto ? (
-                  <p className="font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800 hover:border-amber-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto solo por este mes">
+                  <p className="font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800 hover:border-amber-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto">
                     {formatCOP(montoCustom)} <Edit3 size={12}/>
                   </p>
                 ) : (
@@ -386,10 +395,10 @@
             <Card className="flex flex-col">
               <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2"><BarChart3 size={18} className="text-indigo-400" /> Distribución de Egresos</h2>
-                <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-[10px] sm:text-xs font-medium w-full md:w-auto overflow-hidden">
-                  <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-2 sm:px-4 py-2 rounded truncate ${chartFilter==='Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-                  <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-2 sm:px-4 py-2 rounded truncate ${chartFilter==='Fijo' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
-                  <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-2 sm:px-4 py-2 rounded truncate ${chartFilter==='Variable' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
+                <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-xs font-medium w-full md:w-auto">
+                  <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+                  <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Fijo' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
+                  <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Variable' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
                 </div>
               </div>
               <div className="flex-1 space-y-4 overflow-y-auto max-h-[250px] pr-2">
@@ -416,7 +425,7 @@
     };
 
     const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egresosMes, cuentas, ingresosMesTotal, egresosMesTotal, cuotasMesTotal }) => {
-      const { score } = scoreData;
+      const { score, issues, recs } = scoreData;
 
       const prevMonthDate = new Date(`${selectedMonth}-01T12:00:00`);
       prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
@@ -540,11 +549,12 @@
 
     const CuentasTab = ({ cuentas, setCuentas, transferencias, setTransferencias, egresos, setEgresos, showToast }) => {
       const [cuentaEdit, setCuentaEdit] = useState({ id: null, name: '', type: 'bank', initialBalance: '', initialDebt: '', limit: '', tasaEA: '', cuotaMinima: '' });
-      const [nuevaTx, setNuevaTx] = useState({ fecha: '', fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
+      const [nuevaTx, setNuevaTx] = useState({ fecha: getLocalToday(), fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
       const [errors, setErrors] = useState({});
       const [txErrors, setTxErrors] = useState({});
       const [showForm, setShowForm] = useState(false);
       const formRef = useRef(null);
+      const fileInputRef = useRef(null);
 
       const guardarCuenta = (e) => {
         e.preventDefault();
@@ -600,8 +610,64 @@
         } else {
           showToast("Transferencia registrada exitosamente.");
         }
-        setNuevaTx({ fecha: '', fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
+        setNuevaTx({ fecha: getLocalToday(), fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
         setTxErrors({});
+      };
+
+      const handleExport = async () => {
+        try {
+          const xlsx = await loadSheetJS();
+          const wb = xlsx.utils.book_new();
+          const dataCuentas = cuentas.filter(c => ['bank','cash'].includes(c.type)).map(c => ({ ID: c.id, Nombre: c.name, Tipo: c.type, SaldoBase: c.initialBalance }));
+          const dataTrans = transferencias.map(t => ({ ID: t.id, Fecha: t.fecha, Origen: cuentas.find(c=>c.id===t.fromId)?.name || '', Destino: cuentas.find(c=>c.id===t.toId)?.name || '', Monto: t.monto, CostoAvance: t.costoAvance || 0, Descripcion: t.descripcion }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataCuentas), "Cuentas_Bancos");
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataTrans), "Transferencias");
+          xlsx.writeFile(wb, `Cuentas_y_Transferencias_${new Date().toISOString().split('T')[0]}.xlsx`);
+          showToast("Cuentas y Transferencias exportadas con éxito.");
+        } catch(e) { showToast("Error al exportar a Excel.", "error"); }
+      };
+
+      const handleImport = async (e) => {
+        const file = e.target.files[0]; if(!file) return;
+        try {
+          const xlsx = await loadSheetJS();
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const wb = xlsx.read(evt.target.result, { type: 'binary' });
+              let importados = 0;
+              if (wb.Sheets["Cuentas_Bancos"]) {
+                const data = xlsx.utils.sheet_to_json(wb.Sheets["Cuentas_Bancos"]);
+                data.forEach(i => {
+                   if(i.Nombre) {
+                       setCuentas(prev => {
+                          const exists = prev.find(c => c.name === i.Nombre && ['bank','cash'].includes(c.type));
+                          if(exists) return prev; // Para evitar duplicados por nombre
+                          importados++;
+                          return [...prev, { id: i.ID || generateId(), name: i.Nombre, type: i.Tipo || 'bank', initialBalance: Number(i.SaldoBase)||0, initialDebt:0, limit:0, tasaEA:0, cuotaMinima:0 }];
+                       });
+                   }
+                });
+              }
+              if (wb.Sheets["Transferencias"]) {
+                const data = xlsx.utils.sheet_to_json(wb.Sheets["Transferencias"]);
+                data.forEach(i => {
+                   if(i.Monto) {
+                       setTransferencias(prev => {
+                           const exists = prev.find(t => t.fecha === i.Fecha && t.monto === Number(i.Monto) && t.descripcion === i.Descripcion);
+                           if(exists) return prev;
+                           importados++;
+                           return [...prev, { id: i.ID || generateId(), fecha: i.Fecha || getLocalToday(), fromId: cuentas.find(c=>c.name===i.Origen)?.id || cuentas[0]?.id, toId: cuentas.find(c=>c.name===i.Destino)?.id || cuentas[1]?.id, monto: Number(i.Monto)||0, costoAvance: Number(i.CostoAvance)||0, descripcion: i.Descripcion || '' }];
+                       });
+                   }
+                });
+              }
+              showToast(importados > 0 ? `Se importaron ${importados} registros.` : "No se encontraron registros nuevos.");
+            } catch(err) { showToast("Error procesando el archivo de Excel.", "error"); }
+          };
+          reader.readAsBinaryString(file);
+        } catch(err) { showToast("Error al abrir herramienta de Excel.", "error"); }
+        e.target.value = '';
       };
 
       const tipoOrigen = cuentas.find(c=>c.id===nuevaTx.fromId)?.type;
@@ -626,14 +692,19 @@
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header className="flex justify-between items-end">
+          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Landmark className="text-indigo-400 w-6 h-6 md:w-8 md:h-8"/> Cuentas y Transferencias</h1>
               <p className="text-sm md:text-base text-slate-400 mt-1">Gestiona tu capital en bancos y traslados.</p>
             </div>
-            <button onClick={() => { limpiarFormCuenta(); setShowForm(!showForm); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16}/> {showForm ? 'Ocultar' : 'Agregar Cuenta'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => { limpiarFormCuenta(); setShowForm(!showForm); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                <Plus size={16}/> {showForm ? 'Ocultar' : 'Agregar Cuenta'}
+              </button>
+              <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
+              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+            </div>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -687,9 +758,10 @@
       );
     };
 
-    const IngresosTab = ({ ingresos, setIngresos, ingresosFijos, cuentas, selectedMonth, showToast }) => {
+    const IngresosTab = ({ ingresos, setIngresos, ingresosFijos, cuentas, selectedMonth, showToast, filtroPersona }) => {
       const todayStr = getLocalToday();
-      const [nuevo, setNuevo] = useState({ fecha: todayStr, descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
+      const defaultPersona = filtroPersona === 'Leo' ? 'L' : (filtroPersona === 'Andre' ? 'A' : '');
+      const [nuevo, setNuevo] = useState({ fecha: todayStr, descripcion: '', persona: defaultPersona, tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
       const [editId, setEditId] = useState(null);
       const [errors, setErrors] = useState({});
       const [showForm, setShowForm] = useState(false);
@@ -700,7 +772,7 @@
         try {
           const xlsx = await loadSheetJS();
           const wb = xlsx.utils.book_new();
-          const data = ingresos.map(i => ({ Fecha: i.fecha, Descripcion: i.descripcion, Persona: i.persona, Tipo: i.tipo, Cuenta: cuentas.find(c=>c.id===i.cuentaId)?.name || i.cuentaId, Monto: i.monto }));
+          const data = ingresos.map(i => ({ ID: i.id, Fecha: i.fecha, Descripcion: i.descripcion, Persona: i.persona, Tipo: i.tipo, Cuenta: cuentas.find(c=>c.id===i.cuentaId)?.name || i.cuentaId, Monto: i.monto }));
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(data), "Ingresos");
           xlsx.writeFile(wb, `Ingresos_Historial_${new Date().toISOString().split('T')[0]}.xlsx`);
           showToast("Historial exportado con éxito.");
@@ -717,16 +789,28 @@
               const wb = xlsx.read(evt.target.result, { type: 'binary' });
               const sheetName = wb.Sheets["Ingresos"] ? "Ingresos" : wb.SheetNames[0];
               const importedData = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
-              const mapped = importedData.filter(i=>i.Monto).map(i => {
-                const cuentaEncontrada = cuentas.find(c => c.name === i.Cuenta)?.id || cuentas[0]?.id;
-                return {
-                  id: generateId(), fecha: i.Fecha || new Date().toISOString().split('T')[0],
-                  descripcion: i.Descripcion || 'Ingreso Importado', persona: i.Persona || '',
-                  tipo: i.Tipo || 'Variable', monto: Number(i.Monto) || 0, cuentaId: cuentaEncontrada
-                };
+              let importados = 0;
+              
+              setIngresos(prev => {
+                  let nuevos = [...prev];
+                  importedData.filter(i=>i.Monto).forEach(i => {
+                      const fecha = i.Fecha || new Date().toISOString().split('T')[0];
+                      const desc = i.Descripcion || 'Ingreso Importado';
+                      const monto = Number(i.Monto) || 0;
+                      const exists = nuevos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
+                      
+                      if(!exists) {
+                          const cuentaEncontrada = cuentas.find(c => c.name === i.Cuenta)?.id || cuentas[0]?.id;
+                          nuevos.push({
+                              id: i.ID || generateId(), fecha, descripcion: desc, persona: i.Persona || '',
+                              tipo: i.Tipo || 'Variable', monto, cuentaId: cuentaEncontrada
+                          });
+                          importados++;
+                      }
+                  });
+                  return nuevos;
               });
-              setIngresos(prev => [...prev, ...mapped]);
-              showToast(`${mapped.length} ingresos importados correctamente.`);
+              showToast(importados > 0 ? `Se importaron ${importados} ingresos.` : "No hay ingresos nuevos.");
             } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
           };
           reader.readAsBinaryString(file);
@@ -759,11 +843,12 @@
         }
         let baseMonto = 0; let cuentaName = ''; let persona = ''; let tipo = 'Fijo';
         const currentYear = new Date().getFullYear();
+        const currentMonth = selectedMonth.split('-')[1];
         let dia = '01';
 
         if (val === 'Salario L') {
            baseMonto = 5765251; cuentaName = 'Bancolombia Leo'; persona = 'L'; 
-           const endOfMonth = new Date(currentYear, currentMonthNum, 0).getDate();
+           const endOfMonth = new Date(currentYear, currentMonth, 0).getDate();
            dia = endOfMonth <= 30 ? '27' : '28'; 
         } else if (val === 'Salario A (Q1)') {
            baseMonto = 1200000; cuentaName = 'Banco de Bogotá Andre'; persona = 'A'; dia = '14';
@@ -800,7 +885,7 @@
           setIngresos(prev => [...prev, { ...nuevo, id: generateId(), monto: Number(nuevo.monto) }]); 
           showToast("Ingreso guardado correctamente.");
         }
-        setNuevo({ fecha: todayStr, descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' }); 
+        setNuevo({ fecha: todayStr, descripcion: '', persona: defaultPersona, tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' }); 
         setErrors({});
       };
 
@@ -830,7 +915,7 @@
 
       const cancelarEdicion = () => {
         setEditId(null);
-        setNuevo({ fecha: todayStr, descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
+        setNuevo({ fecha: todayStr, descripcion: '', persona: defaultPersona, tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
         setErrors({});
         setShowForm(false);
       }
@@ -846,14 +931,19 @@
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header className="flex justify-between items-end">
+          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Wallet className="text-emerald-400 w-6 h-6 md:w-8 md:h-8"/> Ingresos</h1>
               <p className="text-sm md:text-base text-slate-400 mt-1">Registra tus ingresos de forma manual o utiliza la lista de fijos esperados.</p>
             </div>
-            <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16}/> {showForm ? 'Ocultar' : 'Nuevo Ingreso'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                <Plus size={16}/> {showForm ? 'Ocultar' : 'Nuevo Ingreso'}
+              </button>
+              <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
+              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+            </div>
           </header>
 
           <div className="grid grid-cols-1 gap-6">
@@ -914,11 +1004,6 @@
           <div className="mt-8 pt-8 border-t border-slate-800">
             <div className="flex justify-between items-end mb-4">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Historial Completo de Ingresos</h3>
-              <div className="flex gap-2">
-                <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-                <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> <span className="hidden sm:inline">Importar</span></button>
-                <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> <span className="hidden sm:inline">Exportar</span></button>
-              </div>
             </div>
             <div className="overflow-x-auto bg-slate-900 rounded-xl border border-slate-800">
               <table className="w-full text-sm text-left min-w-[600px]">
@@ -949,10 +1034,9 @@
         </div>
       );
     };
-
     const EgresosTab = ({ egresos, setEgresos, pagosFijos, setPagosFijos, cuentas, selectedMonth, categoriasMaestras, showToast, comprasCuotas, setComprasCuotas }) => {
       const todayStr = getLocalToday();
-      const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '' });
+      const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
       const [errorsVar, setErrorsVar] = useState({});
       const varRef = useRef(null);
       const fileInputRef = useRef(null);
@@ -994,6 +1078,7 @@
         if(!gastoForm.cuentaId) errs.cuentaId = "Obligatorio";
         if(gastoForm.editSource !== 'cuotas' && !gastoForm.fecha) errs.fecha = "Obligatorio";
         if(isCreditCard && !gastoForm.cuotas) errs.cuotas = "Obligatorio";
+        if(gastoForm.esPagoDeuda && !gastoForm.deudaDestinoId) errs.deudaDestinoId = "Obligatorio";
         
         if(Object.keys(errs).length > 0) { setErrorsVar(errs); return; }
 
@@ -1014,7 +1099,8 @@
                 descripcion: gastoForm.descripcion,
                 categoria: gastoForm.categoria,
                 monto: Number(gastoForm.monto),
-                cuentaId: gastoForm.cuentaId
+                cuentaId: gastoForm.cuentaId,
+                deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : (eg.deudaId || null)
             } : eg));
             showToast("Gasto actualizado.");
         } else {
@@ -1027,7 +1113,8 @@
                 categoria: gastoForm.categoria, 
                 monto: Number(gastoForm.monto), 
                 cuentaId: gastoForm.cuentaId, 
-                tipo: 'Variable' 
+                tipo: 'Variable',
+                deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : null
             };
             setEgresos(prev => [...prev, nuevoEgreso]);
 
@@ -1053,20 +1140,24 @@
       const cargarParaEditarVariable = (egreso) => {
         const cuenta = cuentas.find(c => c.id === egreso.cuentaId);
         const metodo = cuenta ? (cuenta.type === 'credit' ? 'credit' : cuenta.type === 'cash' ? 'cash' : 'bank') : '';
-        setGastoForm({ id: egreso.id, editSource: 'historial', fecha: egreso.fecha, descripcion: egreso.descripcion, categoria: egreso.categoria, metodoPago: metodo, cuentaId: egreso.cuentaId, monto: egreso.monto.toString(), cuotas: '', tasaEA: '' });
+        setGastoForm({ 
+            id: egreso.id, editSource: 'historial', fecha: egreso.fecha, descripcion: egreso.descripcion, 
+            categoria: egreso.categoria, metodoPago: metodo, cuentaId: egreso.cuentaId, monto: egreso.monto.toString(), 
+            cuotas: '', tasaEA: '', esPagoDeuda: !!egreso.deudaId, deudaDestinoId: egreso.deudaId || '' 
+        });
         setErrorsVar({});
         varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       const cargarParaEditarCuota = (c) => {
         const card = cuentas.find(acc => acc.id === c.tarjetaId);
-        setGastoForm({ id: c.id, editSource: 'cuotas', fecha: todayStr, descripcion: c.descripcion, categoria: categoriasMaestras[0] || 'Otros', metodoPago: 'credit', cuentaId: c.tarjetaId, monto: c.montoTotal.toString(), cuotas: c.cuotasTotales.toString(), tasaEA: card ? card.tasaEA : 0 });
+        setGastoForm({ id: c.id, editSource: 'cuotas', fecha: todayStr, descripcion: c.descripcion, categoria: categoriasMaestras[0] || 'Otros', metodoPago: 'credit', cuentaId: c.tarjetaId, monto: c.montoTotal.toString(), cuotas: c.cuotasTotales.toString(), tasaEA: card ? card.tasaEA : 0, esPagoDeuda: false, deudaDestinoId: '' });
         setErrorsVar({});
         varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
 
       const cancelarEdicion = () => {
-        setGastoForm({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '' });
+        setGastoForm({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
         setErrorsVar({});
       }
 
@@ -1078,23 +1169,40 @@
         const diaStr = isCurrentMonth ? fechaActual.getDate().toString().padStart(2, '0') : '01';
         const fechaPago = `${selectedMonth}-${diaStr}`; 
         
+        let deudaIdDetectada = null;
+        const posiblesDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
+        for (const pd of posiblesDeudas) {
+            if (pf.descripcion.toLowerCase().includes(pd.name.toLowerCase()) || pf.categoria.toLowerCase().includes(pd.name.toLowerCase())) {
+                deudaIdDetectada = pd.id; break;
+            }
+        }
+
         const nuevoEgreso = { 
           id: generateId(), fecha: fechaPago, descripcion: pf.descripcion, 
           categoria: pf.categoria, monto: Number(montoFinal) || pf.monto, 
           cuentaId: cuentaId, pagoFijoId: pf.id, tipo: 'Fijo',
-          deudaId: (pf.categoria.toLowerCase().includes('tarjeta') || pf.categoria.toLowerCase().includes('crédito') || pf.categoria.toLowerCase().includes('vehículo') || pf.categoria.toLowerCase().includes('davibank')) 
-                    ? (cuentas.find(c => ['credit', 'loan'].includes(c.type) && c.name.toLowerCase() === pf.descripcion.toLowerCase())?.id || null) 
-                    : null
+          deudaId: deudaIdDetectada
         };
         setEgresos(prev => [...prev, nuevoEgreso]);
         showToast(`Pago de ${pf.descripcion} registrado.`);
       };
 
-      const avanzarCuota = (id) => {
-        setComprasCuotas(prev => prev.map(c => {
-          if(c.id === id && c.cuotasPagadas < c.cuotasTotales) return {...c, cuotasPagadas: c.cuotasPagadas + 1};
-          return c;
+      const avanzarCuota = (c) => {
+        setComprasCuotas(prev => prev.map(item => {
+          if(item.id === c.id && item.cuotasPagadas < item.cuotasTotales) return {...item, cuotasPagadas: item.cuotasPagadas + 1};
+          return item;
         }));
+        setEgresos(prev => [...prev, {
+            id: generateId(),
+            fecha: getLocalToday(),
+            descripcion: `Cuota ${c.cuotasPagadas + 1}/${c.cuotasTotales}: ${c.descripcion}`,
+            categoria: 'Tarjeta de crédito',
+            monto: c.valorMensual,
+            cuentaId: c.tarjetaId,
+            tipo: 'Variable',
+            deudaId: c.tarjetaId
+        }]);
+        showToast("Cuota sumada y gasto registrado en el historial.");
       };
 
       const egresosMes = egresos.filter(d => d.fecha.startsWith(selectedMonth));
@@ -1114,14 +1222,15 @@
         return [];
       }, [cuentas, gastoForm.metodoPago]);
 
+      // --- IMPORTAR / EXPORTAR INDIVIDUAL DE EGRESOS ---
       const handleExport = async () => {
         try {
           const xlsx = await loadSheetJS();
           const wb = xlsx.utils.book_new();
-          const data = egresos.map(e => ({ Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: cuentas.find(c=>c.id===e.cuentaId)?.name || e.cuentaId, Monto: e.monto }));
+          const data = egresos.map(e => ({ ID: e.id, Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: cuentas.find(c=>c.id===e.cuentaId)?.name || e.cuentaId, Monto: e.monto, DeudaPagada: e.deudaId ? cuentas.find(c=>c.id===e.deudaId)?.name : '' }));
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(data), "Egresos");
           xlsx.writeFile(wb, `Egresos_Historial_${new Date().toISOString().split('T')[0]}.xlsx`);
-          showToast("Historial exportado con éxito.");
+          showToast("Historial de Egresos exportado con éxito.");
         } catch(e) { showToast("Error al exportar a Excel.", "error"); }
       };
 
@@ -1134,29 +1243,31 @@
             try {
               const wb = xlsx.read(evt.target.result, { type: 'binary' });
               const sheetName = wb.Sheets["Egresos"] ? "Egresos" : wb.SheetNames[0];
-              const importEgresos = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
-              
-              let newEgresos = [...egresos];
+              const importedData = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
               let importados = 0;
 
-              importEgresos.filter(i=>i.Monto).forEach(i => {
-                const fecha = i.Fecha || new Date().toISOString().split('T')[0];
-                const desc = i.Descripcion || 'Egreso Importado';
-                const monto = Number(i.Monto) || 0;
-                
-                const exists = newEgresos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
-                
-                if (!exists) {
-                  const cuentaEncontrada = cuentas.find(c => c.name === i.Cuenta)?.id || cuentas[0]?.id;
-                  newEgresos.push({
-                    id: generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros',
-                    tipo: i.Tipo || 'Variable', monto, cuentaId: cuentaEncontrada
+              setEgresos(prev => {
+                  let nuevos = [...prev];
+                  importedData.filter(i=>i.Monto).forEach(i => {
+                      const fecha = i.Fecha || new Date().toISOString().split('T')[0];
+                      const desc = i.Descripcion || 'Egreso Importado';
+                      const monto = Number(i.Monto) || 0;
+                      // Anti duplicados
+                      const exists = nuevos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
+                      
+                      if(!exists) {
+                          const cuentaEncontrada = cuentas.find(c => c.name === i.Cuenta)?.id || cuentas[0]?.id;
+                          const deudaEncontrada = cuentas.find(c => c.name === i.DeudaPagada)?.id || null;
+                          nuevos.push({
+                              id: i.ID || generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros',
+                              tipo: i.Tipo || 'Variable', monto, cuentaId: cuentaEncontrada, deudaId: deudaEncontrada
+                          });
+                          importados++;
+                      }
                   });
-                  importados++;
-                }
+                  return nuevos;
               });
-              setEgresos(newEgresos);
-              showToast(importados > 0 ? `Se importaron ${importados} egresos. Se ignoraron duplicados.` : "No se encontraron registros nuevos.");
+              showToast(importados > 0 ? `Se importaron ${importados} egresos nuevos.` : "No hay egresos nuevos.");
             } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
           };
           reader.readAsBinaryString(file);
@@ -1166,10 +1277,15 @@
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header className="flex justify-between items-end">
+          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Receipt className="text-rose-500 w-6 h-6 md:w-8 md:h-8" /> Egresos</h1>
               <p className="text-sm md:text-base text-slate-400 mt-1">Tus gastos fijos y variables unificados.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> Importar Egresos</button>
+              <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> Exportar Egresos</button>
             </div>
           </header>
 
@@ -1199,6 +1315,18 @@
               <Select label={gastoForm.metodoPago === 'credit' ? 'Tarjeta' : 'Cuenta / Bolsillo'} options={cuentasFiltradas.map(c=>({value:c.id, label:c.name}))} value={gastoForm.cuentaId} onChange={handleCuentaChange} error={errorsVar.cuentaId} disabled={!gastoForm.metodoPago} className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
               
               <Input type="number" label="Monto ($)" value={gastoForm.monto} onChange={e=>setGastoForm({...gastoForm, monto: e.target.value})} error={errorsVar.monto} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-2' : 'md:col-span-1'}`} />
+
+              {!isCreditCard && gastoForm.editSource !== 'cuotas' && (
+                 <div className="col-span-2 md:col-span-12 flex items-center gap-4 bg-slate-950 p-3 rounded-lg border border-slate-800">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-300">
+                      <input type="checkbox" checked={gastoForm.esPagoDeuda} onChange={(e) => setGastoForm({...gastoForm, esPagoDeuda: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
+                      ¿Este gasto es el pago de un préstamo/tarjeta?
+                    </label>
+                    {gastoForm.esPagoDeuda && (
+                        <Select label="¿Qué deuda estás pagando?" options={cuentas.filter(c=>['credit','loan'].includes(c.type)).map(c=>({value:c.id, label:c.name}))} value={gastoForm.deudaDestinoId} onChange={e=>setGastoForm({...gastoForm, deudaDestinoId: e.target.value})} error={errorsVar.deudaDestinoId} className="flex-1" />
+                    )}
+                 </div>
+              )}
 
               {isCreditCard && (
                 <div className="col-span-2 md:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3 mt-2 p-3 bg-indigo-950/20 border border-indigo-500/20 rounded-lg">
@@ -1255,7 +1383,7 @@
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-bold text-slate-300">{formatCOP(c.valorMensual)}/mes</span>
-                      <button onClick={() => avanzarCuota(c.id)} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button>
+                      <button onClick={() => avanzarCuota(c)} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button>
                     </div>
                   </div>
                 )
@@ -1290,12 +1418,7 @@
           {/* SECCIÓN 4: TABLA DE HISTORIAL */}
           <div className="mt-8 pt-8 border-t border-slate-800">
             <div className="flex justify-between items-end mb-4">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Historial Completo de Egresos (Fijos y Variables)</h3>
-              <div className="flex gap-2">
-                <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-                <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> <span className="hidden sm:inline">Importar</span></button>
-                <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> <span className="hidden sm:inline">Exportar</span></button>
-              </div>
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Historial Completo de Egresos</h3>
             </div>
             <div className="overflow-x-auto bg-slate-900 rounded-xl border border-slate-800">
               <table className="w-full text-sm text-left min-w-[600px]">
@@ -1336,6 +1459,7 @@
       const [editData, setEditData] = useState({});
       const [gananciaId, setGananciaId] = useState(null);
       const [gananciaMonto, setGananciaMonto] = useState('');
+      const fileInputRef = useRef(null);
       
       const [nuevo, setNuevo] = useState({ name: '', initialBalance: '', tasaEA: '' });
 
@@ -1390,6 +1514,56 @@
         setGananciaMonto('');
       };
 
+      // --- IMPORTAR / EXPORTAR INDIVIDUAL DE INVERSIONES ---
+      const handleExport = async () => {
+        try {
+          const xlsx = await loadSheetJS();
+          const wb = xlsx.utils.book_new();
+          const invCts = cuentas.filter(c => c.type === 'pocket' || (!['credit', 'loan'].includes(c.type) && c.tasaEA > 0));
+          const data = invCts.map(c => ({ ID: c.id, Nombre: c.name, SaldoBase: c.initialBalance, TasaEA: c.tasaEA }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(data), "Inversiones");
+          xlsx.writeFile(wb, `Inversiones_${new Date().toISOString().split('T')[0]}.xlsx`);
+          showToast("Inversiones exportadas con éxito.");
+        } catch(e) { showToast("Error al exportar a Excel.", "error"); }
+      };
+
+      const handleImport = async (e) => {
+        const file = e.target.files[0]; if(!file) return;
+        try {
+          const xlsx = await loadSheetJS();
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const wb = xlsx.read(evt.target.result, { type: 'binary' });
+              const sheetName = wb.Sheets["Inversiones"] ? "Inversiones" : wb.SheetNames[0];
+              const importedData = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
+              let importados = 0;
+
+              setCuentas(prev => {
+                  let nuevos = [...prev];
+                  importedData.forEach(i => {
+                      if(i.Nombre) {
+                          const exists = nuevos.some(c => c.name === i.Nombre && c.type === 'pocket');
+                          if(!exists) {
+                              nuevos.push({
+                                  id: i.ID || generateId(), name: i.Nombre, type: 'pocket',
+                                  initialBalance: Number(i.SaldoBase) || 0, currentDebt: 0, limit: 0,
+                                  tasaEA: Number(i.TasaEA) || 0, cuotaMinima: 0
+                              });
+                              importados++;
+                          }
+                      }
+                  });
+                  return nuevos;
+              });
+              showToast(importados > 0 ? `Se importaron ${importados} inversiones.` : "No hay inversiones nuevas.");
+            } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
+          };
+          reader.readAsBinaryString(file);
+        } catch(err) { showToast("Error al abrir herramienta de Excel.", "error"); }
+        e.target.value = '';
+      };
+
       const invCuentas = cuentas.filter(c => !['credit', 'loan'].includes(c.type) && (c.type === 'pocket' || c.tasaEA > 0));
 
       const tablaData = invCuentas.map(c => {
@@ -1422,14 +1596,19 @@
 
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header className="flex justify-between items-end">
+          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><PiggyBank className="text-emerald-400 w-6 h-6 md:w-8 md:h-8"/> Inversión y ahorro</h1>
               <p className="text-sm md:text-base text-slate-400 mt-1">Sigue el crecimiento de tus cuentas de ahorro e inversiones.</p>
             </div>
-            <button onClick={() => { setShowForm(!showForm); setEditId(null); setGananciaId(null); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16}/> {showForm ? 'Ocultar' : 'Agregar'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => { setShowForm(!showForm); setEditId(null); setGananciaId(null); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                <Plus size={16}/> {showForm ? 'Ocultar' : 'Agregar'}
+              </button>
+              <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
+              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+            </div>
           </header>
 
           {showForm && (
@@ -1540,15 +1719,16 @@
       const formRef = useRef(null);
       const fileInputRef = useRef(null);
 
+      // --- IMPORTAR / EXPORTAR INDIVIDUAL DE PRESUPUESTOS ---
       const handleExport = async () => {
         try {
           const xlsx = await loadSheetJS();
           const wb = xlsx.utils.book_new();
-          const dataFijos = pagosFijos.map(f => ({ Descripcion: f.descripcion, Categoria: f.categoria, Monto: f.monto, DiaPago: f.diaPago }));
-          const dataVar = presupuestos.map(p => ({ Categoria: p.categoria, Limite: p.limite }));
-          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataFijos), "Fijos");
-          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataVar), "Variables");
-          xlsx.writeFile(wb, `Presupuestos_${new Date().toISOString().split('T')[0]}.xlsx`);
+          const dataFijos = pagosFijos.map(f => ({ ID: f.id, Descripcion: f.descripcion, Categoria: f.categoria, Monto: f.monto, DiaPago: f.diaPago }));
+          const dataVar = presupuestos.map(p => ({ ID: p.id, Categoria: p.categoria, Limite: p.limite }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataFijos), "Pagos_Fijos");
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataVar), "Presupuestos_Variables");
+          xlsx.writeFile(wb, `Presupuestos_y_Fijos_${new Date().toISOString().split('T')[0]}.xlsx`);
           showToast("Presupuestos exportados con éxito.");
         } catch(e) { showToast("Error al exportar a Excel.", "error"); }
       };
@@ -1561,45 +1741,43 @@
           reader.onload = (evt) => {
             try {
               const wb = xlsx.read(evt.target.result, { type: 'binary' });
-              if (wb.Sheets["Fijos"]) {
-                const dataFijos = xlsx.utils.sheet_to_json(wb.Sheets["Fijos"]);
-                
-                let importados = 0;
-                const newFijos = [...pagosFijos];
-                dataFijos.filter(i=>i.Monto).forEach(i => {
-                  const desc = i.Descripcion || 'Fijo Importado';
-                  const monto = Number(i.Monto) || 0;
-                  const exists = newFijos.some(existing => existing.descripcion === desc && existing.monto === monto);
-                  
-                  if (!exists) {
-                    newFijos.push({
-                      id: generateId(), descripcion: desc, categoria: i.Categoria || 'Otros', monto, diaPago: Number(i.DiaPago) || 1
+              let importadosFijos = 0;
+              let importadosVar = 0;
+
+              if (wb.Sheets["Pagos_Fijos"]) {
+                const dataFijos = xlsx.utils.sheet_to_json(wb.Sheets["Pagos_Fijos"]);
+                setPagosFijos(prev => {
+                    let nuevos = [...prev];
+                    dataFijos.filter(i=>i.Monto).forEach(i => {
+                        const exists = nuevos.some(pf => pf.descripcion === i.Descripcion && pf.categoria === i.Categoria && pf.monto === Number(i.Monto));
+                        if(!exists) {
+                            nuevos.push({
+                                id: i.ID || generateId(), descripcion: i.Descripcion || 'Fijo Importado', 
+                                categoria: i.Categoria || 'Otros', monto: Number(i.Monto) || 0, diaPago: Number(i.DiaPago) || 1
+                            });
+                            importadosFijos++;
+                        }
                     });
-                    importados++;
-                  }
+                    return nuevos;
                 });
-                setPagosFijos(newFijos);
               }
-              if (wb.Sheets["Variables"]) {
-                const dataVar = xlsx.utils.sheet_to_json(wb.Sheets["Variables"]);
-                
-                let importadosVar = 0;
-                const newVars = [...presupuestos];
-                dataVar.filter(i=>i.Limite).forEach(i => {
-                  const cat = i.Categoria || 'Otros';
-                  const limite = Number(i.Limite) || 0;
-                  const exists = newVars.some(existing => existing.categoria === cat && existing.limite === limite);
-                  
-                  if (!exists) {
-                    newVars.push({
-                      id: generateId(), categoria: cat, limite
+              if (wb.Sheets["Presupuestos_Variables"]) {
+                const dataVar = xlsx.utils.sheet_to_json(wb.Sheets["Presupuestos_Variables"]);
+                setPresupuestos(prev => {
+                    let nuevos = [...prev];
+                    dataVar.filter(i=>i.Limite).forEach(i => {
+                        const exists = nuevos.some(p => p.categoria === i.Categoria);
+                        if(!exists) {
+                            nuevos.push({
+                                id: i.ID || generateId(), categoria: i.Categoria || 'Otros', limite: Number(i.Limite) || 0
+                            });
+                            importadosVar++;
+                        }
                     });
-                    importadosVar++;
-                  }
+                    return nuevos;
                 });
-                setPresupuestos(newVars);
               }
-              showToast("Presupuestos importados correctamente.");
+              showToast(`Se importaron ${importadosFijos} fijos y ${importadosVar} variables.`);
             } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
           };
           reader.readAsBinaryString(file);
@@ -1703,8 +1881,8 @@
                 <Plus size={16}/> {showForm ? 'Ocultar' : 'Añadir presupuesto'}
               </button>
               <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 sm:px-3 py-2 rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> <span className="hidden sm:inline">Importar</span></button>
-              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-2 sm:px-3 py-2 rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> <span className="hidden sm:inline">Exportar</span></button>
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
+              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
             </div>
           </header>
 
@@ -1730,7 +1908,7 @@
                   <button 
                     onClick={() => { if(!editId) setTipoForm('variable') }} 
                     type="button"
-                    className={`text-xs sm:text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
+                    className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
                   >
                     {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
                   </button>
@@ -1738,7 +1916,7 @@
                   <button 
                     onClick={() => { if(!editId) setTipoForm('fijo') }} 
                     type="button"
-                    className={`text-xs sm:text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+                    className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
                   >
                     {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
                   </button>
@@ -1830,6 +2008,7 @@
       
       const [editId, setEditId] = useState(null);
       const [editData, setEditData] = useState({});
+      const fileInputRef = useRef(null);
 
       const deudasAnalizadas = cuentas
         .filter(c => ['credit', 'loan'].includes(c.type))
@@ -1944,21 +2123,80 @@
         setCuentas(prev => prev.map(c => c.id === id ? {...c, ibrValue: val, tasaEA: nuevaEA} : c));
       };
 
+      // --- IMPORTAR / EXPORTAR INDIVIDUAL DE DEUDAS ---
+      const handleExport = async () => {
+        try {
+          const xlsx = await loadSheetJS();
+          const wb = xlsx.utils.book_new();
+          const data = deudasAnalizadas.map(c => ({
+              ID: c.id, Nombre: c.name, Tipo: c.type, DeudaInicial: c.initialDebt, Limite: c.limit, 
+              MontoPrestado: c.montoPrestado || '', TasaEA: c.tasaEA, CuotaMinima: c.cuotaMinima, 
+              CuotasTotales: c.cuotasTotales || '', CuotasPagadas: c.cuotasPagadas || ''
+          }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(data), "Deudas");
+          xlsx.writeFile(wb, `Deudas_y_Prestamos_${new Date().toISOString().split('T')[0]}.xlsx`);
+          showToast("Deudas exportadas con éxito.");
+        } catch(e) { showToast("Error al exportar a Excel.", "error"); }
+      };
+
+      const handleImport = async (e) => {
+        const file = e.target.files[0]; if(!file) return;
+        try {
+          const xlsx = await loadSheetJS();
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const wb = xlsx.read(evt.target.result, { type: 'binary' });
+              const sheetName = wb.Sheets["Deudas"] ? "Deudas" : wb.SheetNames[0];
+              const importedData = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
+              let importados = 0;
+
+              setCuentas(prev => {
+                  let nuevos = [...prev];
+                  importedData.forEach(i => {
+                      if(i.Nombre && (i.Tipo === 'credit' || i.Tipo === 'loan')) {
+                          const exists = nuevos.some(c => c.name === i.Nombre && c.type === i.Tipo);
+                          if(!exists) {
+                              nuevos.push({
+                                  id: i.ID || generateId(), name: i.Nombre, type: i.Tipo,
+                                  initialBalance: 0, currentDebt: Number(i.DeudaInicial) || 0, initialDebt: Number(i.DeudaInicial) || 0,
+                                  limit: Number(i.Limite) || 0, montoPrestado: Number(i.MontoPrestado) || 0,
+                                  tasaEA: Number(i.TasaEA) || 0, cuotaMinima: Number(i.CuotaMinima) || 0,
+                                  cuotasTotales: Number(i.CuotasTotales) || 0, cuotasPagadas: Number(i.CuotasPagadas) || 0
+                              });
+                              importados++;
+                          }
+                      }
+                  });
+                  return nuevos;
+              });
+              showToast(importados > 0 ? `Se importaron ${importados} deudas.` : "No hay deudas nuevas.");
+            } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
+          };
+          reader.readAsBinaryString(file);
+        } catch(err) { showToast("Error al abrir herramienta de Excel.", "error"); }
+        e.target.value = '';
+      };
+
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><ShieldAlert className="text-rose-500 w-6 h-6 md:w-8 md:h-8"/> Tarjetas y Créditos</h1>
-            <p className="text-sm md:text-base text-slate-400 mt-1">Estrategia Avalancha y detalle de tus deudas y préstamos.</p>
+          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><ShieldAlert className="text-rose-500 w-6 h-6 md:w-8 md:h-8"/> Tarjetas y Créditos</h1>
+              <p className="text-sm md:text-base text-slate-400 mt-1">Estrategia Avalancha y detalle de tus deudas y préstamos.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => {setShowNewCard(!showNewCard); setShowNewLoan(false);}} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                <Plus size={16}/> {showNewCard ? 'Ocultar' : 'Tarjeta'}
+              </button>
+              <button onClick={() => {setShowNewLoan(!showNewLoan); setShowNewCard(false);}} className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                <Plus size={16}/> {showNewLoan ? 'Ocultar' : 'Préstamo'}
+              </button>
+              <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> Importar</button>
+              <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> Exportar</button>
+            </div>
           </header>
-
-          <div className="flex gap-2">
-            <button onClick={() => {setShowNewCard(!showNewCard); setShowNewLoan(false);}} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16}/> {showNewCard ? 'Ocultar' : 'Agregar Tarjeta'}
-            </button>
-            <button onClick={() => {setShowNewLoan(!showNewLoan); setShowNewCard(false);}} className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16}/> {showNewLoan ? 'Ocultar' : 'Agregar Préstamo'}
-            </button>
-          </div>
 
           {showNewCard && (
             <div className="bg-slate-950 border border-indigo-500/50 p-4 rounded-xl mb-4 animate-in slide-in-from-top-2">
@@ -2298,11 +2536,8 @@
         </div>
       );
     };
-
     const SimuladorTab = ({ cuentas, addPagoFijo, showToast }) => {
       const [activeSim, setActiveSim] = useState('acelerado'); 
-
-      // --- Simulador 1: Pago Acelerado Deudas ---
       const [s1, setS1] = useState({ deudaId: '', extra: 200000 });
       const dSeleccionada = cuentas.find(c => c.id === s1.deudaId);
       const s1Saldo = dSeleccionada ? dSeleccionada.currentDebt : 0;
@@ -2342,8 +2577,6 @@
         showToast(`Simulación guardada! Abono de ${formatCOP(s1Cuota + s1.extra)} en Pagos Fijos.`);
       };
 
-
-      // --- Simulador 2: Plan de Ahorro ---
       const [s2, setS2] = useState({ nombre: '', objetivo: 5000000, ahorrado: 0, meses: 12, tasaEA: 5 });
       
       const calcSim2 = () => {
@@ -2374,8 +2607,6 @@
         showToast(`Plan activado. Cuota de ${formatCOP(resS2.aporteMensual)} en Pagos Fijos.`);
       };
 
-
-      // --- Simulador 3: Interés Compuesto / Inversiones ---
       const [s3, setS3] = useState({ invId: 'otra', capital: 0, tasa: 10, anos: 5, aporte: 200000 });
       
       const handleInvChange = (e) => {
@@ -2389,9 +2620,16 @@
       }
 
       const calcSim3 = () => {
-        const tm = getTasaMensual(s3.tasa); const meses = s3.anos * 12; let vf = s3.capital * Math.pow(1 + tm, meses);
-        if (s3.aporte > 0) vf += s3.aporte * ((Math.pow(1 + tm, meses) - 1) / tm);
-        const capitalInvertido = s3.capital + (s3.aporte * meses); return { vf, capitalInvertido, rendimientos: vf - capitalInvertido };
+        const tm = getTasaMensual(s3.tasa); 
+        const meses = s3.anos * 12; 
+        let vf = s3.capital * Math.pow(1 + tm, meses);
+        if (tm === 0) {
+           vf = s3.capital + (s3.aporte * meses);
+        } else if (s3.aporte > 0) {
+           vf += s3.aporte * ((Math.pow(1 + tm, meses) - 1) / tm);
+        }
+        const capitalInvertido = s3.capital + (s3.aporte * meses); 
+        return { vf, capitalInvertido, rendimientos: vf - capitalInvertido };
       };
       const resS3 = calcSim3();
 
@@ -2409,10 +2647,10 @@
             <p className="text-sm md:text-base text-slate-400 mt-1">Conecta con tus datos reales y "Asume el gasto" para integrarlo a tus pagos mensuales.</p>
           </header>
 
-          <div className="flex flex-wrap sm:flex-nowrap bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] sm:text-sm font-medium gap-1 sm:gap-0">
-            <button onClick={()=>setActiveSim('acelerado')} className={`flex-1 py-2 sm:py-2.5 px-2 rounded-lg transition-colors whitespace-nowrap ${activeSim === 'acelerado' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Pago Acelerado</button>
-            <button onClick={()=>setActiveSim('ahorro')} className={`flex-1 py-2 sm:py-2.5 px-2 rounded-lg transition-colors whitespace-nowrap ${activeSim === 'ahorro' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Plan de Ahorro</button>
-            <button onClick={()=>setActiveSim('inversion')} className={`flex-1 py-2 sm:py-2.5 px-2 rounded-lg transition-colors whitespace-nowrap ${activeSim === 'inversion' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Int. Compuesto</button>
+          <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium">
+            <button onClick={()=>setActiveSim('acelerado')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'acelerado' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Pago Acelerado</button>
+            <button onClick={()=>setActiveSim('ahorro')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'ahorro' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Plan de Ahorro</button>
+            <button onClick={()=>setActiveSim('inversion')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'inversion' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Int. Compuesto</button>
           </div>
 
           {activeSim === 'acelerado' && (
@@ -2523,39 +2761,60 @@
       );
     };
 
-    // --- Ajustes: Export/Import Excel y JSON ---
     const SettingsTab = ({ stateData, setAllState, selectedMonth, showToast }) => {
       const fileInputRef = useRef(null);
-      const fileExcelInputRef = useRef(null);
+      const fileExcelMasterRef = useRef(null);
 
-      // Backup JSON
       const handleExportJSON = () => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stateData)); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", `respaldo_finanzas_${new Date().toISOString().split('T')[0]}.json`); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); };
       const handleImportJSON = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const parsed = JSON.parse(event.target.result); setAllState(parsed); showToast("¡Respaldo JSON restaurado con éxito!"); } catch (err) { showToast("Error al leer JSON.", "error"); } }; reader.readAsText(file); e.target.value = ''; };
 
-      // Exportar Excel Completo
-      const handleExportExcel = async (onlyCurrentMonth = false) => {
+      // --- EXPORTADOR MAESTRO DE TODA LA BASE DE DATOS ---
+      const handleExportExcelMaster = async () => {
         try {
           const xlsx = await loadSheetJS();
           const wb = xlsx.utils.book_new();
 
-          const isCurrentMonth = (fecha) => fecha && fecha.startsWith(selectedMonth);
-          const filterData = (data) => onlyCurrentMonth ? data.filter(i => isCurrentMonth(i.fecha)) : data;
-
-          const ingresosData = filterData(stateData.ingresos).map(i => ({ Fecha: i.fecha, Descripcion: i.descripcion, Persona: i.persona, Tipo: i.tipo, Cuenta: stateData.cuentas.find(c=>c.id===i.cuentaId)?.name, Monto: i.monto }));
-          const egresosData = filterData(stateData.egresos).map(e => ({ Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: stateData.cuentas.find(c=>c.id===e.cuentaId)?.name, Monto: e.monto }));
-          const deudasData = stateData.cuentas.filter(c=>['credit','loan'].includes(c.type)).map(c => ({ Nombre: c.name, DeudaActual: c.currentDebt, TasaEA: c.tasaEA, CuotaMinima: c.cuotaMinima }));
-
+          // 1. Ingresos
+          const ingresosData = stateData.ingresos.map(i => ({ ID: i.id, Fecha: i.fecha, Descripcion: i.descripcion, Persona: i.persona, Tipo: i.tipo, Cuenta: stateData.cuentas.find(c=>c.id===i.cuentaId)?.name || i.cuentaId, Monto: i.monto }));
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(ingresosData), "Ingresos");
+          
+          // 2. Egresos
+          const egresosData = stateData.egresos.map(e => ({ ID: e.id, Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: stateData.cuentas.find(c=>c.id===e.cuentaId)?.name || e.cuentaId, Monto: e.monto, DeudaPagada: e.deudaId ? stateData.cuentas.find(c=>c.id===e.deudaId)?.name : '' }));
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(egresosData), "Egresos");
+          
+          // 3. Cuentas y Bancos (Efectivo/Cuentas)
+          const cuentasData = stateData.cuentas.filter(c => ['bank','cash'].includes(c.type)).map(c => ({ ID: c.id, Nombre: c.name, Tipo: c.type, SaldoBase: c.initialBalance }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(cuentasData), "Cuentas_Bancos");
+
+          // 4. Transferencias
+          const transData = stateData.transferencias.map(t => ({ ID: t.id, Fecha: t.fecha, Origen: stateData.cuentas.find(c=>c.id===t.fromId)?.name || '', Destino: stateData.cuentas.find(c=>c.id===t.toId)?.name || '', Monto: t.monto, CostoAvance: t.costoAvance || 0, Descripcion: t.descripcion }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(transData), "Transferencias");
+
+          // 5. Deudas
+          const deudasAnalizadas = stateData.cuentas.filter(c => ['credit', 'loan'].includes(c.type));
+          const deudasData = deudasAnalizadas.map(c => ({ ID: c.id, Nombre: c.name, Tipo: c.type, DeudaInicial: c.initialDebt, Limite: c.limit, MontoPrestado: c.montoPrestado || '', TasaEA: c.tasaEA, CuotaMinima: c.cuotaMinima, CuotasTotales: c.cuotasTotales || '', CuotasPagadas: c.cuotasPagadas || '' }));
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(deudasData), "Deudas");
 
-          const fileName = onlyCurrentMonth ? `FinanzasFamilia_${selectedMonth}.xlsx` : `FinanzasFamilia_Total_${new Date().toISOString().split('T')[0]}.xlsx`;
-          xlsx.writeFile(wb, fileName);
-        } catch (e) { showToast("Hubo un error al generar Excel.", "error"); }
+          // 6. Inversiones
+          const invCts = stateData.cuentas.filter(c => c.type === 'pocket' || (!['credit', 'loan'].includes(c.type) && c.tasaEA > 0));
+          const invData = invCts.map(c => ({ ID: c.id, Nombre: c.name, SaldoBase: c.initialBalance, TasaEA: c.tasaEA }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(invData), "Inversiones");
+
+          // 7. Pagos Fijos
+          const pagosFijosData = stateData.pagosFijos.map(f => ({ ID: f.id, Descripcion: f.descripcion, Categoria: f.categoria, Monto: f.monto, DiaPago: f.diaPago }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(pagosFijosData), "Pagos_Fijos");
+
+          // 8. Presupuestos Variables
+          const presData = stateData.presupuestos.map(p => ({ ID: p.id, Categoria: p.categoria, Limite: p.limite }));
+          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(presData), "Presupuestos_Variables");
+
+          xlsx.writeFile(wb, `FinanzasFamilia_MasterDB_${new Date().toISOString().split('T')[0]}.xlsx`);
+          showToast("Base de datos exportada con éxito.");
+        } catch (e) { showToast("Hubo un error al generar Excel Maestro.", "error"); }
       };
 
-      // Importar Excel Básico
-      const handleImportExcel = async (e) => {
+      // --- IMPORTADOR MAESTRO DE TODA LA BASE DE DATOS ---
+      const handleImportExcelMaster = async (e) => {
         const file = e.target.files[0]; if (!file) return;
         try {
           const xlsx = await loadSheetJS();
@@ -2563,52 +2822,103 @@
           reader.onload = (evt) => {
             try {
               const wb = xlsx.read(evt.target.result, { type: 'binary' });
+              
+              // Clones del estado actual para operar sobre ellos sin afectar React directo hasta el final
               let newIngresos = [...stateData.ingresos];
               let newEgresos = [...stateData.egresos];
-              let importados = 0;
+              let newCuentas = [...stateData.cuentas];
+              let newTransferencias = [...stateData.transferencias];
+              let newPagosFijos = [...stateData.pagosFijos];
+              let newPresupuestos = [...stateData.presupuestos];
+              
+              let totalImportados = 0;
 
+              // Cuentas / Bancos
+              if (wb.Sheets["Cuentas_Bancos"]) {
+                xlsx.utils.sheet_to_json(wb.Sheets["Cuentas_Bancos"]).forEach(i => {
+                   if(i.Nombre) {
+                       const exists = newCuentas.some(c => c.name === i.Nombre && ['bank','cash'].includes(c.type));
+                       if(!exists) { newCuentas.push({ id: i.ID || generateId(), name: i.Nombre, type: i.Tipo || 'bank', initialBalance: Number(i.SaldoBase)||0, initialDebt:0, limit:0, tasaEA:0, cuotaMinima:0 }); totalImportados++; }
+                   }
+                });
+              }
+
+              // Deudas
+              if (wb.Sheets["Deudas"]) {
+                xlsx.utils.sheet_to_json(wb.Sheets["Deudas"]).forEach(i => {
+                   if(i.Nombre && (i.Tipo === 'credit' || i.Tipo === 'loan')) {
+                       const exists = newCuentas.some(c => c.name === i.Nombre && c.type === i.Tipo);
+                       if(!exists) { newCuentas.push({ id: i.ID || generateId(), name: i.Nombre, type: i.Tipo, initialBalance: 0, currentDebt: Number(i.DeudaInicial) || 0, initialDebt: Number(i.DeudaInicial) || 0, limit: Number(i.Limite) || 0, montoPrestado: Number(i.MontoPrestado) || 0, tasaEA: Number(i.TasaEA) || 0, cuotaMinima: Number(i.CuotaMinima) || 0, cuotasTotales: Number(i.CuotasTotales) || 0, cuotasPagadas: Number(i.CuotasPagadas) || 0 }); totalImportados++; }
+                   }
+                });
+              }
+
+              // Inversiones
+              if (wb.Sheets["Inversiones"]) {
+                xlsx.utils.sheet_to_json(wb.Sheets["Inversiones"]).forEach(i => {
+                   if(i.Nombre) {
+                       const exists = newCuentas.some(c => c.name === i.Nombre && c.type === 'pocket');
+                       if(!exists) { newCuentas.push({ id: i.ID || generateId(), name: i.Nombre, type: 'pocket', initialBalance: Number(i.SaldoBase) || 0, currentDebt: 0, limit: 0, tasaEA: Number(i.TasaEA) || 0, cuotaMinima: 0 }); totalImportados++; }
+                   }
+                });
+              }
+
+              // Ingresos
               if (wb.Sheets["Ingresos"]) {
-                const importIngresos = xlsx.utils.sheet_to_json(wb.Sheets["Ingresos"]);
-                importIngresos.filter(i=>i.Monto).forEach(i => {
+                xlsx.utils.sheet_to_json(wb.Sheets["Ingresos"]).filter(i=>i.Monto).forEach(i => {
                   const fecha = i.Fecha || new Date().toISOString().split('T')[0];
                   const desc = i.Descripcion || 'Importado';
                   const monto = Number(i.Monto) || 0;
-                  
-                  // Verificación anti-duplicados
                   const exists = newIngresos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
-                  
-                  if (!exists) {
-                    newIngresos.push({
-                      id: generateId(), fecha, descripcion: desc, persona: i.Persona || '', 
-                      tipo: i.Tipo || 'Variable', monto, cuentaId: stateData.cuentas.find(c => c.name === i.Cuenta)?.id || stateData.cuentas[0]?.id
-                    });
-                    importados++;
-                  }
-                });
-              }
-              if (wb.Sheets["Egresos"]) {
-                const importEgresos = xlsx.utils.sheet_to_json(wb.Sheets["Egresos"]);
-                importEgresos.filter(i=>i.Monto).forEach(i => {
-                  const fecha = i.Fecha || new Date().toISOString().split('T')[0];
-                  const desc = i.Descripcion || 'Importado';
-                  const monto = Number(i.Monto) || 0;
-                  
-                  // Verificación anti-duplicados
-                  const exists = newEgresos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
-                  
-                  if (!exists) {
-                    newEgresos.push({
-                      id: generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros', 
-                      tipo: i.Tipo || 'Variable', monto, cuentaId: stateData.cuentas.find(c => c.name === i.Cuenta)?.id || stateData.cuentas[0]?.id
-                    });
-                    importados++;
-                  }
+                  if (!exists) { newIngresos.push({ id: i.ID || generateId(), fecha, descripcion: desc, persona: i.Persona || '', tipo: i.Tipo || 'Variable', monto, cuentaId: newCuentas.find(c => c.name === i.Cuenta)?.id || newCuentas[0]?.id }); totalImportados++; }
                 });
               }
 
-              setAllState({...stateData, ingresos: newIngresos, egresos: newEgresos});
-              showToast(importados > 0 ? `Se importaron ${importados} registros nuevos. Se ignoraron duplicados.` : "No se encontraron registros nuevos para importar.");
-            } catch(err) { showToast("Error procesando el archivo de Excel.", "error"); }
+              // Egresos
+              if (wb.Sheets["Egresos"]) {
+                xlsx.utils.sheet_to_json(wb.Sheets["Egresos"]).filter(i=>i.Monto).forEach(i => {
+                  const fecha = i.Fecha || new Date().toISOString().split('T')[0];
+                  const desc = i.Descripcion || 'Importado';
+                  const monto = Number(i.Monto) || 0;
+                  const exists = newEgresos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
+                  if (!exists) { newEgresos.push({ id: i.ID || generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros', tipo: i.Tipo || 'Variable', monto, cuentaId: newCuentas.find(c => c.name === i.Cuenta)?.id || newCuentas[0]?.id, deudaId: i.DeudaPagada ? newCuentas.find(c => c.name === i.DeudaPagada)?.id : null }); totalImportados++; }
+                });
+              }
+
+              // Transferencias
+              if (wb.Sheets["Transferencias"]) {
+                xlsx.utils.sheet_to_json(wb.Sheets["Transferencias"]).filter(i=>i.Monto).forEach(i => {
+                   const exists = newTransferencias.some(t => t.fecha === i.Fecha && t.monto === Number(i.Monto) && t.descripcion === i.Descripcion);
+                   if(!exists) { newTransferencias.push({ id: i.ID || generateId(), fecha: i.Fecha || getLocalToday(), fromId: newCuentas.find(c=>c.name===i.Origen)?.id || newCuentas[0]?.id, toId: newCuentas.find(c=>c.name===i.Destino)?.id || newCuentas[1]?.id, monto: Number(i.Monto)||0, costoAvance: Number(i.CostoAvance)||0, descripcion: i.Descripcion || '' }); totalImportados++; }
+                });
+              }
+
+              // Pagos Fijos
+              if (wb.Sheets["Pagos_Fijos"]) {
+                xlsx.utils.sheet_to_json(wb.Sheets["Pagos_Fijos"]).filter(i=>i.Monto).forEach(i => {
+                    const exists = newPagosFijos.some(pf => pf.descripcion === i.Descripcion && pf.categoria === i.Categoria && pf.monto === Number(i.Monto));
+                    if(!exists) { newPagosFijos.push({ id: i.ID || generateId(), descripcion: i.Descripcion || 'Fijo Importado', categoria: i.Categoria || 'Otros', monto: Number(i.Monto) || 0, diaPago: Number(i.DiaPago) || 1 }); totalImportados++; }
+                });
+              }
+
+              // Presupuestos Variables
+              if (wb.Sheets["Presupuestos_Variables"]) {
+                xlsx.utils.sheet_to_json(wb.Sheets["Presupuestos_Variables"]).filter(i=>i.Limite).forEach(i => {
+                    const exists = newPresupuestos.some(p => p.categoria === i.Categoria);
+                    if(!exists) { newPresupuestos.push({ id: i.ID || generateId(), categoria: i.Categoria || 'Otros', limite: Number(i.Limite) || 0 }); totalImportados++; }
+                });
+              }
+
+              // Guardar todo
+              setAllState({
+                  ...stateData, 
+                  ingresos: newIngresos, egresos: newEgresos, 
+                  cuentas: newCuentas, transferencias: newTransferencias,
+                  pagosFijos: newPagosFijos, presupuestos: newPresupuestos
+              });
+              
+              showToast(totalImportados > 0 ? `Importación Maestra completada: ${totalImportados} registros nuevos agregados.` : "No se detectaron cambios/registros nuevos.");
+            } catch(err) { showToast("Error procesando la Plantilla Maestra.", "error"); console.error(err); }
           };
           reader.readAsBinaryString(file);
         } catch (err) { showToast("No se pudo cargar la herramienta de Excel.", "error"); }
@@ -2617,31 +2927,28 @@
 
       return (
         <div className="max-w-3xl mx-auto animate-in fade-in duration-500 space-y-6 pb-20 md:pb-0">
-          <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Settings2 className="h-6 w-6 md:h-8 md:w-8 text-slate-400" /> Datos y Respaldo</h1><p className="text-sm md:text-base text-slate-400 mt-1">Exporta a Excel para análisis o asegura el sistema entero con JSON.</p></header>
+          <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Settings2 className="h-6 w-6 md:h-8 md:w-8 text-slate-400" /> Sistema y Ajustes</h1><p className="text-sm md:text-base text-slate-400 mt-1">Exporta toda tu base de datos a Excel, o carga una plantilla completa con todas las pestañas.</p></header>
           
-          <h2 className="text-lg font-bold text-white mt-8 mb-2">Análisis de Datos (Excel)</h2>
+          <h2 className="text-lg font-bold text-white mt-8 mb-2">Plantilla Maestra (Excel)</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            <Card className="border-t-4 border-t-emerald-500 flex flex-col items-start gap-4 sm:col-span-2">
+            <Card className="border-t-4 border-t-emerald-500 flex flex-col items-start gap-4">
               <div className="flex gap-4 items-center">
                 <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center"><FileSpreadsheet className="h-5 w-5 md:h-6 md:w-6"/></div>
-                <div><h3 className="font-bold text-white">Exportar a .XLSX</h3><p className="text-xs text-slate-400">Descarga tablas limpias de ingresos, egresos y deudas.</p></div>
+                <div><h3 className="font-bold text-white">Exportar Base Total</h3><p className="text-xs text-slate-400">Descarga un Excel con múltiples hojas para toda la app.</p></div>
               </div>
-              <div className="w-full grid grid-cols-2 gap-3">
-                 <button onClick={() => handleExportExcel(true)} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition-colors">Exportar SOLO {selectedMonth}</button>
-                 <button onClick={() => handleExportExcel(false)} className="w-full py-2.5 bg-slate-800 border border-emerald-500/50 hover:bg-slate-700 text-emerald-400 rounded-lg font-bold text-xs shadow-sm transition-colors">Exportar TODO el Histórico</button>
-              </div>
+              <button onClick={handleExportExcelMaster} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition-colors">Descargar Plantilla (.XLSX)</button>
             </Card>
             <Card className="border-t-4 border-t-emerald-500 flex flex-col items-start gap-4">
               <div className="flex gap-4 items-center">
                 <div className="w-10 h-10 bg-slate-800 text-emerald-400 rounded-xl flex items-center justify-center"><Upload className="h-5 w-5"/></div>
-                <div><h3 className="font-bold text-white">Añadir desde .XLSX</h3><p className="text-xs text-slate-400">Importa nuevas filas de Excel generadas previamente.</p></div>
+                <div><h3 className="font-bold text-white">Importación Maestra</h3><p className="text-xs text-slate-400">Sube la plantilla de Excel. El sistema evitará duplicados.</p></div>
               </div>
-              <input type="file" accept=".xlsx, .xls" ref={fileExcelInputRef} onChange={handleImportExcel} className="hidden" />
-              <button onClick={()=>fileExcelInputRef.current.click()} className="w-full py-2.5 bg-slate-800 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700 rounded-lg font-bold text-xs shadow-sm transition-colors">Subir Filas Excel</button>
+              <input type="file" accept=".xlsx, .xls" ref={fileExcelMasterRef} onChange={handleImportExcelMaster} className="hidden" />
+              <button onClick={()=>fileExcelMasterRef.current.click()} className="w-full py-2.5 bg-slate-800 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700 rounded-lg font-bold text-xs shadow-sm transition-colors">Subir Plantilla Master</button>
             </Card>
           </div>
 
-          <h2 className="text-lg font-bold text-white mt-10 mb-2">Copia de Seguridad del Sistema (JSON)</h2>
+          <h2 className="text-lg font-bold text-white mt-10 mb-2">Respaldo Bruto para Desarrolladores (JSON)</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             <Card><div className="space-y-4"><div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center"><Download className="h-5 w-5"/></div><h3 className="font-bold text-white">Respaldar Sistema</h3><button onClick={handleExportJSON} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm">Descargar JSON</button></div></Card>
             <Card><div className="space-y-4"><div className="w-10 h-10 md:w-12 md:h-12 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center"><Upload className="h-5 w-5"/></div><h3 className="font-bold text-white">Restaurar Sistema</h3><input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" /><button onClick={()=>fileInputRef.current.click()} className="w-full py-2.5 bg-slate-800 border border-rose-500/50 text-rose-400 hover:bg-slate-700 rounded-xl font-bold text-sm">Cargar JSON</button></div></Card>
@@ -2650,137 +2957,75 @@
       );
     };
 
-
-    // --- Componente Principal ---
+    // --- MAIN APP (CON FIREBASE) ---
     function App() {
+      const [appCargando, setAppCargando] = useState(true);
       const [activeTab, setActiveTab] = useState('dashboard');
       const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
       const [showMobileMore, setShowMobileMore] = useState(false);
       const [toast, setToast] = useState(null);
-      
-      // Filtro de Perspectiva
       const [filtroPersona, setFiltroPersona] = useState('Total'); 
 
-      const showToast = (msg, type = 'success') => {
-        setToast({ msg, type });
-        setTimeout(() => setToast(null), 3000);
-      };
+      const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
+      const changeMonth = (offset) => { const [year, month] = selectedMonth.split('-'); const date = new Date(year, parseInt(month) - 1 + offset, 1); setSelectedMonth(date.toISOString().slice(0, 7)); };
+      const getMonthName = (ym) => { const [year, month] = ym.split('-'); const date = new Date(year, parseInt(month) - 1, 1); return date.toLocaleString('es-ES', { month: 'long', year: 'numeric' }); };
 
-      const changeMonth = (offset) => {
-        const [year, month] = selectedMonth.split('-');
-        const date = new Date(year, parseInt(month) - 1 + offset, 1);
-        setSelectedMonth(date.toISOString().slice(0, 7));
-      };
-      
-      const getMonthName = (ym) => {
-        const [year, month] = ym.split('-');
-        const date = new Date(year, parseInt(month) - 1, 1);
-        return date.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
-      };
+      // Estados de datos (vacíos inicialmente, se llenan desde Firebase)
+      const [cuentas, setCuentas] = useState([]);
+      const [transferencias, setTransferencias] = useState([]);
+      const [ingresos, setIngresos] = useState([]);
+      const [egresos, setEgresos] = useState([]);
+      const [comprasCuotas, setComprasCuotas] = useState([]);
+      const [presupuestos, setPresupuestos] = useState([]);
+      const [pagosFijos, setPagosFijos] = useState([]);
+      const [ingresosFijos, setIngresosFijos] = useState([]);
+      const [scoreHistory, setScoreHistory] = useState({});
 
-      // --- Helpers de Propiedad ---
-      const getOwner = (text) => {
-         if (!text) return 'Shared';
-         const t = text.toUpperCase();
-         const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
-         const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
-         
-         if (hasL && !hasA) return 'Leo';
-         if (hasA && !hasL) return 'Andre';
-         return 'Shared';
-      };
+      // ============================================================================
+      // 🚀 LÓGICA DE FIREBASE (Cargar y Guardar)
+      // ============================================================================
 
-      const belongsToFilter = (owner) => filtroPersona === 'Total' || owner === 'Shared' || owner === filtroPersona;
+      useEffect(() => {
+        cloudDocRef.get().then((doc) => {
+          if (doc.exists) {
+            const data = doc.data();
+            setCuentas(data.cuentas || []);
+            setTransferencias(data.transferencias || []);
+            setIngresos(data.ingresos || []);
+            setEgresos(data.egresos || []);
+            setComprasCuotas(data.comprasCuotas || []);
+            setPresupuestos(data.presupuestos || []);
+            setPagosFijos(data.pagosFijos || []);
+            setIngresosFijos(data.ingresosFijos || []);
+            setScoreHistory(data.scoreHistory || {});
+          } else {
+            cloudDocRef.set({ 
+              cuentas: [], transferencias: [], ingresos: [], egresos: [], 
+              comprasCuotas: [], presupuestos: [], pagosFijos: [], ingresosFijos: [], scoreHistory: {}
+            });
+          }
+          setAppCargando(false);
+        }).catch((error) => {
+          console.error("Error cargando de Firebase:", error);
+          showToast("Error de conexión a la base de datos.", "error");
+          setAppCargando(false);
+        });
+      }, []);
 
-      // --- Estado Global (v31) ---
-      const [cuentas, setCuentas] = useState(() => { 
-        const saved = localStorage.getItem('ff_cuentas_v31'); 
-        return saved ? JSON.parse(saved) : [
-          { id: 'bancolombia_l', name: 'Bancolombia Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 }, 
-          { id: 'bogota_a', name: 'Banco de Bogotá Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          { id: 'efectivo_l', name: 'Efectivo Leo', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          { id: 'efectivo_a', name: 'Efectivo Andre', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          { id: 'nequi_l', name: 'Nequi Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          { id: 'nequi_a', name: 'Nequi Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          { id: 'daviplata_a', name: 'Daviplata Andre', type: 'pocket', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
-          { id: 'daviplata_l', name: 'Daviplata Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          { id: 'rappicuenta_l', name: 'Rappicuenta Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          
-          { id: 'tc_rappi', name: 'Rappi Leo', type: 'credit', initialBalance: 0, initialDebt: 1632734, limit: 6000000, tasaEA: 34.5, cuotaMinima: 100000 },
-          { id: 'tc_nu_l', name: 'Nu Bank Leo', type: 'credit', initialBalance: 0, initialDebt: 4794863.37, limit: 5000000, tasaEA: 24.6, cuotaMinima: 229622 },
-          { id: 'tc_falabella', name: 'Falabella Leo', type: 'credit', initialBalance: 0, initialDebt: 174586, limit: 1550000, tasaEA: 25.22, cuotaMinima: 174586 },
-          { id: 'tc_nu_a', name: 'Nu Bank Andre', type: 'credit', initialBalance: 0, initialDebt: 0, limit: 900000, tasaEA: 34.5, cuotaMinima: 0 },
-          { id: 'tc_davibank_a', name: 'Davibank Andre', type: 'credit', initialBalance: 0, initialDebt: 6639066, limit: 5600000, tasaEA: 25.25, cuotaMinima: 313097 },
-          { id: 'tc_bogota', name: 'Banco de Bogotá Andre', type: 'credit', initialBalance: 0, initialDebt: 8301421, limit: 8675000, tasaEA: 25.2, cuotaMinima: 888000 },
-          
-          { id: 'cr_lulo', name: 'Lulo Bank Andre', type: 'loan', initialBalance: 0, initialDebt: 9839488.70, limit: 0, tasaEA: 24.34, cuotaMinima: 392390, cuotasPagadas: 3, cuotasTotales: 34, montoPrestado: 10500000, totalPagadoPrevio: 1177170 },
-          { id: 'cr_vehiculo', name: 'Credito de vehiculo Leo', type: 'loan', initialBalance: 0, initialDebt: 48108055.82, limit: 0, tasaEA: 23.95, cuotaMinima: 1043887, hasIBR: true, ibrValue: 11.96, ibrPuntos: 11.99, cuotasPagadas: 52, cuotasTotales: 148, montoPrestado: 60000000, totalPagadoPrevio: 54282124 },
-
-          { id: 'inv1', name: 'Nu bank Leo', type: 'pocket', initialBalance: 50339, currentDebt: 0, limit: 0, tasaEA: 8.25, cuotaMinima: 0 },
-          { id: 'inv2', name: 'Global 66', type: 'pocket', initialBalance: 50000, currentDebt: 0, limit: 0, tasaEA: 11, cuotaMinima: 0 },
-          { id: 'inv3', name: 'Lulo Leo', type: 'pocket', initialBalance: 103239, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
-          { id: 'inv4', name: 'Rappi Ahorros', type: 'pocket', initialBalance: 200105, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-          { id: 'inv5', name: 'Rappi Bolsillo Leo', type: 'pocket', initialBalance: 92627, currentDebt: 0, limit: 0, tasaEA: 9, cuotaMinima: 0 }
-        ]; 
-      });
-
-      const [transferencias, setTransferencias] = useState(() => safeGetLocal('ff_transferencias_v31', []));
-      const [ingresos, setIngresos] = useState(() => safeGetLocal('ff_ingresos_v31', []));
-      const [egresos, setEgresos] = useState(() => safeGetLocal('ff_egresos_v31', []));
-      const [comprasCuotas, setComprasCuotas] = useState(() => safeGetLocal('ff_cuotas_v31', []));
-      const [scoreHistory, setScoreHistory] = useState(() => safeGetLocal('ff_score_history_v31', {}));
-      
-      const [presupuestos, setPresupuestos] = useState(() => safeGetLocal('ff_presupuestos_v31', [
-        {id: 'p1', categoria: 'Inversión', limite: 100000}, {id: 'p2', categoria: 'Gasolina', limite: 450000},
-        {id: 'p3', categoria: 'Mercado', limite: 1000000}, {id: 'p4', categoria: 'Mercado Aseo', limite: 200000},
-        {id: 'p5', categoria: 'Aseo hogar', limite: 180000}, {id: 'p6', categoria: 'Botellón Agua', limite: 50000}
-      ]));
-
-      const [pagosFijos, setPagosFijos] = useState(() => safeGetLocal('ff_pagosFijos_v31', [
-        {id: 'f1', descripcion: 'Arriendo', monto: 500000, categoria: 'Hogar', diaPago: 1},
-        {id: 'f2', descripcion: 'Administración', monto: 170000, categoria: 'Hogar', diaPago: 1},
-        {id: 'f3', descripcion: 'Colegio niños', monto: 900000, categoria: 'Tobías y Salomé', diaPago: 1},
-        {id: 'f4', descripcion: 'Deporte Tobías', monto: 0, categoria: 'Tobías y Salomé', diaPago: 1},
-        {id: 'f5', descripcion: 'Deporte Salomé', monto: 0, categoria: 'Tobías y Salomé', diaPago: 1},
-        {id: 'f6', descripcion: 'Aqualia', monto: 30000, categoria: 'Servicios públicos', diaPago: 1},
-        {id: 'f7', descripcion: 'Centrales Eléctricas (luz)', monto: 350000, categoria: 'Servicios públicos', diaPago: 1},
-        {id: 'f8', descripcion: 'Gases del Oriente (gas)', monto: 50000, categoria: 'Servicios públicos', diaPago: 1},
-        {id: 'f9', descripcion: 'Internet Hogar', monto: 120000, categoria: 'Servicios públicos', diaPago: 1},
-        {id: 'f10', descripcion: 'Seguro de vida Leo', monto: 120000, categoria: 'Seguro de vida', diaPago: 1},
-        {id: 'f11', descripcion: 'Seguro de vida Andre', monto: 120000, categoria: 'Seguro de vida', diaPago: 1},
-        {id: 'f12', descripcion: 'Nu Bank Andre', monto: 0, categoria: 'Tarjeta de crédito A', diaPago: 1},
-        {id: 'f13', descripcion: 'Davibank Andre', monto: 313097, categoria: 'Tarjeta de crédito A', diaPago: 6},
-        {id: 'f14', descripcion: 'Banco de Bogotá Andre', monto: 888000, categoria: 'Tarjeta de crédito A', diaPago: 6},
-        {id: 'f15', descripcion: 'Rappi Leo', monto: 0, categoria: 'Tarjeta de crédito L', diaPago: 1},
-        {id: 'f16', descripcion: 'Nu Bank Leo', monto: 229622, categoria: 'Tarjeta de crédito L', diaPago: 6},
-        {id: 'f17', descripcion: 'Falabella Leo', monto: 174586, categoria: 'Tarjeta de crédito L', diaPago: 10},
-        {id: 'f18', descripcion: 'Lulo Bank Andre', monto: 392390, categoria: 'Crédito', diaPago: 1},
-        {id: 'f20', descripcion: 'Credito de vehiculo Leo', monto: 1044000, categoria: 'Vehículo', diaPago: 1},
-        {id: 'f21', descripcion: 'Celular Andrea', monto: 75000, categoria: 'Andre', diaPago: 1},
-        {id: 'f22', descripcion: 'Celular Leo', monto: 50000, categoria: 'Leo', diaPago: 1},
-        {id: 'f23', descripcion: 'HBO Max', monto: 15000, categoria: 'Hogar', diaPago: 1},
-        {id: 'f24', descripcion: 'Mapfre Seguro', monto: 260000, categoria: 'Vehículo', diaPago: 1},
-      ]));
-
-      const [ingresosFijos, setIngresosFijos] = useState(() => safeGetLocal('ff_ingresosFijos_v31', [
-        { id: 'if1', descripcion: 'Salario Leo', monto: 5765251, persona: 'L', tipo: 'Fijo', cuentaName: 'Bancolombia Leo' },
-        { id: 'if2', descripcion: 'Salario Andre (Q1)', monto: 1200000, persona: 'A', tipo: 'Fijo', cuentaName: 'Banco de Bogotá Andre' },
-        { id: 'if3', descripcion: 'Salario Andre (Q2)', monto: 1200000, persona: 'A', tipo: 'Fijo', cuentaName: 'Banco de Bogotá Andre' },
-        { id: 'if4', descripcion: 'Bono Salario Andre', monto: 500000, persona: 'A', tipo: 'Variable', cuentaName: 'Banco de Bogotá Andre' },
-        { id: 'if5', descripcion: 'Prima 1 Leo', monto: 2800000, persona: 'L', tipo: 'Bono', cuentaName: 'Bancolombia Leo' },
-        { id: 'if6', descripcion: 'Prima 2 Leo', monto: 2800000, persona: 'L', tipo: 'Bono', cuentaName: 'Bancolombia Leo' },
-        { id: 'if7', descripcion: 'Prima 1 Andre', monto: 1200000, persona: 'A', tipo: 'Bono', cuentaName: 'Banco de Bogotá Andre' },
-        { id: 'if8', descripcion: 'Prima 2 Andre', monto: 1200000, persona: 'A', tipo: 'Bono', cuentaName: 'Banco de Bogotá Andre' }
-      ]));
-
-      useEffect(() => { safeSetLocal('ff_cuentas_v31', cuentas); }, [cuentas]);
-      useEffect(() => { safeSetLocal('ff_transferencias_v31', transferencias); }, [transferencias]);
-      useEffect(() => { safeSetLocal('ff_ingresos_v31', ingresos); }, [ingresos]);
-      useEffect(() => { safeSetLocal('ff_egresos_v31', egresos); }, [egresos]);
-      useEffect(() => { safeSetLocal('ff_presupuestos_v31', presupuestos); }, [presupuestos]);
-      useEffect(() => { safeSetLocal('ff_pagosFijos_v31', pagosFijos); }, [pagosFijos]);
-      useEffect(() => { safeSetLocal('ff_ingresosFijos_v31', ingresosFijos); }, [ingresosFijos]);
-      useEffect(() => { safeSetLocal('ff_cuotas_v31', comprasCuotas); }, [comprasCuotas]);
+      useEffect(() => {
+        if (appCargando) return; 
+        
+        const timeoutId = setTimeout(() => {
+          cloudDocRef.set({ 
+            cuentas, transferencias, ingresos, egresos, 
+            comprasCuotas, presupuestos, pagosFijos, ingresosFijos, scoreHistory 
+          }, { merge: true })
+          .then(() => console.log("Datos sincronizados en la nube ✅"))
+          .catch(err => showToast("Error al guardar en la nube", "error"));
+        }, 2000); 
+        
+        return () => clearTimeout(timeoutId);
+      }, [cuentas, transferencias, ingresos, egresos, comprasCuotas, presupuestos, pagosFijos, ingresosFijos, scoreHistory, appCargando]);
 
       const setAllState = (parsed) => {
         if (parsed.cuentas) setCuentas(parsed.cuentas);
@@ -2789,8 +3034,8 @@
         if (parsed.egresos) setEgresos(parsed.egresos);
         if (parsed.presupuestos) setPresupuestos(parsed.presupuestos);
         if (parsed.pagosFijos) setPagosFijos(parsed.pagosFijos);
-        if (parsed.ingresosFijos) setIngresosFijos(parsed.ingresosFijos);
         if (parsed.comprasCuotas) setComprasCuotas(parsed.comprasCuotas);
+        if (parsed.ingresosFijos) setIngresosFijos(parsed.ingresosFijos);
       };
 
       const addPagoFijoToState = (pf) => {
@@ -2805,14 +3050,13 @@
         return Array.from(cats).sort();
       }, [presupuestos, pagosFijos, egresos]);
 
-      // MEJORA: Optimización y amortización real (abonos extra a capital)
       const calculatedAccounts = useMemo(() => {
         const accMap = {};
         cuentas.forEach(c => { 
             accMap[c.id] = { 
                 ...c, currentBalance: Number(c.initialBalance) || 0, currentDebt: Number(c.initialDebt) || 0,
                 montoPrestado: Number(c.montoPrestado) || Number(c.initialDebt) || 0, totalPagado: Number(c.totalPagadoPrevio) || 0,
-                lastInterestMonth: null // <-- Nuevo: Rastrea el último mes que cobró intereses
+                lastInterestMonth: null
             }; 
         });
         
@@ -2825,21 +3069,19 @@
               else accMap[e.cuentaId].currentBalance -= Number(e.monto);
            }
            
-           // Lógica de Amortización Correcta
            if (e.deudaId && accMap[e.deudaId]) {
                let account = accMap[e.deudaId];
                account.totalPagado += Number(e.monto);
                
                if (account.type === 'loan') {
-                   const transMonth = e.fecha.substring(0, 7); // Extrae "YYYY-MM"
+                   const transMonth = e.fecha.substring(0, 7);
                    let capital = Number(e.monto);
                    
-                   // Solo cobra intereses si es el primer abono registrado en ese mes
                    if (account.lastInterestMonth !== transMonth) {
                        let tasaMensual = getTasaMensual(account.tasaEA);
                        let interes = account.currentDebt * tasaMensual;
                        capital = Number(e.monto) - interes;
-                       account.lastInterestMonth = transMonth; // Marca el mes como "intereses cobrados"
+                       account.lastInterestMonth = transMonth;
                    }
                    
                    account.currentDebt -= capital;
@@ -2865,6 +3107,18 @@
         });
         return Object.values(accMap);
       }, [cuentas, ingresos, egresos, transferencias]);
+
+      const getOwner = (text) => {
+         if (!text) return 'Shared';
+         const t = text.toUpperCase();
+         const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
+         const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
+         if (hasL && !hasA) return 'Leo';
+         if (hasA && !hasL) return 'Andre';
+         return 'Shared';
+      };
+
+      const belongsToFilter = (owner) => filtroPersona === 'Total' || owner === 'Shared' || owner === filtroPersona;
 
       const activeCalculatedAccounts = useMemo(() => calculatedAccounts.filter(c => belongsToFilter(getOwner(c.name))), [calculatedAccounts, filtroPersona]);
 
@@ -2935,11 +3189,6 @@
       const tasaEndeudamiento = ingresosMesTotal > 0 ? (cuotasMesTotal / ingresosMesTotal) * 100 : 0;
       const tasaAhorro = ingresosMesTotal > 0 ? (flujoNetoMes > 0 ? (flujoNetoMes / ingresosMesTotal) * 100 : 0) : 0;
 
-      const pagosPendientesArray = useMemo(() => {
-        const egresosDelMes = activeEgresos.filter(e => e.fecha.startsWith(selectedMonth));
-        return activePagosFijos.filter(pf => !egresosDelMes.some(e => e.pagoFijoId === pf.id));
-      }, [activePagosFijos, activeEgresos, selectedMonth]);
-
       const { score, issues, recs } = useMemo(() => {
         let scr = 100; const iss = []; const rr = [];
         if (flujoNetoMes < 0) { scr -= 40; iss.push('Flujo mensual negativo'); rr.push({ico: '⚠️', title: 'Flujo Crítico', txt: 'Tus compromisos superan tus ingresos.'}); }
@@ -2954,17 +3203,24 @@
 
       useEffect(() => {
         const currentMonthStr = new Date().toISOString().slice(0, 7);
-        if (selectedMonth === currentMonthStr) {
+        if (selectedMonth === currentMonthStr && !appCargando) {
           setScoreHistory(prev => {
             if (prev[selectedMonth] !== score) {
-              const newHist = { ...prev, [selectedMonth]: score };
-              safeSetLocal('ff_score_history_v31', newHist);
-              return newHist;
+              return { ...prev, [selectedMonth]: score };
             }
             return prev;
           });
         }
-      }, [score, selectedMonth]);
+      }, [score, selectedMonth, appCargando]);
+
+      if (appCargando) {
+        return (
+          <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]">
+             <div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+             <p className="text-slate-400 font-medium">Sincronizando con la nube...</p>
+          </div>
+        );
+      }
 
       const navItems = [
         { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -3058,13 +3314,13 @@
                   {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} />}
                   {activeTab === 'score' && <ScoreTab scoreData={{score, issues, recs}} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} />}
                   {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} transferencias={activeTransferencias} setTransferencias={setTransferencias} egresos={egresos} setEgresos={setEgresos} showToast={showToast} />}
-                  {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} />}
+                  {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
                   {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} setEgresos={setEgresos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} comprasCuotas={activeComprasCuotas} setComprasCuotas={setComprasCuotas} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
                   {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} setPresupuestos={setPresupuestos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
                   {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} showToast={showToast} />}
                   {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} ingresos={ingresos} setIngresos={setIngresos} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwner} />}
                   {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} />}
-                  {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas}} setAllState={setAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+                  {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}} setAllState={setAllState} selectedMonth={selectedMonth} showToast={showToast} />}
                 </ErrorBoundary>
               </div>
             </div>
@@ -3110,7 +3366,6 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
-
   </script>
 </body>
 </html>
