@@ -8,15 +8,20 @@
   <meta http-equiv="Expires" content="0" />
   <title>Finanzas Familia</title>
 
+  <!-- 1. Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- 2. Librerías de React -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
+  <!-- 3. Babel para JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- 4. SheetJS para Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+  <!-- Detector de errores global -->
   <script>
     window.onerror = function(message, source, lineno, colno, error) {
       document.getElementById('root').innerHTML = `
@@ -43,7 +48,7 @@
   <script type="text/babel">
     const { useState, useMemo, useEffect, useRef } = React;
 
-    // --- ÍCONOS 100% NATIVOS ---
+    // --- ÍCONOS 100% NATIVOS (Cero dependencias de red) ---
     const SvgWrapper = ({ size=18, className="", children }) => (
       <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         {children}
@@ -109,29 +114,17 @@
     const formatCOP = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
     const getTasaMensual = (tasaEA) => Math.pow(1 + tasaEA / 100, 1 / 12) - 1;
     const deleteItem = (setter, id) => setter(prev => prev.filter(item => item.id !== id));
+    const generateId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
-    // MEJORA 3: Fallback robusto para generación de IDs
-    const generateId = () => {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-      return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
-    };
-    
+    // Función para obtener la fecha de hoy real ajustada a la zona horaria local
     const getLocalToday = () => {
       const d = new Date();
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       return d.toISOString().split('T')[0];
     };
 
-    // MEJORA 1: Prevención de fallos silenciosos por límite de LocalStorage
     const safeGetLocal = (key, defaultVal) => { try { const val = localStorage.getItem(key); return val ? JSON.parse(val) : defaultVal; } catch (e) { return defaultVal; } };
-    const safeSetLocal = (key, value) => { 
-      try { 
-        localStorage.setItem(key, JSON.stringify(value)); 
-      } catch (e) {
-        console.error("Storage Full Error:", e);
-        alert("⚠️ ATENCIÓN: El almacenamiento del navegador está lleno. Tus últimos datos NO se guardaron. Por favor, ve a 'Ajustes' y exporta un respaldo JSON o Excel inmediatamente para evitar pérdidas.");
-      } 
-    };
+    const safeSetLocal = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} };
 
     const loadSheetJS = async () => {
       if (window.XLSX) return window.XLSX;
@@ -195,7 +188,7 @@
               <div><p className="font-bold text-white text-base">{pf.descripcion}</p><p className="text-xs text-slate-400">{pf.categoria}</p></div>
               <div className="text-right">
                 {!editMonto ? (
-                  <p className="font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800 hover:border-amber-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto">
+                  <p className="font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800 hover:border-amber-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto solo por este mes">
                     {formatCOP(montoCustom)} <Edit3 size={12}/>
                   </p>
                 ) : (
@@ -393,10 +386,10 @@
             <Card className="flex flex-col">
               <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2"><BarChart3 size={18} className="text-indigo-400" /> Distribución de Egresos</h2>
-                <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-xs font-medium w-full md:w-auto">
-                  <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-                  <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Fijo' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
-                  <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Variable' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
+                <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-[10px] sm:text-xs font-medium w-full md:w-auto overflow-hidden">
+                  <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-2 sm:px-4 py-2 rounded truncate ${chartFilter==='Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+                  <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-2 sm:px-4 py-2 rounded truncate ${chartFilter==='Fijo' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
+                  <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-2 sm:px-4 py-2 rounded truncate ${chartFilter==='Variable' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
                 </div>
               </div>
               <div className="flex-1 space-y-4 overflow-y-auto max-h-[250px] pr-2">
@@ -423,7 +416,7 @@
     };
 
     const ScoreTab = ({ scoreData, scoreHistory, selectedMonth, presupuestos, egresosMes, cuentas, ingresosMesTotal, egresosMesTotal, cuotasMesTotal }) => {
-      const { score, issues, recs } = scoreData;
+      const { score } = scoreData;
 
       const prevMonthDate = new Date(`${selectedMonth}-01T12:00:00`);
       prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
@@ -694,11 +687,9 @@
       );
     };
 
-    const IngresosTab = ({ ingresos, setIngresos, ingresosFijos, cuentas, selectedMonth, showToast, filtroPersona }) => {
+    const IngresosTab = ({ ingresos, setIngresos, ingresosFijos, cuentas, selectedMonth, showToast }) => {
       const todayStr = getLocalToday();
-      // MEJORA UX: Default persona basado en el filtro actual
-      const defaultPersona = filtroPersona === 'Leo' ? 'L' : (filtroPersona === 'Andre' ? 'A' : '');
-      const [nuevo, setNuevo] = useState({ fecha: todayStr, descripcion: '', persona: defaultPersona, tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
+      const [nuevo, setNuevo] = useState({ fecha: todayStr, descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
       const [editId, setEditId] = useState(null);
       const [errors, setErrors] = useState({});
       const [showForm, setShowForm] = useState(false);
@@ -768,12 +759,11 @@
         }
         let baseMonto = 0; let cuentaName = ''; let persona = ''; let tipo = 'Fijo';
         const currentYear = new Date().getFullYear();
-        const currentMonth = selectedMonth.split('-')[1];
         let dia = '01';
 
         if (val === 'Salario L') {
            baseMonto = 5765251; cuentaName = 'Bancolombia Leo'; persona = 'L'; 
-           const endOfMonth = new Date(currentYear, currentMonth, 0).getDate();
+           const endOfMonth = new Date(currentYear, currentMonthNum, 0).getDate();
            dia = endOfMonth <= 30 ? '27' : '28'; 
         } else if (val === 'Salario A (Q1)') {
            baseMonto = 1200000; cuentaName = 'Banco de Bogotá Andre'; persona = 'A'; dia = '14';
@@ -810,7 +800,7 @@
           setIngresos(prev => [...prev, { ...nuevo, id: generateId(), monto: Number(nuevo.monto) }]); 
           showToast("Ingreso guardado correctamente.");
         }
-        setNuevo({ fecha: todayStr, descripcion: '', persona: defaultPersona, tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' }); 
+        setNuevo({ fecha: todayStr, descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' }); 
         setErrors({});
       };
 
@@ -840,7 +830,7 @@
 
       const cancelarEdicion = () => {
         setEditId(null);
-        setNuevo({ fecha: todayStr, descripcion: '', persona: defaultPersona, tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
+        setNuevo({ fecha: todayStr, descripcion: '', persona: '', tipo: 'Fijo', monto: '', cuentaId: '', plantilla: 'otro' });
         setErrors({});
         setShowForm(false);
       }
@@ -926,8 +916,8 @@
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Historial Completo de Ingresos</h3>
               <div className="flex gap-2">
                 <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-                <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
-                <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+                <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> <span className="hidden sm:inline">Importar</span></button>
+                <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> <span className="hidden sm:inline">Exportar</span></button>
               </div>
             </div>
             <div className="overflow-x-auto bg-slate-900 rounded-xl border border-slate-800">
@@ -962,7 +952,7 @@
 
     const EgresosTab = ({ egresos, setEgresos, pagosFijos, setPagosFijos, cuentas, selectedMonth, categoriasMaestras, showToast, comprasCuotas, setComprasCuotas }) => {
       const todayStr = getLocalToday();
-      const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
+      const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '' });
       const [errorsVar, setErrorsVar] = useState({});
       const varRef = useRef(null);
       const fileInputRef = useRef(null);
@@ -1004,7 +994,6 @@
         if(!gastoForm.cuentaId) errs.cuentaId = "Obligatorio";
         if(gastoForm.editSource !== 'cuotas' && !gastoForm.fecha) errs.fecha = "Obligatorio";
         if(isCreditCard && !gastoForm.cuotas) errs.cuotas = "Obligatorio";
-        if(gastoForm.esPagoDeuda && !gastoForm.deudaDestinoId) errs.deudaDestinoId = "Obligatorio";
         
         if(Object.keys(errs).length > 0) { setErrorsVar(errs); return; }
 
@@ -1025,14 +1014,12 @@
                 descripcion: gastoForm.descripcion,
                 categoria: gastoForm.categoria,
                 monto: Number(gastoForm.monto),
-                cuentaId: gastoForm.cuentaId,
-                deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : (eg.deudaId || null)
+                cuentaId: gastoForm.cuentaId
             } : eg));
             showToast("Gasto actualizado.");
         } else {
             const fechaDefault = gastoForm.fecha || todayStr; 
             
-            // MEJORA: Asociar egreso variable con amortización de préstamo
             const nuevoEgreso = { 
                 id: generateId(), 
                 fecha: fechaDefault, 
@@ -1040,8 +1027,7 @@
                 categoria: gastoForm.categoria, 
                 monto: Number(gastoForm.monto), 
                 cuentaId: gastoForm.cuentaId, 
-                tipo: 'Variable',
-                deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : null
+                tipo: 'Variable' 
             };
             setEgresos(prev => [...prev, nuevoEgreso]);
 
@@ -1067,28 +1053,23 @@
       const cargarParaEditarVariable = (egreso) => {
         const cuenta = cuentas.find(c => c.id === egreso.cuentaId);
         const metodo = cuenta ? (cuenta.type === 'credit' ? 'credit' : cuenta.type === 'cash' ? 'cash' : 'bank') : '';
-        setGastoForm({ 
-            id: egreso.id, editSource: 'historial', fecha: egreso.fecha, descripcion: egreso.descripcion, 
-            categoria: egreso.categoria, metodoPago: metodo, cuentaId: egreso.cuentaId, monto: egreso.monto.toString(), 
-            cuotas: '', tasaEA: '', esPagoDeuda: !!egreso.deudaId, deudaDestinoId: egreso.deudaId || '' 
-        });
+        setGastoForm({ id: egreso.id, editSource: 'historial', fecha: egreso.fecha, descripcion: egreso.descripcion, categoria: egreso.categoria, metodoPago: metodo, cuentaId: egreso.cuentaId, monto: egreso.monto.toString(), cuotas: '', tasaEA: '' });
         setErrorsVar({});
         varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       const cargarParaEditarCuota = (c) => {
         const card = cuentas.find(acc => acc.id === c.tarjetaId);
-        setGastoForm({ id: c.id, editSource: 'cuotas', fecha: todayStr, descripcion: c.descripcion, categoria: categoriasMaestras[0] || 'Otros', metodoPago: 'credit', cuentaId: c.tarjetaId, monto: c.montoTotal.toString(), cuotas: c.cuotasTotales.toString(), tasaEA: card ? card.tasaEA : 0, esPagoDeuda: false, deudaDestinoId: '' });
+        setGastoForm({ id: c.id, editSource: 'cuotas', fecha: todayStr, descripcion: c.descripcion, categoria: categoriasMaestras[0] || 'Otros', metodoPago: 'credit', cuentaId: c.tarjetaId, monto: c.montoTotal.toString(), cuotas: c.cuotasTotales.toString(), tasaEA: card ? card.tasaEA : 0 });
         setErrorsVar({});
         varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
 
       const cancelarEdicion = () => {
-        setGastoForm({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
+        setGastoForm({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '' });
         setErrorsVar({});
       }
 
-      // MEJORA: Lógica mejorada para capturar deudaId en pagos fijos.
       const procesarPagoFijo = (pagoFijoId, cuentaId, montoFinal) => {
         if(!cuentaId) { showToast("Selecciona de dónde vas a pagar.", "error"); return; }
         const pf = pagosFijos.find(p => p.id === pagoFijoId);
@@ -1097,42 +1078,23 @@
         const diaStr = isCurrentMonth ? fechaActual.getDate().toString().padStart(2, '0') : '01';
         const fechaPago = `${selectedMonth}-${diaStr}`; 
         
-        // Match más inteligente
-        let deudaIdDetectada = null;
-        const posiblesDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
-        for (const pd of posiblesDeudas) {
-            if (pf.descripcion.toLowerCase().includes(pd.name.toLowerCase()) || pf.categoria.toLowerCase().includes(pd.name.toLowerCase())) {
-                deudaIdDetectada = pd.id; break;
-            }
-        }
-
         const nuevoEgreso = { 
           id: generateId(), fecha: fechaPago, descripcion: pf.descripcion, 
           categoria: pf.categoria, monto: Number(montoFinal) || pf.monto, 
           cuentaId: cuentaId, pagoFijoId: pf.id, tipo: 'Fijo',
-          deudaId: deudaIdDetectada
+          deudaId: (pf.categoria.toLowerCase().includes('tarjeta') || pf.categoria.toLowerCase().includes('crédito') || pf.categoria.toLowerCase().includes('vehículo') || pf.categoria.toLowerCase().includes('davibank')) 
+                    ? (cuentas.find(c => ['credit', 'loan'].includes(c.type) && c.name.toLowerCase() === pf.descripcion.toLowerCase())?.id || null) 
+                    : null
         };
         setEgresos(prev => [...prev, nuevoEgreso]);
         showToast(`Pago de ${pf.descripcion} registrado.`);
       };
 
-      // MEJORA: Avanzar cuota genera un egreso para no descuadrar el mes.
-      const avanzarCuota = (c) => {
-        setComprasCuotas(prev => prev.map(item => {
-          if(item.id === c.id && item.cuotasPagadas < item.cuotasTotales) return {...item, cuotasPagadas: item.cuotasPagadas + 1};
-          return item;
+      const avanzarCuota = (id) => {
+        setComprasCuotas(prev => prev.map(c => {
+          if(c.id === id && c.cuotasPagadas < c.cuotasTotales) return {...c, cuotasPagadas: c.cuotasPagadas + 1};
+          return c;
         }));
-        setEgresos(prev => [...prev, {
-            id: generateId(),
-            fecha: getLocalToday(),
-            descripcion: `Cuota ${c.cuotasPagadas + 1}/${c.cuotasTotales}: ${c.descripcion}`,
-            categoria: 'Tarjeta de crédito',
-            monto: c.valorMensual,
-            cuentaId: c.tarjetaId,
-            tipo: 'Variable',
-            deudaId: c.tarjetaId
-        }]);
-        showToast("Cuota sumada y gasto registrado en el historial.");
       };
 
       const egresosMes = egresos.filter(d => d.fecha.startsWith(selectedMonth));
@@ -1172,17 +1134,29 @@
             try {
               const wb = xlsx.read(evt.target.result, { type: 'binary' });
               const sheetName = wb.Sheets["Egresos"] ? "Egresos" : wb.SheetNames[0];
-              const importedData = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
-              const mapped = importedData.filter(i=>i.Monto).map(i => {
-                const cuentaEncontrada = cuentas.find(c => c.name === i.Cuenta)?.id || cuentas[0]?.id;
-                return {
-                  id: generateId(), fecha: i.Fecha || new Date().toISOString().split('T')[0],
-                  descripcion: i.Descripcion || 'Egreso Importado', categoria: i.Categoria || 'Otros',
-                  tipo: i.Tipo || 'Variable', monto: Number(i.Monto) || 0, cuentaId: cuentaEncontrada
-                };
+              const importEgresos = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
+              
+              let newEgresos = [...egresos];
+              let importados = 0;
+
+              importEgresos.filter(i=>i.Monto).forEach(i => {
+                const fecha = i.Fecha || new Date().toISOString().split('T')[0];
+                const desc = i.Descripcion || 'Egreso Importado';
+                const monto = Number(i.Monto) || 0;
+                
+                const exists = newEgresos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
+                
+                if (!exists) {
+                  const cuentaEncontrada = cuentas.find(c => c.name === i.Cuenta)?.id || cuentas[0]?.id;
+                  newEgresos.push({
+                    id: generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros',
+                    tipo: i.Tipo || 'Variable', monto, cuentaId: cuentaEncontrada
+                  });
+                  importados++;
+                }
               });
-              setEgresos(prev => [...prev, ...mapped]);
-              showToast(`${mapped.length} egresos importados correctamente.`);
+              setEgresos(newEgresos);
+              showToast(importados > 0 ? `Se importaron ${importados} egresos. Se ignoraron duplicados.` : "No se encontraron registros nuevos.");
             } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
           };
           reader.readAsBinaryString(file);
@@ -1225,19 +1199,6 @@
               <Select label={gastoForm.metodoPago === 'credit' ? 'Tarjeta' : 'Cuenta / Bolsillo'} options={cuentasFiltradas.map(c=>({value:c.id, label:c.name}))} value={gastoForm.cuentaId} onChange={handleCuentaChange} error={errorsVar.cuentaId} disabled={!gastoForm.metodoPago} className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
               
               <Input type="number" label="Monto ($)" value={gastoForm.monto} onChange={e=>setGastoForm({...gastoForm, monto: e.target.value})} error={errorsVar.monto} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-2' : 'md:col-span-1'}`} />
-
-              {/* Opción para pago a capital/deudas desde gasto variable */}
-              {!isCreditCard && gastoForm.editSource !== 'cuotas' && (
-                 <div className="col-span-2 md:col-span-12 flex items-center gap-4 bg-slate-950 p-3 rounded-lg border border-slate-800">
-                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-300">
-                      <input type="checkbox" checked={gastoForm.esPagoDeuda} onChange={(e) => setGastoForm({...gastoForm, esPagoDeuda: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
-                      ¿Este gasto es el pago de un préstamo/tarjeta?
-                    </label>
-                    {gastoForm.esPagoDeuda && (
-                        <Select label="¿Qué deuda estás pagando?" options={cuentas.filter(c=>['credit','loan'].includes(c.type)).map(c=>({value:c.id, label:c.name}))} value={gastoForm.deudaDestinoId} onChange={e=>setGastoForm({...gastoForm, deudaDestinoId: e.target.value})} error={errorsVar.deudaDestinoId} className="flex-1" />
-                    )}
-                 </div>
-              )}
 
               {isCreditCard && (
                 <div className="col-span-2 md:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3 mt-2 p-3 bg-indigo-950/20 border border-indigo-500/20 rounded-lg">
@@ -1294,7 +1255,7 @@
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-bold text-slate-300">{formatCOP(c.valorMensual)}/mes</span>
-                      <button onClick={() => avanzarCuota(c)} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button>
+                      <button onClick={() => avanzarCuota(c.id)} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button>
                     </div>
                   </div>
                 )
@@ -1332,8 +1293,8 @@
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Historial Completo de Egresos (Fijos y Variables)</h3>
               <div className="flex gap-2">
                 <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-                <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> Importar</button>
-                <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> Exportar</button>
+                <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> <span className="hidden sm:inline">Importar</span></button>
+                <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> <span className="hidden sm:inline">Exportar</span></button>
               </div>
             </div>
             <div className="overflow-x-auto bg-slate-900 rounded-xl border border-slate-800">
@@ -1602,17 +1563,41 @@
               const wb = xlsx.read(evt.target.result, { type: 'binary' });
               if (wb.Sheets["Fijos"]) {
                 const dataFijos = xlsx.utils.sheet_to_json(wb.Sheets["Fijos"]);
-                const mappedFijos = dataFijos.filter(i=>i.Monto).map(i => ({
-                  id: generateId(), descripcion: i.Descripcion || 'Fijo Importado', categoria: i.Categoria || 'Otros', monto: Number(i.Monto) || 0, diaPago: Number(i.DiaPago) || 1
-                }));
-                setPagosFijos(prev => [...prev, ...mappedFijos]);
+                
+                let importados = 0;
+                const newFijos = [...pagosFijos];
+                dataFijos.filter(i=>i.Monto).forEach(i => {
+                  const desc = i.Descripcion || 'Fijo Importado';
+                  const monto = Number(i.Monto) || 0;
+                  const exists = newFijos.some(existing => existing.descripcion === desc && existing.monto === monto);
+                  
+                  if (!exists) {
+                    newFijos.push({
+                      id: generateId(), descripcion: desc, categoria: i.Categoria || 'Otros', monto, diaPago: Number(i.DiaPago) || 1
+                    });
+                    importados++;
+                  }
+                });
+                setPagosFijos(newFijos);
               }
               if (wb.Sheets["Variables"]) {
                 const dataVar = xlsx.utils.sheet_to_json(wb.Sheets["Variables"]);
-                const mappedVar = dataVar.filter(i=>i.Limite).map(i => ({
-                  id: generateId(), categoria: i.Categoria || 'Otros', limite: Number(i.Limite) || 0
-                }));
-                setPresupuestos(prev => [...prev, ...mappedVar]);
+                
+                let importadosVar = 0;
+                const newVars = [...presupuestos];
+                dataVar.filter(i=>i.Limite).forEach(i => {
+                  const cat = i.Categoria || 'Otros';
+                  const limite = Number(i.Limite) || 0;
+                  const exists = newVars.some(existing => existing.categoria === cat && existing.limite === limite);
+                  
+                  if (!exists) {
+                    newVars.push({
+                      id: generateId(), categoria: cat, limite
+                    });
+                    importadosVar++;
+                  }
+                });
+                setPresupuestos(newVars);
               }
               showToast("Presupuestos importados correctamente.");
             } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
@@ -1718,8 +1703,8 @@
                 <Plus size={16}/> {showForm ? 'Ocultar' : 'Añadir presupuesto'}
               </button>
               <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
-              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 sm:px-3 py-2 rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> <span className="hidden sm:inline">Importar</span></button>
+              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-2 sm:px-3 py-2 rounded-lg text-[10px] sm:text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> <span className="hidden sm:inline">Exportar</span></button>
             </div>
           </header>
 
@@ -1745,7 +1730,7 @@
                   <button 
                     onClick={() => { if(!editId) setTipoForm('variable') }} 
                     type="button"
-                    className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
+                    className={`text-xs sm:text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
                   >
                     {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
                   </button>
@@ -1753,7 +1738,7 @@
                   <button 
                     onClick={() => { if(!editId) setTipoForm('fijo') }} 
                     type="button"
-                    className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+                    className={`text-xs sm:text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
                   >
                     {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
                   </button>
@@ -2316,6 +2301,8 @@
 
     const SimuladorTab = ({ cuentas, addPagoFijo, showToast }) => {
       const [activeSim, setActiveSim] = useState('acelerado'); 
+
+      // --- Simulador 1: Pago Acelerado Deudas ---
       const [s1, setS1] = useState({ deudaId: '', extra: 200000 });
       const dSeleccionada = cuentas.find(c => c.id === s1.deudaId);
       const s1Saldo = dSeleccionada ? dSeleccionada.currentDebt : 0;
@@ -2355,6 +2342,8 @@
         showToast(`Simulación guardada! Abono de ${formatCOP(s1Cuota + s1.extra)} en Pagos Fijos.`);
       };
 
+
+      // --- Simulador 2: Plan de Ahorro ---
       const [s2, setS2] = useState({ nombre: '', objetivo: 5000000, ahorrado: 0, meses: 12, tasaEA: 5 });
       
       const calcSim2 = () => {
@@ -2385,6 +2374,8 @@
         showToast(`Plan activado. Cuota de ${formatCOP(resS2.aporteMensual)} en Pagos Fijos.`);
       };
 
+
+      // --- Simulador 3: Interés Compuesto / Inversiones ---
       const [s3, setS3] = useState({ invId: 'otra', capital: 0, tasa: 10, anos: 5, aporte: 200000 });
       
       const handleInvChange = (e) => {
@@ -2397,18 +2388,10 @@
         }
       }
 
-      // MEJORA: Evitar división por cero si la tasa es 0
       const calcSim3 = () => {
-        const tm = getTasaMensual(s3.tasa); 
-        const meses = s3.anos * 12; 
-        let vf = s3.capital * Math.pow(1 + tm, meses);
-        if (tm === 0) {
-           vf = s3.capital + (s3.aporte * meses);
-        } else if (s3.aporte > 0) {
-           vf += s3.aporte * ((Math.pow(1 + tm, meses) - 1) / tm);
-        }
-        const capitalInvertido = s3.capital + (s3.aporte * meses); 
-        return { vf, capitalInvertido, rendimientos: vf - capitalInvertido };
+        const tm = getTasaMensual(s3.tasa); const meses = s3.anos * 12; let vf = s3.capital * Math.pow(1 + tm, meses);
+        if (s3.aporte > 0) vf += s3.aporte * ((Math.pow(1 + tm, meses) - 1) / tm);
+        const capitalInvertido = s3.capital + (s3.aporte * meses); return { vf, capitalInvertido, rendimientos: vf - capitalInvertido };
       };
       const resS3 = calcSim3();
 
@@ -2426,10 +2409,10 @@
             <p className="text-sm md:text-base text-slate-400 mt-1">Conecta con tus datos reales y "Asume el gasto" para integrarlo a tus pagos mensuales.</p>
           </header>
 
-          <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium">
-            <button onClick={()=>setActiveSim('acelerado')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'acelerado' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Pago Acelerado</button>
-            <button onClick={()=>setActiveSim('ahorro')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'ahorro' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Plan de Ahorro</button>
-            <button onClick={()=>setActiveSim('inversion')} className={`flex-1 py-2.5 rounded-lg transition-colors ${activeSim === 'inversion' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Int. Compuesto</button>
+          <div className="flex flex-wrap sm:flex-nowrap bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] sm:text-sm font-medium gap-1 sm:gap-0">
+            <button onClick={()=>setActiveSim('acelerado')} className={`flex-1 py-2 sm:py-2.5 px-2 rounded-lg transition-colors whitespace-nowrap ${activeSim === 'acelerado' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Pago Acelerado</button>
+            <button onClick={()=>setActiveSim('ahorro')} className={`flex-1 py-2 sm:py-2.5 px-2 rounded-lg transition-colors whitespace-nowrap ${activeSim === 'ahorro' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Plan de Ahorro</button>
+            <button onClick={()=>setActiveSim('inversion')} className={`flex-1 py-2 sm:py-2.5 px-2 rounded-lg transition-colors whitespace-nowrap ${activeSim === 'inversion' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>Int. Compuesto</button>
           </div>
 
           {activeSim === 'acelerado' && (
@@ -2540,13 +2523,16 @@
       );
     };
 
+    // --- Ajustes: Export/Import Excel y JSON ---
     const SettingsTab = ({ stateData, setAllState, selectedMonth, showToast }) => {
       const fileInputRef = useRef(null);
       const fileExcelInputRef = useRef(null);
 
+      // Backup JSON
       const handleExportJSON = () => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stateData)); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", `respaldo_finanzas_${new Date().toISOString().split('T')[0]}.json`); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); };
       const handleImportJSON = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const parsed = JSON.parse(event.target.result); setAllState(parsed); showToast("¡Respaldo JSON restaurado con éxito!"); } catch (err) { showToast("Error al leer JSON.", "error"); } }; reader.readAsText(file); e.target.value = ''; };
 
+      // Exportar Excel Completo
       const handleExportExcel = async (onlyCurrentMonth = false) => {
         try {
           const xlsx = await loadSheetJS();
@@ -2558,19 +2544,17 @@
           const ingresosData = filterData(stateData.ingresos).map(i => ({ Fecha: i.fecha, Descripcion: i.descripcion, Persona: i.persona, Tipo: i.tipo, Cuenta: stateData.cuentas.find(c=>c.id===i.cuentaId)?.name, Monto: i.monto }));
           const egresosData = filterData(stateData.egresos).map(e => ({ Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: stateData.cuentas.find(c=>c.id===e.cuentaId)?.name, Monto: e.monto }));
           const deudasData = stateData.cuentas.filter(c=>['credit','loan'].includes(c.type)).map(c => ({ Nombre: c.name, DeudaActual: c.currentDebt, TasaEA: c.tasaEA, CuotaMinima: c.cuotaMinima }));
-          // MEJORA: Exportar transferencias en el Excel
-          const transferenciasData = filterData(stateData.transferencias).map(t => ({ Fecha: t.fecha, Origen: stateData.cuentas.find(c=>c.id===t.fromId)?.name, Destino: stateData.cuentas.find(c=>c.id===t.toId)?.name, Monto: t.monto, Descripcion: t.descripcion }));
 
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(ingresosData), "Ingresos");
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(egresosData), "Egresos");
           xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(deudasData), "Deudas");
-          xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(transferenciasData), "Transferencias");
 
           const fileName = onlyCurrentMonth ? `FinanzasFamilia_${selectedMonth}.xlsx` : `FinanzasFamilia_Total_${new Date().toISOString().split('T')[0]}.xlsx`;
           xlsx.writeFile(wb, fileName);
         } catch (e) { showToast("Hubo un error al generar Excel.", "error"); }
       };
 
+      // Importar Excel Básico
       const handleImportExcel = async (e) => {
         const file = e.target.files[0]; if (!file) return;
         try {
@@ -2581,28 +2565,49 @@
               const wb = xlsx.read(evt.target.result, { type: 'binary' });
               let newIngresos = [...stateData.ingresos];
               let newEgresos = [...stateData.egresos];
+              let importados = 0;
 
               if (wb.Sheets["Ingresos"]) {
                 const importIngresos = xlsx.utils.sheet_to_json(wb.Sheets["Ingresos"]);
-                const mappedIng = importIngresos.filter(i=>i.Monto).map(i => ({
-                  id: generateId(), fecha: i.Fecha || new Date().toISOString().split('T')[0], 
-                  descripcion: i.Descripcion || 'Importado', persona: i.Persona || '', 
-                  tipo: i.Tipo || 'Variable', monto: Number(i.Monto) || 0, cuentaId: stateData.cuentas[0]?.id
-                }));
-                newIngresos = [...newIngresos, ...mappedIng];
+                importIngresos.filter(i=>i.Monto).forEach(i => {
+                  const fecha = i.Fecha || new Date().toISOString().split('T')[0];
+                  const desc = i.Descripcion || 'Importado';
+                  const monto = Number(i.Monto) || 0;
+                  
+                  // Verificación anti-duplicados
+                  const exists = newIngresos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
+                  
+                  if (!exists) {
+                    newIngresos.push({
+                      id: generateId(), fecha, descripcion: desc, persona: i.Persona || '', 
+                      tipo: i.Tipo || 'Variable', monto, cuentaId: stateData.cuentas.find(c => c.name === i.Cuenta)?.id || stateData.cuentas[0]?.id
+                    });
+                    importados++;
+                  }
+                });
               }
               if (wb.Sheets["Egresos"]) {
                 const importEgresos = xlsx.utils.sheet_to_json(wb.Sheets["Egresos"]);
-                const mappedEgr = importEgresos.filter(i=>i.Monto).map(i => ({
-                  id: generateId(), fecha: i.Fecha || new Date().toISOString().split('T')[0], 
-                  descripcion: i.Descripcion || 'Importado', categoria: i.Categoria || 'Otros', 
-                  tipo: i.Tipo || 'Variable', monto: Number(i.Monto) || 0, cuentaId: stateData.cuentas[0]?.id
-                }));
-                newEgresos = [...newEgresos, ...mappedEgr];
+                importEgresos.filter(i=>i.Monto).forEach(i => {
+                  const fecha = i.Fecha || new Date().toISOString().split('T')[0];
+                  const desc = i.Descripcion || 'Importado';
+                  const monto = Number(i.Monto) || 0;
+                  
+                  // Verificación anti-duplicados
+                  const exists = newEgresos.some(existing => existing.fecha === fecha && existing.descripcion === desc && existing.monto === monto);
+                  
+                  if (!exists) {
+                    newEgresos.push({
+                      id: generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros', 
+                      tipo: i.Tipo || 'Variable', monto, cuentaId: stateData.cuentas.find(c => c.name === i.Cuenta)?.id || stateData.cuentas[0]?.id
+                    });
+                    importados++;
+                  }
+                });
               }
 
               setAllState({...stateData, ingresos: newIngresos, egresos: newEgresos});
-              showToast("Datos de Excel importados correctamente.");
+              showToast(importados > 0 ? `Se importaron ${importados} registros nuevos. Se ignoraron duplicados.` : "No se encontraron registros nuevos para importar.");
             } catch(err) { showToast("Error procesando el archivo de Excel.", "error"); }
           };
           reader.readAsBinaryString(file);
@@ -2645,23 +2650,41 @@
       );
     };
 
-    // --- MAIN APP ---
+
+    // --- Componente Principal ---
     function App() {
       const [activeTab, setActiveTab] = useState('dashboard');
       const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
       const [showMobileMore, setShowMobileMore] = useState(false);
       const [toast, setToast] = useState(null);
+      
+      // Filtro de Perspectiva
       const [filtroPersona, setFiltroPersona] = useState('Total'); 
 
-      const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
-      const changeMonth = (offset) => { const [year, month] = selectedMonth.split('-'); const date = new Date(year, parseInt(month) - 1 + offset, 1); setSelectedMonth(date.toISOString().slice(0, 7)); };
-      const getMonthName = (ym) => { const [year, month] = ym.split('-'); const date = new Date(year, parseInt(month) - 1, 1); return date.toLocaleString('es-ES', { month: 'long', year: 'numeric' }); };
+      const showToast = (msg, type = 'success') => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 3000);
+      };
 
+      const changeMonth = (offset) => {
+        const [year, month] = selectedMonth.split('-');
+        const date = new Date(year, parseInt(month) - 1 + offset, 1);
+        setSelectedMonth(date.toISOString().slice(0, 7));
+      };
+      
+      const getMonthName = (ym) => {
+        const [year, month] = ym.split('-');
+        const date = new Date(year, parseInt(month) - 1, 1);
+        return date.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+      };
+
+      // --- Helpers de Propiedad ---
       const getOwner = (text) => {
          if (!text) return 'Shared';
          const t = text.toUpperCase();
          const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
          const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
+         
          if (hasL && !hasA) return 'Leo';
          if (hasA && !hasL) return 'Andre';
          return 'Shared';
@@ -2669,30 +2692,37 @@
 
       const belongsToFilter = (owner) => filtroPersona === 'Total' || owner === 'Shared' || owner === filtroPersona;
 
-      const [cuentas, setCuentas] = useState(() => safeGetLocal('ff_cuentas_v31', [
-        { id: 'bancolombia_l', name: 'Bancolombia Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 }, 
-        { id: 'bogota_a', name: 'Banco de Bogotá Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'efectivo_l', name: 'Efectivo Leo', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'efectivo_a', name: 'Efectivo Andre', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'nequi_l', name: 'Nequi Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'nequi_a', name: 'Nequi Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'daviplata_a', name: 'Daviplata Andre', type: 'pocket', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
-        { id: 'daviplata_l', name: 'Daviplata Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'rappicuenta_l', name: 'Rappicuenta Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'tc_rappi', name: 'Rappi Leo', type: 'credit', initialBalance: 0, initialDebt: 1632734, limit: 6000000, tasaEA: 34.5, cuotaMinima: 100000 },
-        { id: 'tc_nu_l', name: 'Nu Bank Leo', type: 'credit', initialBalance: 0, initialDebt: 4794863.37, limit: 5000000, tasaEA: 24.6, cuotaMinima: 229622 },
-        { id: 'tc_falabella', name: 'Falabella Leo', type: 'credit', initialBalance: 0, initialDebt: 174586, limit: 1550000, tasaEA: 25.22, cuotaMinima: 174586 },
-        { id: 'tc_nu_a', name: 'Nu Bank Andre', type: 'credit', initialBalance: 0, initialDebt: 0, limit: 900000, tasaEA: 34.5, cuotaMinima: 0 },
-        { id: 'tc_davibank_a', name: 'Davibank Andre', type: 'credit', initialBalance: 0, initialDebt: 6639066, limit: 5600000, tasaEA: 25.25, cuotaMinima: 313097 },
-        { id: 'tc_bogota', name: 'Banco de Bogotá Andre', type: 'credit', initialBalance: 0, initialDebt: 8301421, limit: 8675000, tasaEA: 25.2, cuotaMinima: 888000 },
-        { id: 'cr_lulo', name: 'Lulo Bank Andre', type: 'loan', initialBalance: 0, initialDebt: 9839488.70, limit: 0, tasaEA: 24.34, cuotaMinima: 392390, cuotasPagadas: 3, cuotasTotales: 34, montoPrestado: 10500000, totalPagadoPrevio: 1177170 },
-        { id: 'cr_vehiculo', name: 'Credito de vechiculo Leo', type: 'loan', initialBalance: 0, initialDebt: 48108055.82, limit: 0, tasaEA: 23.95, cuotaMinima: 1043887, hasIBR: true, ibrValue: 11.96, ibrPuntos: 11.99, cuotasPagadas: 52, cuotasTotales: 148, montoPrestado: 60000000, totalPagadoPrevio: 54282124 },
-        { id: 'inv1', name: 'Nu bank Leo', type: 'pocket', initialBalance: 50339, currentDebt: 0, limit: 0, tasaEA: 8.25, cuotaMinima: 0 },
-        { id: 'inv2', name: 'Global 66', type: 'pocket', initialBalance: 50000, currentDebt: 0, limit: 0, tasaEA: 11, cuotaMinima: 0 },
-        { id: 'inv3', name: 'Lulo Leo', type: 'pocket', initialBalance: 103239, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
-        { id: 'inv4', name: 'Rappi Ahorros', type: 'pocket', initialBalance: 200105, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
-        { id: 'inv5', name: 'Rappi Bolsillo Leo', type: 'pocket', initialBalance: 92627, currentDebt: 0, limit: 0, tasaEA: 9, cuotaMinima: 0 }
-      ]));
+      // --- Estado Global (v31) ---
+      const [cuentas, setCuentas] = useState(() => { 
+        const saved = localStorage.getItem('ff_cuentas_v31'); 
+        return saved ? JSON.parse(saved) : [
+          { id: 'bancolombia_l', name: 'Bancolombia Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 }, 
+          { id: 'bogota_a', name: 'Banco de Bogotá Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          { id: 'efectivo_l', name: 'Efectivo Leo', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          { id: 'efectivo_a', name: 'Efectivo Andre', type: 'cash', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          { id: 'nequi_l', name: 'Nequi Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          { id: 'nequi_a', name: 'Nequi Andre', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          { id: 'daviplata_a', name: 'Daviplata Andre', type: 'pocket', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
+          { id: 'daviplata_l', name: 'Daviplata Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          { id: 'rappicuenta_l', name: 'Rappicuenta Leo', type: 'bank', initialBalance: 0, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          
+          { id: 'tc_rappi', name: 'Rappi Leo', type: 'credit', initialBalance: 0, initialDebt: 1632734, limit: 6000000, tasaEA: 34.5, cuotaMinima: 100000 },
+          { id: 'tc_nu_l', name: 'Nu Bank Leo', type: 'credit', initialBalance: 0, initialDebt: 4794863.37, limit: 5000000, tasaEA: 24.6, cuotaMinima: 229622 },
+          { id: 'tc_falabella', name: 'Falabella Leo', type: 'credit', initialBalance: 0, initialDebt: 174586, limit: 1550000, tasaEA: 25.22, cuotaMinima: 174586 },
+          { id: 'tc_nu_a', name: 'Nu Bank Andre', type: 'credit', initialBalance: 0, initialDebt: 0, limit: 900000, tasaEA: 34.5, cuotaMinima: 0 },
+          { id: 'tc_davibank_a', name: 'Davibank Andre', type: 'credit', initialBalance: 0, initialDebt: 6639066, limit: 5600000, tasaEA: 25.25, cuotaMinima: 313097 },
+          { id: 'tc_bogota', name: 'Banco de Bogotá Andre', type: 'credit', initialBalance: 0, initialDebt: 8301421, limit: 8675000, tasaEA: 25.2, cuotaMinima: 888000 },
+          
+          { id: 'cr_lulo', name: 'Lulo Bank Andre', type: 'loan', initialBalance: 0, initialDebt: 9839488.70, limit: 0, tasaEA: 24.34, cuotaMinima: 392390, cuotasPagadas: 3, cuotasTotales: 34, montoPrestado: 10500000, totalPagadoPrevio: 1177170 },
+          { id: 'cr_vehiculo', name: 'Credito de vehiculo Leo', type: 'loan', initialBalance: 0, initialDebt: 48108055.82, limit: 0, tasaEA: 23.95, cuotaMinima: 1043887, hasIBR: true, ibrValue: 11.96, ibrPuntos: 11.99, cuotasPagadas: 52, cuotasTotales: 148, montoPrestado: 60000000, totalPagadoPrevio: 54282124 },
+
+          { id: 'inv1', name: 'Nu bank Leo', type: 'pocket', initialBalance: 50339, currentDebt: 0, limit: 0, tasaEA: 8.25, cuotaMinima: 0 },
+          { id: 'inv2', name: 'Global 66', type: 'pocket', initialBalance: 50000, currentDebt: 0, limit: 0, tasaEA: 11, cuotaMinima: 0 },
+          { id: 'inv3', name: 'Lulo Leo', type: 'pocket', initialBalance: 103239, currentDebt: 0, limit: 0, tasaEA: 8, cuotaMinima: 0 },
+          { id: 'inv4', name: 'Rappi Ahorros', type: 'pocket', initialBalance: 200105, currentDebt: 0, limit: 0, tasaEA: 0, cuotaMinima: 0 },
+          { id: 'inv5', name: 'Rappi Bolsillo Leo', type: 'pocket', initialBalance: 92627, currentDebt: 0, limit: 0, tasaEA: 9, cuotaMinima: 0 }
+        ]; 
+      });
 
       const [transferencias, setTransferencias] = useState(() => safeGetLocal('ff_transferencias_v31', []));
       const [ingresos, setIngresos] = useState(() => safeGetLocal('ff_ingresos_v31', []));
@@ -2759,12 +2789,13 @@
         if (parsed.egresos) setEgresos(parsed.egresos);
         if (parsed.presupuestos) setPresupuestos(parsed.presupuestos);
         if (parsed.pagosFijos) setPagosFijos(parsed.pagosFijos);
+        if (parsed.ingresosFijos) setIngresosFijos(parsed.ingresosFijos);
         if (parsed.comprasCuotas) setComprasCuotas(parsed.comprasCuotas);
       };
 
       const addPagoFijoToState = (pf) => {
         setPagosFijos(prev => [...prev, { ...pf, id: generateId(), diaPago: pf.diaPago || 1, categoria: pf.categoria || 'Otros' }]);
-      }
+      };
 
       const categoriasMaestras = useMemo(() => {
         const cats = new Set(['Inversión', 'Gasolina', 'Mercado', 'Mercado Aseo', 'Aseo hogar', 'Botellón Agua']);
@@ -2774,13 +2805,14 @@
         return Array.from(cats).sort();
       }, [presupuestos, pagosFijos, egresos]);
 
-      // MEJORA: Optimización para evitar recálculos excesivos y manejar amortización general
+      // MEJORA: Optimización y amortización real (abonos extra a capital)
       const calculatedAccounts = useMemo(() => {
         const accMap = {};
         cuentas.forEach(c => { 
             accMap[c.id] = { 
                 ...c, currentBalance: Number(c.initialBalance) || 0, currentDebt: Number(c.initialDebt) || 0,
-                montoPrestado: Number(c.montoPrestado) || Number(c.initialDebt) || 0, totalPagado: Number(c.totalPagadoPrevio) || 0
+                montoPrestado: Number(c.montoPrestado) || Number(c.initialDebt) || 0, totalPagado: Number(c.totalPagadoPrevio) || 0,
+                lastInterestMonth: null // <-- Nuevo: Rastrea el último mes que cobró intereses
             }; 
         });
         
@@ -2792,14 +2824,24 @@
               if (['credit', 'loan'].includes(accMap[e.cuentaId].type)) accMap[e.cuentaId].currentDebt += Number(e.monto);
               else accMap[e.cuentaId].currentBalance -= Number(e.monto);
            }
-           // MEJORA: Amortización correcta. Si el egreso está ligado a una deuda (Ej: pago de tarjeta o crédito)
+           
+           // Lógica de Amortización Correcta
            if (e.deudaId && accMap[e.deudaId]) {
                let account = accMap[e.deudaId];
                account.totalPagado += Number(e.monto);
+               
                if (account.type === 'loan') {
-                   let tasaMensual = getTasaMensual(account.tasaEA);
-                   let interes = account.currentDebt * tasaMensual;
-                   let capital = Number(e.monto) - interes;
+                   const transMonth = e.fecha.substring(0, 7); // Extrae "YYYY-MM"
+                   let capital = Number(e.monto);
+                   
+                   // Solo cobra intereses si es el primer abono registrado en ese mes
+                   if (account.lastInterestMonth !== transMonth) {
+                       let tasaMensual = getTasaMensual(account.tasaEA);
+                       let interes = account.currentDebt * tasaMensual;
+                       capital = Number(e.monto) - interes;
+                       account.lastInterestMonth = transMonth; // Marca el mes como "intereses cobrados"
+                   }
+                   
                    account.currentDebt -= capital;
                } else {
                    account.currentDebt -= Number(e.monto);
@@ -2807,6 +2849,7 @@
                if(account.currentDebt < 0) account.currentDebt = 0;
            }
         });
+        
         transferencias.forEach(t => {
            if(accMap[t.fromId]) {
                if (['credit', 'loan'].includes(accMap[t.fromId].type)) accMap[t.fromId].currentDebt += Number(t.monto);
@@ -3015,7 +3058,7 @@
                   {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} />}
                   {activeTab === 'score' && <ScoreTab scoreData={{score, issues, recs}} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} />}
                   {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} transferencias={activeTransferencias} setTransferencias={setTransferencias} egresos={egresos} setEgresos={setEgresos} showToast={showToast} />}
-                  {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
+                  {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} setIngresos={setIngresos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} />}
                   {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} setEgresos={setEgresos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} comprasCuotas={activeComprasCuotas} setComprasCuotas={setComprasCuotas} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
                   {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} setPresupuestos={setPresupuestos} pagosFijos={activePagosFijos} setPagosFijos={setPagosFijos} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
                   {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} setCuentas={setCuentas} showToast={showToast} />}
