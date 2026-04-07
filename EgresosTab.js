@@ -3,23 +3,17 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                        comprasCuotas, addComprasCuotas, removeComprasCuotas,
                        cuentas, selectedMonth, presupuestos, categoriasMaestras, showToast }) => {
       const todayStr = getLocalToday();
-      const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
+      
+      // ✨ CAMPO NUEVO: interesesOtros añadido al estado del formulario
+      const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', interesesOtros: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
       const [errorsVar, setErrorsVar] = useState({});
       
-      // ✨ ESTADO PARA EL ACORDEÓN (Cajas Desplegables)
-      const [expanded, setExpanded] = useState({
-        form: true,       // Abierto por defecto
-        cuotas: false,    // Cerrado por defecto
-        fijos: false,     // Cerrado por defecto
-        historial: false  // Cerrado por defecto
-      });
+      const [expanded, setExpanded] = useState({ form: true, cuotas: false, fijos: false, historial: false });
 
       const varRef = useRef(null);
       const fileInputRef = useRef(null);
 
-      const toggleSection = (section) => {
-        setExpanded(prev => ({ ...prev, [section]: !prev[section] }));
-      };
+      const toggleSection = (section) => setExpanded(prev => ({ ...prev, [section]: !prev[section] }));
 
       const isCreditCard = gastoForm.metodoPago === 'credit';
 
@@ -41,12 +35,7 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
       const handleCuentaChange = (e) => {
         const cId = e.target.value;
         const card = cuentas.find(c => c.id === cId);
-        setGastoForm(prev => ({
-            ...prev,
-            cuentaId: cId,
-            tasaEA: card?.type === 'credit' ? (card.tasaEA || 0) : '',
-            cuotas: card?.type === 'credit' ? (prev.cuotas || '1') : ''
-        }));
+        setGastoForm(prev => ({ ...prev, cuentaId: cId, tasaEA: card?.type === 'credit' ? (card.tasaEA || 0) : '', cuotas: card?.type === 'credit' ? (prev.cuotas || '1') : '' }));
       };
 
       const guardarGasto = (e) => {
@@ -59,6 +48,9 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
         if(gastoForm.editSource !== 'cuotas' && !gastoForm.fecha) errs.fecha = "Obligatorio";
         if(isCreditCard && !gastoForm.cuotas) errs.cuotas = "Obligatorio";
         if(gastoForm.esPagoDeuda && !gastoForm.deudaDestinoId) errs.deudaDestinoId = "Obligatorio";
+        
+        const interesVal = Number(gastoForm.interesesOtros) || 0;
+        if(interesVal > Number(gastoForm.monto)) errs.interesesOtros = "No puede ser mayor al monto total";
         
         if(Object.keys(errs).length > 0) { setErrorsVar(errs); return; }
 
@@ -78,6 +70,7 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                 descripcion: gastoForm.descripcion,
                 categoria: gastoForm.categoria,
                 monto: Number(gastoForm.monto),
+                interesesOtros: interesVal,
                 cuentaId: gastoForm.cuentaId,
                 deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : (eg.deudaId || null)
             });
@@ -89,6 +82,7 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                 descripcion: gastoForm.descripcion,
                 categoria: gastoForm.categoria,
                 monto: Number(gastoForm.monto),
+                interesesOtros: interesVal,
                 cuentaId: gastoForm.cuentaId,
                 tipo: 'Variable',
                 deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : null
@@ -110,24 +104,26 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
         const metodo = cuenta ? (cuenta.type === 'credit' ? 'credit' : cuenta.type === 'cash' ? 'cash' : 'bank') : '';
         setGastoForm({ 
             id: egreso.id, editSource: 'historial', fecha: egreso.fecha, descripcion: egreso.descripcion, 
-            categoria: egreso.categoria, metodoPago: metodo, cuentaId: egreso.cuentaId, monto: egreso.monto.toString(), 
+            categoria: egreso.categoria, metodoPago: metodo, cuentaId: egreso.cuentaId, 
+            monto: egreso.monto.toString(), 
+            interesesOtros: (egreso.interesesOtros || 0).toString(), 
             cuotas: '', tasaEA: '', esPagoDeuda: !!egreso.deudaId, deudaDestinoId: egreso.deudaId || '' 
         });
         setErrorsVar({});
-        setExpanded(prev => ({ ...prev, form: true })); // Auto-abrir la caja 1
+        setExpanded(prev => ({ ...prev, form: true })); 
         varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       const cargarParaEditarCuota = (c) => {
         const card = cuentas.find(acc => acc.id === c.tarjetaId);
-        setGastoForm({ id: c.id, editSource: 'cuotas', fecha: todayStr, descripcion: c.descripcion, categoria: categoriasMaestras[0] || 'Otros', metodoPago: 'credit', cuentaId: c.tarjetaId, monto: c.montoTotal.toString(), cuotas: c.cuotasTotales.toString(), tasaEA: card ? card.tasaEA : 0, esPagoDeuda: false, deudaDestinoId: '' });
+        setGastoForm({ id: c.id, editSource: 'cuotas', fecha: todayStr, descripcion: c.descripcion, categoria: categoriasMaestras[0] || 'Otros', metodoPago: 'credit', cuentaId: c.tarjetaId, monto: c.montoTotal.toString(), interesesOtros: '', cuotas: c.cuotasTotales.toString(), tasaEA: card ? card.tasaEA : 0, esPagoDeuda: false, deudaDestinoId: '' });
         setErrorsVar({});
-        setExpanded(prev => ({ ...prev, form: true })); // Auto-abrir la caja 1
+        setExpanded(prev => ({ ...prev, form: true })); 
         varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
 
       const cancelarEdicion = () => {
-        setGastoForm({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
+        setGastoForm({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', interesesOtros: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
         setErrorsVar({});
       }
 
@@ -149,7 +145,7 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
 
         const nuevoEgreso = { 
           id: generateId(), fecha: fechaPago, descripcion: pf.descripcion, 
-          categoria: pf.categoria, monto: Number(montoFinal) || pf.monto, 
+          categoria: pf.categoria, monto: Number(montoFinal) || pf.monto, interesesOtros: 0,
           cuentaId: cuentaId, pagoFijoId: pf.id, tipo: 'Fijo',
           deudaId: deudaIdDetectada
         };
@@ -161,22 +157,14 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
         removeComprasCuotas(c.id);
         addComprasCuotas({ ...c, cuotasPagadas: c.cuotasPagadas + 1 });
         addEgreso({
-            id: generateId(),
-            fecha: getLocalToday(),
-            descripcion: `Cuota ${c.cuotasPagadas + 1}/${c.cuotasTotales}: ${c.descripcion}`,
-            categoria: 'Tarjeta de crédito',
-            monto: c.valorMensual,
-            cuentaId: c.tarjetaId,
-            tipo: 'Variable',
-            deudaId: c.tarjetaId
+            id: generateId(), fecha: getLocalToday(), descripcion: `Cuota ${c.cuotasPagadas + 1}/${c.cuotasTotales}: ${c.descripcion}`,
+            categoria: 'Tarjeta de crédito', monto: c.valorMensual, interesesOtros: 0,
+            cuentaId: c.tarjetaId, tipo: 'Variable', deudaId: c.tarjetaId
         });
         showToast("Cuota sumada y gasto registrado en el historial.");
       };
 
-      const egresosMes = egresos
-        .filter(d => d.fecha.startsWith(selectedMonth))
-        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-      
+      const egresosMes = egresos.filter(d => d.fecha.startsWith(selectedMonth)).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
       const pagosPendientes = pagosFijos.map(pf => {
         const egresoEsteMes = egresosMes.find(e => e.pagoFijoId === pf.id);
         return { ...pf, pagado: !!egresoEsteMes, egresoInfo: egresoEsteMes };
@@ -198,7 +186,6 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
           const wb = xlsx.utils.book_new();
           const headers = ["ID", "Fecha", "Descripcion", "Categoria", "Tipo", "Cuenta", "Monto", "DeudaPagada"];
           const data = egresos.map(e => ({ ID: e.id, Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: cuentas.find(c=>c.id===e.cuentaId)?.name || e.cuentaId, Monto: e.monto, DeudaPagada: e.deudaId ? cuentas.find(c=>c.id===e.deudaId)?.name : '' }));
-          
           const ws = xlsx.utils.json_to_sheet(data.length > 0 ? data : [{}], { header: headers });
           xlsx.utils.book_append_sheet(wb, ws, "Egresos");
           xlsx.writeFile(wb, `Egresos_Historial_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -224,7 +211,7 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                   const monto = Number(i.Monto) || 0;
                   const exists = egresos.some(ex => ex.fecha === fecha && ex.descripcion === desc && ex.monto === monto);
                   if (!exists) {
-                      addEgreso({ id: i.ID || generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros', tipo: i.Tipo || 'Variable', monto, cuentaId: cuentas.find(c=>c.name===i.Cuenta)?.id || cuentas[0]?.id, deudaId: cuentas.find(c=>c.name===i.DeudaPagada)?.id || null });
+                      addEgreso({ id: i.ID || generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros', tipo: i.Tipo || 'Variable', monto, interesesOtros: 0, cuentaId: cuentas.find(c=>c.name===i.Cuenta)?.id || cuentas[0]?.id, deudaId: cuentas.find(c=>c.name===i.DeudaPagada)?.id || null });
                       importados++;
                   }
               });
@@ -250,13 +237,10 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
             </div>
           </header>
 
-          {/* CAJA 1: REGISTRAR GASTO */}
           <Card className={`border-t-4 ${gastoForm.id ? 'border-t-amber-500 bg-amber-950/10' : 'border-t-rose-500 bg-slate-900/80'}`}>
             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('form')} ref={varRef}>
               <h2 className="text-base md:text-lg font-semibold text-white">
-                {gastoForm.id 
-                  ? (gastoForm.editSource === 'cuotas' ? '✏️ Editar Compra a Cuotas' : '✏️ Editar Gasto Variable') 
-                  : '1. Registrar Gasto o Compra a Cuotas'}
+                {gastoForm.id ? (gastoForm.editSource === 'cuotas' ? '✏️ Editar Compra a Cuotas' : '✏️ Editar Gasto Variable') : '1. Registrar Gasto o Compra a Cuotas'}
               </h2>
               <div className="flex items-center gap-3">
                 {gastoForm.id && <button onClick={(e) => { e.stopPropagation(); cancelarEdicion(); }} className="text-xs text-amber-400 hover:underline bg-slate-900 px-2 py-1 rounded">Cancelar Edición</button>}
@@ -274,12 +258,12 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                 )}
                 
                 <Input label="Descripción del Gasto / Compra" placeholder="Ej: Supermercado o Televisor" value={gastoForm.descripcion} onChange={e=>setGastoForm({...gastoForm, descripcion: e.target.value})} error={errorsVar.descripcion} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-4' : 'md:col-span-3'}`} />
-                
                 <Select label="Método de pago" options={[{value: 'cash', label: 'Efectivo'}, {value: 'bank', label: 'Débito'}, {value: 'credit', label: 'Crédito'}]} value={gastoForm.metodoPago} onChange={handleMetodoChange} error={errorsVar.metodoPago} required className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
-                
                 <Select label={gastoForm.metodoPago === 'credit' ? 'Tarjeta' : 'Cuenta / Bolsillo'} options={cuentasFiltradas.map(c=>({value:c.id, label:c.name}))} value={gastoForm.cuentaId} onChange={handleCuentaChange} error={errorsVar.cuentaId} disabled={!gastoForm.metodoPago} className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
                 
-                <Input type="number" label="Monto ($)" value={gastoForm.monto} onChange={e=>setGastoForm({...gastoForm, monto: e.target.value})} error={errorsVar.monto} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-2' : 'md:col-span-1'}`} />
+                {/* ✨ NUEVOS CAMPOS DIVIDIDOS (Monto Total e Intereses) */}
+                <Input type="number" label="Monto Total ($)" value={gastoForm.monto} onChange={e=>setGastoForm({...gastoForm, monto: e.target.value})} error={errorsVar.monto} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-1'}`} />
+                <Input type="number" label="Intereses/Otros (Opcional)" title="Si este pago incluye intereses o cargos bancarios, anota el valor aquí." value={gastoForm.interesesOtros} onChange={e=>setGastoForm({...gastoForm, interesesOtros: e.target.value})} error={errorsVar.interesesOtros} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'hidden' : 'md:col-span-2 bg-amber-950/20'}`} />
 
                 {!isCreditCard && gastoForm.editSource !== 'cuotas' && (
                    <div className="col-span-2 md:col-span-12 flex items-center gap-4 bg-slate-950 p-3 rounded-lg border border-slate-800">
@@ -316,19 +300,14 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
             )}
           </Card>
 
-          {/* CAJA 2: COMPRAS A CUOTAS */}
           <Card className="border-t-4 border-t-indigo-500 bg-slate-900/80">
             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('cuotas')}>
-              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                <ShoppingCart size={20} className="text-indigo-400"/> 
-                2. Compras a Cuotas Activas
-              </h2>
+              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><ShoppingCart size={20} className="text-indigo-400"/> 2. Compras a Cuotas Activas</h2>
               <div className="flex gap-4 items-center">
                 <p className="hidden md:block text-[10px] md:text-xs font-bold text-indigo-400 bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-500/20">Compromiso Mensual: {formatCOP(totalCompromisoCuotas)}</p>
                 <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.cuotas ? 'rotate-90' : ''}`} />
               </div>
             </div>
-
             {expanded.cuotas && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5 animate-in slide-in-from-top-2">
                 {comprasCuotas.filter(c => c.cuotasPagadas < c.cuotasTotales).map(c => {
@@ -341,18 +320,9 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                       </div>
                       <p className="font-bold text-slate-200">{c.descripcion}</p>
                       <p className="text-[10px] text-indigo-400 mb-2">{cuentas.find(acc=>acc.id===c.tarjetaId)?.name}</p>
-                      
-                      <div className="flex justify-between text-xs text-slate-400 mb-1">
-                        <span>Pagadas: {c.cuotasPagadas}</span>
-                        <span>Faltan: {c.cuotasTotales - c.cuotasPagadas}</span>
-                      </div>
-                      <div className="w-full bg-slate-800 rounded-full h-1.5 mb-3">
-                        <div className="bg-indigo-500 h-1.5 rounded-full transition-all" style={{width: `${progreso}%`}}></div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-slate-300">{formatCOP(c.valorMensual)}/mes</span>
-                        <button onClick={(e) => { e.stopPropagation(); avanzarCuota(c); }} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button>
-                      </div>
+                      <div className="flex justify-between text-xs text-slate-400 mb-1"><span>Pagadas: {c.cuotasPagadas}</span><span>Faltan: {c.cuotasTotales - c.cuotasPagadas}</span></div>
+                      <div className="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div className="bg-indigo-500 h-1.5 rounded-full transition-all" style={{width: `${progreso}%`}}></div></div>
+                      <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-300">{formatCOP(c.valorMensual)}/mes</span><button onClick={(e) => { e.stopPropagation(); avanzarCuota(c); }} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button></div>
                     </div>
                   )
                 })}
@@ -361,15 +331,11 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
             )}
           </Card>
 
-          {/* CAJA 3: PAGOS FIJOS */}
           <Card className="border-t-4 border-t-amber-500 bg-slate-900/80">
             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('fijos')}>
-              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                 <CheckSquare size={20} className="text-amber-400"/> 3. Pagos Fijos (Checklist de {selectedMonth})
-              </h2>
+              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><CheckSquare size={20} className="text-amber-400"/> 3. Pagos Fijos (Checklist de {selectedMonth})</h2>
               <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.fijos ? 'rotate-90' : ''}`} />
             </div>
-
             {expanded.fijos && (
               <div className="mt-5 animate-in slide-in-from-top-2">
                 {pagosFijos.length > 0 ? (
@@ -386,41 +352,36 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                       return <PagoFijoCard key={pf.id} pf={pf} cuentasPermitidas={cuentasPermitidasPago} onPay={(cuentaId, monto) => procesarPagoFijo(pf.id, cuentaId, monto)} />;
                     })}
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-500 py-4">No has configurado pagos fijos. Abre "Editar Plantillas Fijas" en la pestaña Presupuestos.</p>
-                )}
+                ) : <p className="text-sm text-slate-500 py-4">No has configurado pagos fijos. Abre "Editar Plantillas Fijas" en la pestaña Presupuestos.</p>}
               </div>
             )}
           </Card>
 
-          {/* CAJA 4: HISTORIAL */}
           <Card className="border-t-4 border-t-slate-500 bg-slate-900/80">
             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('historial')}>
-              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                <FileSpreadsheet size={20} className="text-slate-400"/> 4. Historial Completo de Egresos
-              </h2>
+              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><FileSpreadsheet size={20} className="text-slate-400"/> 4. Historial Completo de Egresos</h2>
               <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.historial ? 'rotate-90' : ''}`} />
             </div>
-
             {expanded.historial && (
               <div className="mt-5 overflow-x-auto bg-slate-950 rounded-xl border border-slate-800 animate-in slide-in-from-top-2">
                 <table className="w-full text-sm text-left min-w-[600px]">
                   <thead className="text-xs text-slate-400 uppercase bg-slate-900">
-                    <tr><th className="px-4 py-4 rounded-tl-lg">Fecha</th><th className="px-4 py-4">Descripción</th><th className="px-4 py-4">Categoría/Cuenta</th><th className="px-4 py-4 text-right">Monto</th><th className="px-4 py-4 rounded-tr-lg"></th></tr>
+                    <tr><th className="px-4 py-4 rounded-tl-lg">Fecha</th><th className="px-4 py-4">Descripción</th><th className="px-4 py-4">Categoría/Cuenta</th><th className="px-4 py-4 text-right">Monto / Intereses</th><th className="px-4 py-4 rounded-tr-lg"></th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
                     {egresosMes.map(g => (
                       <tr key={g.id} className={`transition-colors ${gastoForm.id === g.id && gastoForm.editSource === 'historial' ? 'bg-amber-900/20' : 'hover:bg-slate-800/20'}`}>
                         <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{g.fecha}</td>
-                        <td className="px-4 py-3 text-slate-300 font-medium">
-                          {g.descripcion}
-                          {g.tipo === 'Fijo' && <span className="ml-2 text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider">Fijo</span>}
-                        </td>
+                        <td className="px-4 py-3 text-slate-300 font-medium">{g.descripcion}{g.tipo === 'Fijo' && <span className="ml-2 text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider">Fijo</span>}</td>
                         <td className="px-4 py-3 text-slate-400">
                           <span className="bg-slate-800 px-2 py-1 rounded-md text-xs block w-max mb-1">{g.categoria}</span>
                           <span className="text-[10px] text-indigo-400/80">Pagado con: {cuentas.find(c => c.id === g.cuentaId)?.name || '?'}</span>
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-rose-400">{formatCOP(g.monto)}</td>
+                        {/* ✨ MOSTRANDO EL DESGLOSE DE INTERESES EN LA TABLA */}
+                        <td className="px-4 py-3 text-right">
+                           <span className="font-bold text-rose-400 block">{formatCOP(g.monto)}</span>
+                           {g.interesesOtros > 0 && <span className="text-[10px] text-amber-500 font-medium block leading-none mt-1">Int: {formatCOP(g.interesesOtros)}</span>}
+                        </td>
                         <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
                           <button onClick={(e) => { e.stopPropagation(); cargarParaEditarVariable(g); }} className="text-slate-500 hover:text-indigo-400 p-1.5" title="Editar Gasto"><Edit3 size={16} /></button>
                           <button onClick={(e) => { e.stopPropagation(); removeEgreso(g.id); showToast("Gasto eliminado"); }} className="text-slate-500 hover:text-rose-400 p-1.5" title="Eliminar"><Trash2 size={16} /></button>
