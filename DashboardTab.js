@@ -124,9 +124,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
         </Card>
         
-        {/* 1. TARJETA INTERACTIVA: EGRESOS TOTALES */}
-        <Card className="p-3 md:p-5 border-t-4 border-t-rose-500 cursor-pointer transition-colors hover:bg-slate-800/80" onClick={() => toggleCard('egresos')}>
-          <div className="flex justify-between items-start">
+        {/* ✨ 1. TARJETA INTERACTIVA: EGRESOS TOTALES (Corregido clic) */}
+        <Card className={`p-3 md:p-5 border-t-4 border-t-rose-500 transition-colors ${expandedCard === 'egresos' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
+          <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('egresos')}>
             <div className="flex flex-col justify-between">
               <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
               <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
@@ -160,9 +160,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(pagosFijosPendientesTotal)}</p>
         </Card>
         
-        {/* 2. TARJETA INTERACTIVA: PRESUPUESTO CONFIGURADO */}
-        <Card className="p-3 md:p-5 border-t-4 border-t-slate-500 cursor-pointer transition-colors hover:bg-slate-800/80" onClick={() => toggleCard('presupuesto')}>
-          <div className="flex justify-between items-start">
+        {/* ✨ 2. TARJETA INTERACTIVA: PRESUPUESTO CONFIGURADO (Corregido clic) */}
+        <Card className={`p-3 md:p-5 border-t-4 border-t-slate-500 transition-colors ${expandedCard === 'presupuesto' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
+          <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('presupuesto')}>
             <div className="flex flex-col justify-between">
               <h3 className="text-slate-400 text-xs md:text-sm font-medium">Presupuesto Configurado</h3>
               <p className="text-lg md:text-2xl font-bold text-slate-200 mt-1">{formatCOP(presupuestoTotal)}</p>
@@ -183,9 +183,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
         
-        {/* 3. TARJETA INTERACTIVA: DINERO EN CUENTAS */}
-        <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500/50 cursor-pointer transition-colors hover:bg-slate-800/80" onClick={() => toggleCard('cuentas')}>
-          <div className="flex justify-between items-start">
+        {/* ✨ 3. TARJETA INTERACTIVA: DINERO EN CUENTAS (Corregido clic) */}
+        <Card className={`p-3 md:p-5 border-t-4 border-t-emerald-500/50 transition-colors ${expandedCard === 'cuentas' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
+          <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('cuentas')}>
             <div className="flex flex-col justify-between">
               <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero en Cuentas (Total)</h3>
               <p className="text-lg md:text-2xl font-bold text-emerald-400/80 mt-1">{formatCOP(liquidezTotal)}</p>
