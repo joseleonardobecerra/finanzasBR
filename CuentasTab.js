@@ -1,4 +1,4 @@
-    const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
+const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                           transferencias, addTransferencia, removeTransferencia,
                           addEgreso, showToast }) => {
       const [cuentaEdit, setCuentaEdit] = useState({ id: null, name: '', type: 'bank', initialBalance: '', initialDebt: '', limit: '', tasaEA: '', cuotaMinima: '' });
@@ -68,7 +68,6 @@
         setTxErrors({});
       };
 
-      // --- EXPORTAR ---
       const handleExport = async () => {
         try {
           const xlsx = await loadSheetJS();
@@ -82,7 +81,6 @@
         } catch(e) { showToast("Error al exportar.", "error"); }
       };
 
-      // --- IMPORTAR ---
       const handleImport = async (e) => {
         const file = e.target.files[0]; if (!file) return;
         try {
@@ -119,7 +117,9 @@
       const tipoOrigen  = cuentas.find(c=>c.id===nuevaTx.fromId)?.type;
       const tipoDestino = cuentas.find(c=>c.id===nuevaTx.toId)?.type;
       const esAvance    = tipoOrigen === 'credit' && ['bank','cash'].includes(tipoDestino);
-      const c_ahorros   = cuentas.filter(c => ['bank', 'cash'].includes(c.type));
+      
+      // ✨ EXCLUIMOS RAPPICUENTA DE ESTA PESTAÑA PARA MOSTRARLA EN INVERSIONES
+      const c_ahorros   = cuentas.filter(c => ['bank', 'cash'].includes(c.type) && !c.name.toLowerCase().includes('rappi'));
 
       const renderCuentaCard = (c, colorClass) => (
         <div key={c.id} className="flex justify-between items-center p-3 bg-slate-950 rounded-lg border border-slate-800">
@@ -198,4 +198,3 @@
         </div>
       );
     };
-
