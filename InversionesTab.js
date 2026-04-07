@@ -1,4 +1,4 @@
-    const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
+const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                            ingresos, addIngreso,
                            egresos, transferencias, selectedMonth, showToast, getOwner }) => {
       const [showForm, setShowForm] = useState(false);
@@ -61,7 +61,6 @@
         setGananciaMonto('');
       };
 
-      // --- IMPORTAR / EXPORTAR INDIVIDUAL DE INVERSIONES ---
       const handleExport = async () => {
         try {
           const xlsx = await loadSheetJS();
@@ -103,7 +102,8 @@
         e.target.value = '';
       };
 
-      const invCuentas = cuentas.filter(c => !['credit', 'loan'].includes(c.type) && (c.type === 'pocket' || c.tasaEA > 0));
+      // ✨ INCLUIMOS EXPLÍCITAMENTE RAPPICUENTA EN ESTA PESTAÑA
+      const invCuentas = cuentas.filter(c => !['credit', 'loan'].includes(c.type) && (c.type === 'pocket' || c.tasaEA > 0 || c.name.toLowerCase().includes('rappi')));
 
       const tablaData = invCuentas.map(c => {
          let sInicial = Number(c.initialBalance) || 0;
@@ -246,4 +246,3 @@
         </div>
       );
     };
-
