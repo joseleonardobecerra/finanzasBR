@@ -60,7 +60,8 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => !egresosMes.some(e => e.pagoFijoId === pf.id)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
 
   // --- CÁLCULOS PARA DINERO EN CUENTAS (Desglose) ---
-  const liquidezAccounts = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
+  // Excluimos las cuentas tipo 'pocket' (Inversiones) y la cuenta Rappi
+  const liquidezAccounts = cuentas.filter(c => ['bank', 'cash'].includes(c.type) && !c.name.toLowerCase().includes('rappi'));
   let liquidezLeoCuentas = 0; let liquidezLeoEfectivo = 0;
   let liquidezAndreCuentas = 0; let liquidezAndreEfectivo = 0;
 
@@ -74,6 +75,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
          else liquidezAndreCuentas += c.currentBalance;
      }
   });
+
+  // Calculamos el total exacto excluyendo inversiones
+  const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
   // ============================================================================
   // ✨ LÓGICA ESTRATÉGICA (Avalancha y Ahorro)
@@ -124,7 +128,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
         </Card>
         
-        {/* ✨ 1. TARJETA INTERACTIVA: EGRESOS TOTALES (Corregido clic) */}
+        {/* TARJETA INTERACTIVA: EGRESOS TOTALES */}
         <Card className={`p-3 md:p-5 border-t-4 border-t-rose-500 transition-colors ${expandedCard === 'egresos' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
           <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('egresos')}>
             <div className="flex flex-col justify-between">
@@ -160,7 +164,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(pagosFijosPendientesTotal)}</p>
         </Card>
         
-        {/* ✨ 2. TARJETA INTERACTIVA: PRESUPUESTO CONFIGURADO (Corregido clic) */}
+        {/* TARJETA INTERACTIVA: PRESUPUESTO CONFIGURADO */}
         <Card className={`p-3 md:p-5 border-t-4 border-t-slate-500 transition-colors ${expandedCard === 'presupuesto' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
           <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('presupuesto')}>
             <div className="flex flex-col justify-between">
@@ -183,12 +187,12 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
         
-        {/* ✨ 3. TARJETA INTERACTIVA: DINERO EN CUENTAS (Corregido clic) */}
+        {/* TARJETA INTERACTIVA: DINERO EN CUENTAS */}
         <Card className={`p-3 md:p-5 border-t-4 border-t-emerald-500/50 transition-colors ${expandedCard === 'cuentas' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
           <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('cuentas')}>
             <div className="flex flex-col justify-between">
               <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero en Cuentas (Total)</h3>
-              <p className="text-lg md:text-2xl font-bold text-emerald-400/80 mt-1">{formatCOP(liquidezTotal)}</p>
+              <p className="text-lg md:text-2xl font-bold text-emerald-400/80 mt-1">{formatCOP(totalDineroCuentas)}</p>
             </div>
             <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'cuentas' ? '-rotate-90' : 'rotate-90'}`} />
           </div>
