@@ -1,4 +1,4 @@
-    const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
+const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                        pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
                        comprasCuotas, addComprasCuotas, removeComprasCuotas,
                        cuentas, selectedMonth, presupuestos, categoriasMaestras, showToast }) => {
@@ -160,7 +160,10 @@
         showToast("Cuota sumada y gasto registrado en el historial.");
       };
 
-      const egresosMes = egresos.filter(d => d.fecha.startsWith(selectedMonth));
+      // ✨ AQUÍ EL CAMBIO: Ordenamos cronológicamente de menor a mayor (Día 1 al 31)
+      const egresosMes = egresos
+        .filter(d => d.fecha.startsWith(selectedMonth))
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
       
       const pagosPendientes = pagosFijos.map(pf => {
         const egresoEsteMes = egresosMes.find(e => e.pagoFijoId === pf.id);
@@ -398,4 +401,3 @@
         </div>
       );
     };
-
