@@ -1,7 +1,12 @@
 // --- Componentes de Pestañas ---
 const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
   const [chartFilter, setChartFilter] = useState('Todos');
+  const [expandedCard, setExpandedCard] = useState(null);
   
+  const toggleCard = (cardId) => {
+    setExpandedCard(prev => prev === cardId ? null : cardId);
+  };
+
   // Helpers para identificar dueños
   const identifyOwner = (cuentaId, itemPersona, textDesc) => {
     if (itemPersona === 'L' || itemPersona === 'Leo') return 'Leo';
@@ -54,48 +59,33 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => !egresosMes.some(e => e.pagoFijoId === pf.id)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
 
+  // --- CÁLCULOS PARA DINERO EN CUENTAS (Desglose) ---
+  const liquidezAccounts = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
+  let liquidezLeoCuentas = 0; let liquidezLeoEfectivo = 0;
+  let liquidezAndreCuentas = 0; let liquidezAndreEfectivo = 0;
+
+  liquidezAccounts.forEach(c => {
+     const owner = identifyOwner(c.id, null, c.name);
+     if (owner === 'Leo') {
+         if (c.type === 'cash') liquidezLeoEfectivo += c.currentBalance;
+         else liquidezLeoCuentas += c.currentBalance;
+     } else if (owner === 'Andre') {
+         if (c.type === 'cash') liquidezAndreEfectivo += c.currentBalance;
+         else liquidezAndreCuentas += c.currentBalance;
+     }
+  });
+
   // ============================================================================
-  // ✨ LÓGICA ESTRATÉGICA (Alertas, Avalancha y Ahorro)
+  // ✨ LÓGICA ESTRATÉGICA (Avalancha y Ahorro)
   // ============================================================================
-  
-  // 1. Alertas Inteligentes
-  const tasaAhorro = ingresosMesTotal > 0 ? ((ingresosMesTotal - egresosMesTotal - cuotasMesTotal) / ingresosMesTotal) * 100 : 0;
-  const nivelEndeudamiento = ingresosMesTotal > 0 ? (cuotasMesTotal / ingresosMesTotal) * 100 : 0;
-  
   const deudasActivas = cuentas.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).sort((a,b) => b.tasaEA - a.tasaEA);
   const focoAvalancha = deudasActivas.length > 0 ? deudasActivas[0] : null;
 
-  const alertasPresupuesto = presupuestos.map(p => {
-     const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
-     return { ...p, gastado, porcentaje: p.limite > 0 ? (gastado / p.limite) * 100 : 0 };
-  }).filter(p => p.porcentaje >= 90).sort((a,b) => b.porcentaje - a.porcentaje);
-
-  const activeAlerts = useMemo(() => {
-    let items = [];
-    if (deudasActivas.some(d => d.tasaEA >= 25)) {
-        items.push({ id: 1, type: 'danger', icon: ShieldAlert, title: "Deuda Crítica", text: `Detectamos interés de alto riesgo (>25% E.A.). Revisa la pestaña Deudas.` });
-    }
-    if (nivelEndeudamiento > 40) {
-        items.push({ id: 2, type: 'warning', icon: AlertCircle, title: "Alerta Endeudamiento", text: `Cuotas mensuales consumen el ${nivelEndeudamiento.toFixed(1)}% del ingreso.` });
-    }
-    if (alertasPresupuesto.length > 0) {
-        const criticos = alertasPresupuesto.filter(p => p.porcentaje >= 100).map(p => p.categoria);
-        if (criticos.length > 0) items.push({ id: 3, type: 'danger', icon: Target, title: "Presupuesto Excedido", text: `Has roto el límite en: ${criticos.join(', ')}.` });
-    }
-    if (tasaAhorro < 10 && ingresosMesTotal > 0) {
-        items.push({ id: 4, type: 'warning', icon: TrendingUp, title: "Ahorro Estancado", text: `Tasa de ahorro actual: ${tasaAhorro.toFixed(1)}%. ¡Cuidado con el gasto hormiga!` });
-    }
-    return items;
-  }, [deudasActivas, nivelEndeudamiento, alertasPresupuesto, tasaAhorro, ingresosMesTotal]);
-
-  // 2. Progreso de Ahorro / Inversión
   const metaInversion = pagosFijos ? pagosFijos.filter(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro')).reduce((s, pf) => s + pf.monto, 0) : 0;
   const invertidoActual = egresosMes.filter(e => e.categoria === 'Inversión' || e.descripcion.toLowerCase().includes('ahorro')).reduce((s, e) => s + e.monto, 0);
   const progresoInversion = metaInversion > 0 ? Math.min((invertidoActual / metaInversion) * 100, 100) : 0;
 
-  // ============================================================================
-
-  // Gráficas
+  // Gráficas y desglose
   const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
   const gastosPorCategoria = {};
   gastosFiltrados.forEach(g => {
@@ -127,55 +117,107 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         <p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, estrategia activa y control de proyecciones.</p>
       </header>
 
-      {/* BANDERAS DE ALERTAS INTELIGENTES */}
-      {activeAlerts.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {activeAlerts.map(alerta => {
-            const Icon = alerta.icon;
-            const bgClass = alerta.type === 'danger' ? 'bg-rose-500/10 border-rose-500/30' : 'bg-amber-500/10 border-amber-500/30';
-            const iconClass = alerta.type === 'danger' ? 'text-rose-400' : 'text-amber-400';
-            return (
-              <div key={alerta.id} className={`flex-shrink-0 w-72 p-3 rounded-lg border ${bgClass} flex items-start gap-3`}>
-                <div className={`p-2 rounded-lg bg-slate-950/50 ${iconClass}`}><Icon size={18} /></div>
-                <div>
-                  <h4 className={`text-sm font-bold ${iconClass}`}>{alerta.title}</h4>
-                  <p className="text-xs text-slate-300 mt-0.5 leading-tight">{alerta.text}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {/* TARJETAS PRINCIPALES */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500 flex flex-col justify-between">
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Ingresos Totales (Mes)</h3>
           <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
         </Card>
-        <Card className="p-3 md:p-5 border-t-4 border-t-rose-500 flex flex-col justify-between">
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
-          <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
+        
+        {/* 1. TARJETA INTERACTIVA: EGRESOS TOTALES */}
+        <Card className="p-3 md:p-5 border-t-4 border-t-rose-500 cursor-pointer transition-colors hover:bg-slate-800/80" onClick={() => toggleCard('egresos')}>
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col justify-between">
+              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
+              <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
+            </div>
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'egresos' ? '-rotate-90' : 'rotate-90'}`} />
+          </div>
+          {expandedCard === 'egresos' && (
+            <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2">
+              <ul className="space-y-2 text-xs">
+                {chartData.map(([cat, amount]) => (
+                  <li key={cat} className="flex justify-between items-center text-slate-300">
+                    <span className="truncate pr-2 font-medium">{cat}</span>
+                    <span className="font-bold text-rose-400">{formatCOP(amount)}</span>
+                  </li>
+                ))}
+                {chartData.length === 0 && <li className="text-slate-500 text-center py-2">No hay egresos registrados</li>}
+              </ul>
+            </div>
+          )}
         </Card>
+
         <Card className={`p-3 md:p-5 border-t-4 ${dineroDisponible >= 0 ? 'border-t-indigo-500' : 'border-t-rose-500'} flex flex-col justify-between`}>
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero Disponible (Flujo)</h3>
           <p className={`text-lg md:text-2xl font-bold mt-1 ${dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
             {formatCOP(dineroDisponible)}
           </p>
         </Card>
+        
         <Card className="p-3 md:p-5 border-t-4 border-t-amber-500 flex flex-col justify-between">
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Pagos Fijos Pendientes</h3>
           <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(pagosFijosPendientesTotal)}</p>
         </Card>
-        <Card className="p-3 md:p-5 border-t-4 border-t-slate-500 flex flex-col justify-between">
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Presupuesto Configurado</h3>
-          <p className="text-lg md:text-2xl font-bold text-slate-200 mt-1">{formatCOP(presupuestoTotal)}</p>
+        
+        {/* 2. TARJETA INTERACTIVA: PRESUPUESTO CONFIGURADO */}
+        <Card className="p-3 md:p-5 border-t-4 border-t-slate-500 cursor-pointer transition-colors hover:bg-slate-800/80" onClick={() => toggleCard('presupuesto')}>
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col justify-between">
+              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Presupuesto Configurado</h3>
+              <p className="text-lg md:text-2xl font-bold text-slate-200 mt-1">{formatCOP(presupuestoTotal)}</p>
+            </div>
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'presupuesto' ? '-rotate-90' : 'rotate-90'}`} />
+          </div>
+          {expandedCard === 'presupuesto' && (
+            <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2">
+              <div className="flex justify-between items-center text-xs mb-2">
+                <span className="text-slate-400">Gastos Fijos</span>
+                <span className="font-bold text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Gastos Variables</span>
+                <span className="font-bold text-indigo-400">{formatCOP(totalPresupuestadoVar)}</span>
+              </div>
+            </div>
+          )}
         </Card>
-        <Card className={`p-3 md:p-5 border-t-4 ${presupuestoTotal - egresosMesTotal >= 0 ? 'border-t-emerald-500/50' : 'border-t-rose-500/50'} flex flex-col justify-between`}>
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Presupuesto Restante</h3>
-          <p className={`text-lg md:text-2xl font-bold mt-1 ${presupuestoTotal - egresosMesTotal >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
-            {formatCOP(presupuestoTotal - egresosMesTotal)}
-          </p>
+        
+        {/* 3. TARJETA INTERACTIVA: DINERO EN CUENTAS */}
+        <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500/50 cursor-pointer transition-colors hover:bg-slate-800/80" onClick={() => toggleCard('cuentas')}>
+          <div className="flex justify-between items-start">
+            <div className="flex flex-col justify-between">
+              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero en Cuentas (Total)</h3>
+              <p className="text-lg md:text-2xl font-bold text-emerald-400/80 mt-1">{formatCOP(liquidezTotal)}</p>
+            </div>
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'cuentas' ? '-rotate-90' : 'rotate-90'}`} />
+          </div>
+          {expandedCard === 'cuentas' && (
+            <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2 grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-[10px] font-bold text-emerald-500 uppercase mb-1">Cuentas Leo</h4>
+                <div className="flex justify-between items-center text-xs mb-1">
+                  <span className="text-slate-400">Bancos</span>
+                  <span className="font-bold text-slate-200">{formatCOP(liquidezLeoCuentas)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400">Efectivo</span>
+                  <span className="font-bold text-slate-200">{formatCOP(liquidezLeoEfectivo)}</span>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-[10px] font-bold text-rose-500 uppercase mb-1">Cuentas Andre</h4>
+                <div className="flex justify-between items-center text-xs mb-1">
+                  <span className="text-slate-400">Bancos</span>
+                  <span className="font-bold text-slate-200">{formatCOP(liquidezAndreCuentas)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400">Efectivo</span>
+                  <span className="font-bold text-slate-200">{formatCOP(liquidezAndreEfectivo)}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
 
@@ -359,7 +401,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                     <div style={{ height: `${Math.max(hInc, 2)}%` }} className="w-1/3 max-w-[12px] bg-emerald-500/80 rounded-t-sm transition-all group-hover:bg-emerald-400"></div>
                     <div style={{ height: `${Math.max(hExp, 2)}%` }} className="w-1/3 max-w-[12px] bg-rose-500/80 rounded-t-sm transition-all group-hover:bg-rose-400"></div>
                   </div>
-                  {/* Tooltip mejorado con Flujo Neto */}
                   <div className="opacity-0 group-hover:opacity-100 absolute -top-16 bg-slate-950 border border-slate-700 text-white text-[10px] p-2 rounded shadow-2xl whitespace-nowrap z-10 pointer-events-none transition-opacity">
                     <p className="text-emerald-400 mb-0.5">Ing: {formatCOP(d.ing)}</p>
                     <p className="text-rose-400 mb-0.5">Egr: {formatCOP(d.egr)}</p>
@@ -393,16 +434,15 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             {chartData.map(([name, amount]) => {
               const width = Math.max((amount / maxMonto) * 100, 2);
               
-              // Colores Semánticos basados en Presupuestos
               const pres = presupuestos.find(p => p.categoria === name);
-              let barColorClass = 'bg-indigo-500'; // Default
+              let barColorClass = 'bg-indigo-500';
               if (pres && pres.limite > 0) {
                  const pct = (amount / pres.limite) * 100;
                  if (pct >= 100) barColorClass = 'bg-rose-500';
                  else if (pct >= 80) barColorClass = 'bg-amber-500';
                  else barColorClass = 'bg-emerald-500';
               } else if (chartFilter === 'Fijo') {
-                 barColorClass = 'bg-amber-500'; // Fijos por default se ven bien en amarillo
+                 barColorClass = 'bg-amber-500';
               }
 
               return (
