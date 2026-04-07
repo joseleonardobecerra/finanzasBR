@@ -1,4 +1,4 @@
-    const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast }) => {
+const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, egresos }) => {
       const [showNewCard, setShowNewCard] = useState(false);
       const [showNewLoan, setShowNewLoan] = useState(false);
       
@@ -8,6 +8,21 @@
       const [editId, setEditId] = useState(null);
       const [editData, setEditData] = useState({});
       const fileInputRef = useRef(null);
+
+      // ✨ CÁLCULO DE TRAZA DE INTERESES (Histórico Exacto desde Egresos)
+      const intTC = egresos.filter(e => {
+          if (!e.interesesOtros) return false;
+          const c = cuentas.find(acc => acc.id === e.cuentaId || acc.id === e.deudaId);
+          return c && c.type === 'credit';
+      }).reduce((s, e) => s + e.interesesOtros, 0);
+
+      const intPrestamos = egresos.filter(e => {
+          if (!e.interesesOtros) return false;
+          const c = cuentas.find(acc => acc.id === e.cuentaId || acc.id === e.deudaId);
+          return c && c.type === 'loan';
+      }).reduce((s, e) => s + e.interesesOtros, 0);
+
+      const intTotal = intTC + intPrestamos;
 
       const deudasAnalizadas = cuentas
         .filter(c => ['credit', 'loan'].includes(c.type))
@@ -26,13 +41,9 @@
         if(!newCardData.name) return showToast("El nombre es obligatorio", "error");
 
         addCuenta({
-          id: generateId(),
-          name: newCardData.name,
-          type: 'credit',
-          initialBalance: 0,
-          initialDebt: Number(newCardData.initialDebt) || 0,
-          limit: Number(newCardData.limit) || 0,
-          cuotaMinima: Number(newCardData.cuotaMinima) || 0,
+          id: generateId(), name: newCardData.name, type: 'credit',
+          initialBalance: 0, initialDebt: Number(newCardData.initialDebt) || 0,
+          limit: Number(newCardData.limit) || 0, cuotaMinima: Number(newCardData.cuotaMinima) || 0,
           tasaEA: Number(newCardData.tasaEA) || 0
         });
         showToast("Tarjeta creada correctamente.");
@@ -51,20 +62,12 @@
         }
 
         addCuenta({
-          id: generateId(),
-          name: newLoanData.name,
-          type: 'loan',
-          initialBalance: 0,
-          montoPrestado: Number(newLoanData.montoPrestado) || 0,
-          initialDebt: Number(newLoanData.initialDebt) || 0,
-          totalPagadoPrevio: Number(newLoanData.totalPagadoPrevio) || 0,
-          tasaEA: tasaFinal,
-          cuotaMinima: Number(newLoanData.cuotaMinima) || 0,
-          cuotasTotales: Number(newLoanData.cuotasTotales) || 0,
-          cuotasPagadas: Number(newLoanData.cuotasPagadas) || 0,
-          hasIBR: newLoanData.hasIBR,
-          ibrValue: Number(newLoanData.ibrValue) || 0,
-          ibrPuntos: Number(newLoanData.ibrPuntos) || 0
+          id: generateId(), name: newLoanData.name, type: 'loan', initialBalance: 0,
+          montoPrestado: Number(newLoanData.montoPrestado) || 0, initialDebt: Number(newLoanData.initialDebt) || 0,
+          totalPagadoPrevio: Number(newLoanData.totalPagadoPrevio) || 0, tasaEA: tasaFinal,
+          cuotaMinima: Number(newLoanData.cuotaMinima) || 0, cuotasTotales: Number(newLoanData.cuotasTotales) || 0,
+          cuotasPagadas: Number(newLoanData.cuotasPagadas) || 0, hasIBR: newLoanData.hasIBR,
+          ibrValue: Number(newLoanData.ibrValue) || 0, ibrPuntos: Number(newLoanData.ibrPuntos) || 0
         });
         showToast("Préstamo creado.");
         setShowNewLoan(false);
@@ -73,13 +76,7 @@
 
       const startEdit = (c) => {
         setEditId(c.id);
-        setEditData({
-          ...c,
-          montoPrestado: c.montoPrestado || c.initialDebt || 0,
-          totalPagadoPrevio: c.totalPagadoPrevio || 0,
-          ibrValue: c.ibrValue || 0,
-          ibrPuntos: c.ibrPuntos || 0
-        });
+        setEditData({ ...c, montoPrestado: c.montoPrestado || c.initialDebt || 0, totalPagadoPrevio: c.totalPagadoPrevio || 0, ibrValue: c.ibrValue || 0, ibrPuntos: c.ibrPuntos || 0 });
       };
 
       const saveInlineEdit = () => {
@@ -92,48 +89,34 @@
         }
 
         updateCuenta(editId, {
-            name: dataToSave.name,
-            limit: Number(dataToSave.limit) || 0,
-            initialDebt: Number(dataToSave.initialDebt) || 0,
-            montoPrestado: Number(dataToSave.montoPrestado) || 0,
-            totalPagadoPrevio: Number(dataToSave.totalPagadoPrevio) || 0,
-            tasaEA: Number(dataToSave.tasaEA) || 0,
-            cuotaMinima: Number(dataToSave.cuotaMinima) || 0,
-            cuotasTotales: Number(dataToSave.cuotasTotales) || 0,
-            cuotasPagadas: Number(dataToSave.cuotasPagadas) || 0,
-            hasIBR: dataToSave.hasIBR || false,
-            ibrValue: Number(dataToSave.ibrValue) || 0,
-            ibrPuntos: Number(dataToSave.ibrPuntos) || 0
+            name: dataToSave.name, limit: Number(dataToSave.limit) || 0,
+            initialDebt: Number(dataToSave.initialDebt) || 0, montoPrestado: Number(dataToSave.montoPrestado) || 0,
+            totalPagadoPrevio: Number(dataToSave.totalPagadoPrevio) || 0, tasaEA: Number(dataToSave.tasaEA) || 0,
+            cuotaMinima: Number(dataToSave.cuotaMinima) || 0, cuotasTotales: Number(dataToSave.cuotasTotales) || 0,
+            cuotasPagadas: Number(dataToSave.cuotasPagadas) || 0, hasIBR: dataToSave.hasIBR || false,
+            ibrValue: Number(dataToSave.ibrValue) || 0, ibrPuntos: Number(dataToSave.ibrPuntos) || 0
         });
         setEditId(null);
         showToast("Registro actualizado correctamente.");
       };
 
-      const actualizarCampo = (id, field, val) => {
-        updateCuenta(id, { [field]: Number(val) });
-      };
-
+      const actualizarCampo = (id, field, val) => updateCuenta(id, { [field]: Number(val) });
       const actualizarIBR = (id, ibrValue, ibrPuntos) => {
-        const val = Number(ibrValue);
-        const pts = Number(ibrPuntos);
-        const namv = val + pts;
+        const val = Number(ibrValue); const pts = Number(ibrPuntos); const namv = val + pts;
         const nuevaEA = (Math.pow(1 + (namv/100)/12, 12) - 1) * 100;
         updateCuenta(id, { ibrValue: val, ibrPuntos: pts, tasaEA: nuevaEA });
       };
 
-      // --- IMPORTAR / EXPORTAR INDIVIDUAL DE DEUDAS ---
       const handleExport = async () => {
         try {
           const xlsx = await loadSheetJS();
           const wb = xlsx.utils.book_new();
           const headers = ["ID", "Nombre", "Tipo", "DeudaInicial", "Limite", "MontoPrestado", "TasaEA", "CuotaMinima", "CuotasTotales", "CuotasPagadas"];
-          const deudasAnalizadas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
-          const data = deudasAnalizadas.map(c => ({
+          const data = cuentas.filter(c => ['credit', 'loan'].includes(c.type)).map(c => ({
               ID: c.id, Nombre: c.name, Tipo: c.type, DeudaInicial: c.initialDebt, Limite: c.limit, 
               MontoPrestado: c.montoPrestado || '', TasaEA: c.tasaEA, CuotaMinima: c.cuotaMinima, 
               CuotasTotales: c.cuotasTotales || '', CuotasPagadas: c.cuotasPagadas || ''
           }));
-          
           const ws = xlsx.utils.json_to_sheet(data.length > 0 ? data : [{}], { header: headers });
           xlsx.utils.book_append_sheet(wb, ws, "Deudas");
           xlsx.writeFile(wb, `Deudas_y_Prestamos_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -195,6 +178,22 @@
               <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> Exportar</button>
             </div>
           </header>
+
+          {/* ✨ NUEVO: TARJETAS DE TRAZA DE INTERESES */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+            <Card className="bg-slate-900/80 border-t-4 border-t-amber-500 py-3">
+               <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Total Intereses (Histórico Registrado)</p>
+               <p className="text-xl font-bold text-amber-400">{formatCOP(intTotal)}</p>
+            </Card>
+            <Card className="bg-slate-900/80 border-t-4 border-t-indigo-500 py-3">
+               <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Intereses en Tarjetas de Crédito</p>
+               <p className="text-xl font-bold text-indigo-400">{formatCOP(intTC)}</p>
+            </Card>
+            <Card className="bg-slate-900/80 border-t-4 border-t-rose-500 py-3">
+               <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Intereses en Préstamos</p>
+               <p className="text-xl font-bold text-rose-400">{formatCOP(intPrestamos)}</p>
+            </Card>
+          </div>
 
           {showNewCard && (
             <div className="bg-slate-950 border border-indigo-500/50 p-4 rounded-xl mb-4 animate-in slide-in-from-top-2">
@@ -336,24 +335,19 @@
                              <button onClick={() => setEditId(null)} className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 px-3 py-1.5 rounded text-xs font-bold transition-colors">Cancelar</button>
                            </div>
                          </div>
-                         
                          <Input label="Banco / Entidad (Nombre)" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} />
-                         
                          <div className="grid grid-cols-2 gap-4">
                            <Input type="number" label="Préstamo Inicial ($)" value={editData.montoPrestado} onChange={e=>setEditData({...editData, montoPrestado: e.target.value})} />
                            <Input type="number" label="Deuda Restante Base ($)" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} />
                          </div>
-                         
                          <div className="grid grid-cols-2 gap-4">
                            <Input type="number" label="Total Pagado Previo ($)" value={editData.totalPagadoPrevio} onChange={e=>setEditData({...editData, totalPagadoPrevio: e.target.value})} />
                            <Input type="number" label="Valor Cuota Fija ($)" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} />
                          </div>
-
                          <div className="grid grid-cols-2 gap-4">
                             <Input type="number" label="Cuotas Pagadas" value={editData.cuotasPagadas} onChange={e=>setEditData({...editData, cuotasPagadas: e.target.value})} />
                             <Input type="number" label="Cuotas Totales" value={editData.cuotasTotales} onChange={e=>setEditData({...editData, cuotasTotales: e.target.value})} />
                          </div>
-
                          <div className="bg-indigo-950/30 p-3 rounded-lg border border-indigo-500/30 mt-2">
                            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-indigo-300 mb-3">
                              <input type="checkbox" checked={editData.hasIBR} onChange={(e) => setEditData({...editData, hasIBR: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
