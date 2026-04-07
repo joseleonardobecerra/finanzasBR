@@ -7,17 +7,14 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     setExpandedCard(prev => prev === cardId ? null : cardId);
   };
 
-  // Helpers para identificar dueños
   const identifyOwner = (cuentaId, itemPersona, textDesc) => {
     if (itemPersona === 'L' || itemPersona === 'Leo') return 'Leo';
     if (itemPersona === 'A' || itemPersona === 'Andre') return 'Andre';
-    
     let targetName = textDesc || '';
     if (cuentaId) {
         const c = cuentas.find(acc => acc.id === cuentaId);
         if (c) targetName = c.name;
     }
-    
     const t = targetName.toUpperCase();
     const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
     const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
@@ -28,7 +25,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const idsTarjetas = cuentas.filter(c => c.type === 'credit').map(c => c.id);
 
-  // --- CÁLCULOS DE PROYECCIÓN ---
   const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
   const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
   const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoVar;
@@ -36,12 +32,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const proyIngLeo = ingresosFijos ? ingresosFijos.filter(i => identifyOwner(null, i.persona, i.descripcion) === 'Leo').reduce((s, i) => s + Number(i.monto), 0) : 0;
   const proyIngAndre = ingresosFijos ? ingresosFijos.filter(i => identifyOwner(null, i.persona, i.descripcion) === 'Andre').reduce((s, i) => s + Number(i.monto), 0) : 0;
   const proyeccionIngresosMes = ingresosFijos ? ingresosFijos.reduce((sum, item) => sum + Number(item.monto), 0) : 0; 
-  
   const totalProyeccionMes = proyeccionIngresosMes - presupuestoTotal;
 
-  // --- CÁLCULOS DE REALIDAD ---
   const ingresosMesActual = ingresos.filter(i => i.fecha.startsWith(selectedMonth));
-  
   const ingLeo = ingresosMesActual.filter(i => identifyOwner(i.cuentaId, i.persona, i.descripcion) === 'Leo').reduce((s, i) => s + i.monto, 0);
   const ingAndre = ingresosMesActual.filter(i => identifyOwner(i.cuentaId, i.persona, i.descripcion) === 'Andre').reduce((s, i) => s + i.monto, 0);
 
@@ -56,11 +49,8 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const pagosTCAndre = pagosTC.filter(e => identifyOwner(e.cuentaId, null, e.descripcion) === 'Andre').reduce((s, e) => s + e.monto, 0);
 
   const dineroDisponible = ingresosMesTotal - egresosMesTotal;
-
   const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => !egresosMes.some(e => e.pagoFijoId === pf.id)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
 
-  // --- CÁLCULOS PARA DINERO EN CUENTAS (Desglose) ---
-  // Excluimos las cuentas tipo 'pocket' (Inversiones) y la cuenta Rappi
   const liquidezAccounts = cuentas.filter(c => ['bank', 'cash'].includes(c.type) && !c.name.toLowerCase().includes('rappi'));
   let liquidezLeoCuentas = 0; let liquidezLeoEfectivo = 0;
   let liquidezAndreCuentas = 0; let liquidezAndreEfectivo = 0;
@@ -76,12 +66,8 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
      }
   });
 
-  // Calculamos el total exacto excluyendo inversiones
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  // ============================================================================
-  // ✨ LÓGICA ESTRATÉGICA (Avalancha y Ahorro)
-  // ============================================================================
   const deudasActivas = cuentas.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).sort((a,b) => b.tasaEA - a.tasaEA);
   const focoAvalancha = deudasActivas.length > 0 ? deudasActivas[0] : null;
 
@@ -89,12 +75,23 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const invertidoActual = egresosMes.filter(e => e.categoria === 'Inversión' || e.descripcion.toLowerCase().includes('ahorro')).reduce((s, e) => s + e.monto, 0);
   const progresoInversion = metaInversion > 0 ? Math.min((invertidoActual / metaInversion) * 100, 100) : 0;
 
-  // Gráficas y desglose
+  // ✨ GRÁFICAS: EXTRACCIÓN DINÁMICA DE LA CATEGORÍA INTERESES/OTROS
   const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
   const gastosPorCategoria = {};
+  
   gastosFiltrados.forEach(g => {
     const cat = g.categoria || 'Otros';
-    gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + g.monto;
+    const interes = g.interesesOtros || 0;
+    const capitalGasto = g.monto - interes;
+    
+    // Asignar el capital a la categoría real
+    if (capitalGasto > 0) {
+      gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + capitalGasto;
+    }
+    // Extraer los intereses a una categoría única general
+    if (interes > 0) {
+      gastosPorCategoria['Intereses y Cargos'] = (gastosPorCategoria['Intereses y Cargos'] || 0) + interes;
+    }
   });
   
   const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
@@ -117,18 +114,16 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       <header>
-        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Centro de Mando</h1>
-        <p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, estrategia activa y control de proyecciones.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Inicio y Dashboard Global</h1>
+        <p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, PowerBI de egresos y proyecciones.</p>
       </header>
 
-      {/* TARJETAS PRINCIPALES */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-        <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500 flex flex-col justify-between">
+        <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500">
           <h3 className="text-slate-400 text-xs md:text-sm font-medium">Ingresos Totales (Mes)</h3>
           <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
         </Card>
         
-        {/* TARJETA INTERACTIVA: EGRESOS TOTALES */}
         <Card className={`p-3 md:p-5 border-t-4 border-t-rose-500 transition-colors ${expandedCard === 'egresos' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
           <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('egresos')}>
             <div className="flex flex-col justify-between">
@@ -143,7 +138,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 {chartData.map(([cat, amount]) => (
                   <li key={cat} className="flex justify-between items-center text-slate-300">
                     <span className="truncate pr-2 font-medium">{cat}</span>
-                    <span className="font-bold text-rose-400">{formatCOP(amount)}</span>
+                    <span className={`font-bold ${cat === 'Intereses y Cargos' ? 'text-amber-400' : 'text-rose-400'}`}>{formatCOP(amount)}</span>
                   </li>
                 ))}
                 {chartData.length === 0 && <li className="text-slate-500 text-center py-2">No hay egresos registrados</li>}
@@ -152,19 +147,18 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
 
-        <Card className={`p-3 md:p-5 border-t-4 ${dineroDisponible >= 0 ? 'border-t-indigo-500' : 'border-t-rose-500'} flex flex-col justify-between`}>
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero Disponible (Flujo)</h3>
+        <Card className={`p-3 md:p-5 border-t-4 ${dineroDisponible >= 0 ? 'border-t-indigo-500' : 'border-t-rose-500'}`}>
+          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero Disponible (Ing - Egr)</h3>
           <p className={`text-lg md:text-2xl font-bold mt-1 ${dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
             {formatCOP(dineroDisponible)}
           </p>
         </Card>
         
-        <Card className="p-3 md:p-5 border-t-4 border-t-amber-500 flex flex-col justify-between">
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Pagos Fijos Pendientes</h3>
+        <Card className="p-3 md:p-5 border-t-4 border-t-amber-500">
+          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Pagos Fijos Pendientes (Todos)</h3>
           <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(pagosFijosPendientesTotal)}</p>
         </Card>
         
-        {/* TARJETA INTERACTIVA: PRESUPUESTO CONFIGURADO */}
         <Card className={`p-3 md:p-5 border-t-4 border-t-slate-500 transition-colors ${expandedCard === 'presupuesto' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
           <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('presupuesto')}>
             <div className="flex flex-col justify-between">
@@ -187,7 +181,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
         
-        {/* TARJETA INTERACTIVA: DINERO EN CUENTAS */}
         <Card className={`p-3 md:p-5 border-t-4 border-t-emerald-500/50 transition-colors ${expandedCard === 'cuentas' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
           <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('cuentas')}>
             <div className="flex flex-col justify-between">
@@ -225,9 +218,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </Card>
       </div>
 
-      {/* ESTRATEGIA ACTIVA: AVALANCHA Y AHORRO */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        {/* Foco Avalancha */}
         <Card className="border-t-4 border-t-rose-500 bg-slate-900/80 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
@@ -260,7 +251,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
 
-        {/* Progreso de Inversión / Ahorro */}
         <Card className="border-t-4 border-t-emerald-500 bg-slate-900/80 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
@@ -293,104 +283,57 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </Card>
       </div>
 
-      {/* RESUMEN Y REALIDAD (3 COLUMNAS) */}
       <Card className="flex flex-col border-t-4 border-t-indigo-500 bg-slate-900/80">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
           <Calculator size={18} className="text-indigo-400" /> Resumen y Realidad (En Vivo)
         </h2>
-        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-950 p-4 md:p-6 rounded-xl border border-slate-800">
-          
-          {/* COLUMNA 1: LEO */}
           <div className="space-y-4 lg:border-r lg:border-slate-800 lg:pr-6">
             <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-wider border-b border-slate-800 pb-2">1. Finanzas Leo</h3>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-slate-400">Total Ingresos</span>
-                <span className="text-[10px] text-slate-600">Proy: {formatCOP(proyIngLeo)}</span>
-              </div>
+              <div className="flex flex-col"><span className="text-sm text-slate-400">Total Ingresos</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(proyIngLeo)}</span></div>
               <span className="font-bold text-emerald-400">{formatCOP(ingLeo)}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-400">Total Egresos</span>
-              <span className="font-bold text-rose-400">{formatCOP(egrLeo)}</span>
-            </div>
+            <div className="flex justify-between items-center"><span className="text-sm text-slate-400">Total Egresos</span><span className="font-bold text-rose-400">{formatCOP(egrLeo)}</span></div>
             <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center">
-              <span className="text-slate-200">Flujo Leo</span>
-              <span className={ingLeo - egrLeo >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(ingLeo - egrLeo)}</span>
+              <span className="text-slate-200">Flujo Leo</span><span className={ingLeo - egrLeo >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(ingLeo - egrLeo)}</span>
             </div>
           </div>
-
-          {/* COLUMNA 2: ANDRE */}
           <div className="space-y-4 lg:border-r lg:border-slate-800 lg:pr-6">
             <h3 className="text-xs font-bold text-rose-500 uppercase tracking-wider border-b border-slate-800 pb-2">2. Finanzas Andre</h3>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-slate-400">Total Ingresos</span>
-                <span className="text-[10px] text-slate-600">Proy: {formatCOP(proyIngAndre)}</span>
-              </div>
+              <div className="flex flex-col"><span className="text-sm text-slate-400">Total Ingresos</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(proyIngAndre)}</span></div>
               <span className="font-bold text-emerald-400">{formatCOP(ingAndre)}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-400">Total Egresos</span>
-              <span className="font-bold text-rose-400">{formatCOP(egrAndre)}</span>
-            </div>
+            <div className="flex justify-between items-center"><span className="text-sm text-slate-400">Total Egresos</span><span className="font-bold text-rose-400">{formatCOP(egrAndre)}</span></div>
             <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center">
-              <span className="text-slate-200">Flujo Andre</span>
-              <span className={ingAndre - egrAndre >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(ingAndre - egrAndre)}</span>
+              <span className="text-slate-200">Flujo Andre</span><span className={ingAndre - egrAndre >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(ingAndre - egrAndre)}</span>
             </div>
           </div>
-
-          {/* COLUMNA 3: CONSOLIDADO HOGAR */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider border-b border-slate-800 pb-2">3. Consolidado Hogar</h3>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-slate-400">Total Ingresos</span>
-                <span className="text-[10px] text-slate-600">Proy: {formatCOP(proyeccionIngresosMes)}</span>
-              </div>
+              <div className="flex flex-col"><span className="text-sm text-slate-400">Total Ingresos</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(proyeccionIngresosMes)}</span></div>
               <span className="font-bold text-emerald-400">{formatCOP(ingresosMesTotal)}</span>
             </div>
-            
             <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-slate-400">Pagos Fijos (Sin TC)</span>
-                <span className="text-[10px] text-slate-600">Proy: {formatCOP(totalPresupuestadoFijo)}</span>
-              </div>
+              <div className="flex flex-col"><span className="text-sm text-slate-400">Pagos Fijos (Sin TC)</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(totalPresupuestadoFijo)}</span></div>
               <span className="font-bold text-rose-400">{formatCOP(gastadoFijoSinTC)}</span>
             </div>
-            
             <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-slate-400">Pagos Variables (Sin TC)</span>
-                <span className="text-[10px] text-slate-600">Proy: {formatCOP(totalPresupuestadoVar)}</span>
-              </div>
+              <div className="flex flex-col"><span className="text-sm text-slate-400">Pagos Variables (Sin TC)</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(totalPresupuestadoVar)}</span></div>
               <span className="font-bold text-rose-400">{formatCOP(gastadoVarSinTC)}</span>
             </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-400">Pagos con TC (Ambos)</span>
-              <span className="font-bold text-rose-400">{formatCOP(pagosTCLeo + pagosTCAndre)}</span>
-            </div>
-            
-            <div className="flex justify-between text-sm items-center border-t border-slate-800/50 pt-3 mt-1">
-              <span className="text-slate-400">Total Egresos</span>
-              <span className="font-bold text-rose-400">{formatCOP(egresosMesTotal)}</span>
-            </div>
-            
+            <div className="flex justify-between items-center"><span className="text-sm text-slate-400">Pagos con TC (Ambos)</span><span className="font-bold text-rose-400">{formatCOP(pagosTCLeo + pagosTCAndre)}</span></div>
+            <div className="flex justify-between text-sm items-center border-t border-slate-800/50 pt-3 mt-1"><span className="text-slate-400">Total Egresos</span><span className="font-bold text-rose-400">{formatCOP(egresosMesTotal)}</span></div>
             <div className="flex justify-between text-base font-bold pt-2 border-t border-slate-800 items-center">
-              <div className="flex flex-col">
-                <span className="text-slate-200">TOTAL REAL</span>
-                <span className="text-[10px] text-slate-600">Esperado: {formatCOP(totalProyeccionMes)}</span>
-              </div>
+              <div className="flex flex-col"><span className="text-slate-200">TOTAL REAL</span><span className="text-[10px] text-slate-600">Esperado: {formatCOP(totalProyeccionMes)}</span></div>
               <span className={dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(dineroDisponible)}</span>
             </div>
           </div>
-
         </div>
       </Card>
 
-      {/* GRÁFICAS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="flex flex-col">
           <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2"><BarChart size={18} className="text-emerald-400" /> Tendencia Histórica (6 Meses)</h2>
@@ -437,10 +380,11 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             {chartData.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No hay egresos registrados.</p>}
             {chartData.map(([name, amount]) => {
               const width = Math.max((amount / maxMonto) * 100, 2);
-              
               const pres = presupuestos.find(p => p.categoria === name);
+              
               let barColorClass = 'bg-indigo-500';
-              if (pres && pres.limite > 0) {
+              if (name === 'Intereses y Cargos') barColorClass = 'bg-amber-500';
+              else if (pres && pres.limite > 0) {
                  const pct = (amount / pres.limite) * 100;
                  if (pct >= 100) barColorClass = 'bg-rose-500';
                  else if (pct >= 80) barColorClass = 'bg-amber-500';
@@ -453,7 +397,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 <div key={name} className="relative group">
                   <div className="flex justify-between text-sm mb-1.5">
                     <span className="text-slate-300 font-medium truncate pr-4">{name}</span>
-                    <span className="font-bold text-slate-200">{formatCOP(amount)}</span>
+                    <span className={`font-bold ${name === 'Intereses y Cargos' ? 'text-amber-400' : 'text-slate-200'}`}>{formatCOP(amount)}</span>
                   </div>
                   <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
                     <div className={`h-full rounded-full transition-all duration-1000 ${barColorClass}`} style={{ width: `${width}%` }}></div>
