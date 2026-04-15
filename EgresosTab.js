@@ -2,12 +2,18 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                        pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
                        comprasCuotas, addComprasCuotas, removeComprasCuotas,
                        cuentas, selectedMonth, presupuestos, categoriasMaestras, showToast }) => {
+      const { useState, useRef, useMemo } = React;
       const todayStr = getLocalToday();
       
       const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', interesesOtros: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
       const [errorsVar, setErrorsVar] = useState({});
       
       const [expanded, setExpanded] = useState({ form: true, cuotas: false, fijos: false, historial: false });
+
+      // ✨ NUEVOS ESTADOS PARA FILTROS Y ORDENAMIENTO EN HISTORIAL
+      const [filtroTipo, setFiltroTipo] = useState('Todos');
+      const [filtroCategoria, setFiltroCategoria] = useState('Todas');
+      const [ordenHistorial, setOrdenHistorial] = useState('fecha_desc');
 
       const varRef = useRef(null);
       const fileInputRef = useRef(null);
@@ -163,9 +169,10 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
         showToast("Cuota sumada y gasto registrado en el historial.");
       };
 
-      const egresosMes = egresos.filter(d => d.fecha.startsWith(selectedMonth)).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      const egresosMesBase = egresos.filter(d => d.fecha.startsWith(selectedMonth));
+      
       const pagosPendientes = pagosFijos.map(pf => {
-        const egresoEsteMes = egresosMes.find(e => e.pagoFijoId === pf.id);
+        const egresoEsteMes = egresosMesBase.find(e => e.pagoFijoId === pf.id);
         return { ...pf, pagado: !!egresoEsteMes, egresoInfo: egresoEsteMes };
       }).sort((a, b) => a.pagado - b.pagado);
 
@@ -178,6 +185,39 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
         if(gastoForm.metodoPago === 'credit') return cuentas.filter(c => c.type === 'credit');
         return [];
       }, [cuentas, gastoForm.metodoPago]);
+
+      // ✨ LÓGICA DE FILTRADO Y ORDENAMIENTO PARA EL HISTORIAL
+      const { egresosProcesados, categoriasPresentes } = useMemo(() => {
+        const categoriasSet = new Set();
+        let lista = [...egresosMesBase];
+
+        // Obtener categorías únicas de este mes para el selector
+        lista.forEach(e => categoriasSet.add(e.categoria));
+
+        // 1. Filtrar por Tipo
+        if (filtroTipo !== 'Todos') {
+            lista = lista.filter(e => e.tipo === filtroTipo);
+        }
+
+        // 2. Filtrar por Categoría
+        if (filtroCategoria !== 'Todas') {
+            lista = lista.filter(e => e.categoria === filtroCategoria);
+        }
+
+        // 3. Ordenar
+        lista.sort((a, b) => {
+            if (ordenHistorial === 'fecha_desc') return new Date(b.fecha) - new Date(a.fecha);
+            if (ordenHistorial === 'fecha_asc') return new Date(a.fecha) - new Date(b.fecha);
+            if (ordenHistorial === 'monto_desc') return b.monto - a.monto;
+            if (ordenHistorial === 'monto_asc') return a.monto - b.monto;
+            return 0;
+        });
+
+        return { 
+            egresosProcesados: lista, 
+            categoriasPresentes: Array.from(categoriasSet).sort() 
+        };
+      }, [egresosMesBase, filtroTipo, filtroCategoria, ordenHistorial]);
 
       const handleExport = async () => {
         try {
@@ -360,39 +400,83 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
               <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><FileSpreadsheet size={20} className="text-slate-400"/> 4. Historial Completo de Egresos</h2>
               <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.historial ? 'rotate-90' : ''}`} />
             </div>
+            
             {expanded.historial && (
-              <div className="mt-5 overflow-x-auto bg-slate-950 rounded-xl border border-slate-800 animate-in slide-in-from-top-2">
-                <table className="w-full text-sm text-left min-w-[600px]">
-                  <thead className="text-xs text-slate-400 uppercase bg-slate-900">
-                    <tr><th className="px-4 py-4 rounded-tl-lg">Fecha</th><th className="px-4 py-4">Descripción</th><th className="px-4 py-4">Categoría/Cuenta</th><th className="px-4 py-4 text-right">Monto / Intereses</th><th className="px-4 py-4 rounded-tr-lg"></th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/50">
-                    {egresosMes.map(g => (
-                      <tr key={g.id} className={`transition-colors ${gastoForm.id === g.id && gastoForm.editSource === 'historial' ? 'bg-amber-900/20' : 'hover:bg-slate-800/20'}`}>
-                        <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{g.fecha}</td>
-                        <td className="px-4 py-3 text-slate-300 font-medium">
-                          {g.descripcion}
-                          {/* ✨ ETIQUETAS NARANJA (FIJO) Y AZUL (VARIABLE) APLICADAS AQUÍ */}
-                          {g.tipo === 'Fijo' && <span className="ml-2 text-[9px] bg-orange-500/20 text-orange-400 border border-orange-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Fijo</span>}
-                          {g.tipo === 'Variable' && <span className="ml-2 text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Variable</span>}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400">
-                          <span className="bg-slate-800 px-2 py-1 rounded-md text-xs block w-max mb-1">{g.categoria}</span>
-                          <span className="text-[10px] text-indigo-400/80">Pagado con: {cuentas.find(c => c.id === g.cuentaId)?.name || '?'}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                           <span className="font-bold text-rose-400 block">{formatCOP(g.monto)}</span>
-                           {g.interesesOtros > 0 && <span className="text-[10px] text-amber-500 font-medium block leading-none mt-1">Int: {formatCOP(g.interesesOtros)}</span>}
-                        </td>
-                        <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); cargarParaEditarVariable(g); }} className="text-slate-500 hover:text-indigo-400 p-1.5" title="Editar Gasto"><Edit3 size={16} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); removeEgreso(g.id); showToast("Gasto eliminado"); }} className="text-slate-500 hover:text-rose-400 p-1.5" title="Eliminar"><Trash2 size={16} /></button>
-                        </td>
+              <div className="mt-5 animate-in slide-in-from-top-2">
+                
+                {/* ✨ BARRA DE FILTROS Y ORDENAMIENTO */}
+                <div className="flex flex-col md:flex-row gap-3 mb-4 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <Select 
+                    label="Filtrar por Tipo" 
+                    options={['Todos', 'Fijo', 'Variable'].map(o => ({value: o, label: o}))} 
+                    value={filtroTipo} 
+                    onChange={e => setFiltroTipo(e.target.value)} 
+                    className="flex-1"
+                  />
+                  <Select 
+                    label="Filtrar por Categoría" 
+                    options={[{value: 'Todas', label: 'Todas'}, ...categoriasPresentes.map(c => ({value: c, label: c}))]} 
+                    value={filtroCategoria} 
+                    onChange={e => setFiltroCategoria(e.target.value)} 
+                    className="flex-1"
+                  />
+                  <Select 
+                    label="Ordenar por" 
+                    options={[
+                      {value: 'fecha_desc', label: 'Fecha (Más recientes primero)'},
+                      {value: 'fecha_asc', label: 'Fecha (Más antiguos primero)'},
+                      {value: 'monto_desc', label: 'Monto (Mayor a Menor)'},
+                      {value: 'monto_asc', label: 'Monto (Menor a Mayor)'}
+                    ]} 
+                    value={ordenHistorial} 
+                    onChange={e => setOrdenHistorial(e.target.value)} 
+                    className="flex-1 md:col-span-2"
+                  />
+                </div>
+
+                {/* ✨ TABLA REESTRUCTURADA CON LAS NUEVAS COLUMNAS */}
+                <div className="overflow-x-auto bg-slate-950 rounded-xl border border-slate-800">
+                  <table className="w-full text-sm text-left min-w-[750px]">
+                    <thead className="text-xs text-slate-400 uppercase bg-slate-900 border-b border-slate-800">
+                      <tr>
+                        <th className="px-4 py-4 rounded-tl-lg">Fecha</th>
+                        <th className="px-4 py-4">Descripción</th>
+                        <th className="px-4 py-4 text-center">Fijo/Variable</th>
+                        <th className="px-4 py-4">Categoría/Cuenta</th>
+                        <th className="px-4 py-4 text-right">Monto / Intereses</th>
+                        <th className="px-4 py-4 rounded-tr-lg"></th>
                       </tr>
-                    ))}
-                    {egresosMes.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-500">No hay egresos registrados este mes.</td></tr>}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50">
+                      {egresosProcesados.map(g => (
+                        <tr key={g.id} className={`transition-colors ${gastoForm.id === g.id && gastoForm.editSource === 'historial' ? 'bg-amber-900/20' : 'hover:bg-slate-800/20'}`}>
+                          <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{g.fecha}</td>
+                          <td className="px-4 py-3 text-slate-300 font-medium">{g.descripcion}</td>
+                          
+                          <td className="px-4 py-3 text-center">
+                            {g.tipo === 'Fijo' && <span className="text-[9px] bg-orange-500/20 text-orange-400 border border-orange-500/20 px-2 py-1 rounded uppercase tracking-wider">Fijo</span>}
+                            {g.tipo === 'Variable' && <span className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/20 px-2 py-1 rounded uppercase tracking-wider">Variable</span>}
+                          </td>
+
+                          <td className="px-4 py-3 text-slate-400">
+                            <span className="bg-slate-800 px-2 py-1 rounded-md text-xs block w-max mb-1">{g.categoria}</span>
+                            <span className="text-[10px] text-indigo-400/80">Pagado con: {cuentas.find(c => c.id === g.cuentaId)?.name || '?'}</span>
+                          </td>
+                          
+                          <td className="px-4 py-3 text-right">
+                             <span className="font-bold text-rose-400 block">{formatCOP(g.monto)}</span>
+                             {g.interesesOtros > 0 && <span className="text-[10px] text-amber-500 font-medium block leading-none mt-1">Int: {formatCOP(g.interesesOtros)}</span>}
+                          </td>
+                          <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); cargarParaEditarVariable(g); }} className="text-slate-500 hover:text-indigo-400 p-1.5" title="Editar Gasto"><Edit3 size={16} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); removeEgreso(g.id); showToast("Gasto eliminado"); }} className="text-slate-500 hover:text-rose-400 p-1.5" title="Eliminar"><Trash2 size={16} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                      {egresosProcesados.length === 0 && <tr><td colSpan="6" className="text-center py-8 text-slate-500">No hay egresos que coincidan con los filtros.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </Card>
