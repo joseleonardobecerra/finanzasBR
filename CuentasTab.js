@@ -186,9 +186,9 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
             </div>
           </header>
 
-          {/* ✨ ACTUALIZADO: Tarjetas con colores neutrales para personas y colores de valor dinámico */}
+          {/* ✨ ACTUALIZADO: TARJETAS DE RESUMEN DE LIQUIDEZ CON COLORES NEUTROS Y DINÁMICOS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Tarjeta Leo (Índigo neutral) */}
+            {/* Tarjeta Leo (Índigo) */}
             <Card className="border-t-4 border-t-indigo-500 flex flex-col justify-between bg-slate-900/80">
               <h3 className="text-sm font-bold text-indigo-400 uppercase mb-3 flex items-center gap-2"><Wallet size={16}/> Liquidez Leo</h3>
               <div className="space-y-2">
@@ -207,7 +207,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
               </div>
             </Card>
 
-            {/* Tarjeta Andre (Violeta neutral) */}
+            {/* Tarjeta Andre (Violeta) */}
             <Card className="border-t-4 border-t-violet-500 flex flex-col justify-between bg-slate-900/80">
               <h3 className="text-sm font-bold text-violet-400 uppercase mb-3 flex items-center gap-2"><Wallet size={16}/> Liquidez Andre</h3>
               <div className="space-y-2">
@@ -256,7 +256,8 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                 <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2"><ArrowRightLeft size={16} className="text-amber-400"/> Traslado de Fondos</h2>
                 <p className="text-xs text-slate-400 mb-4">Mueve dinero de una cuenta a otra.</p>
                 <form onSubmit={agregarTransferencia} className="space-y-3">
-                  <Select label="Origen (Sale de)" options={cuentas.filter(c=>['bank','cash','credit'].includes(c.type)).map(c => ({value: c.id, label: c.name}))} value={nuevaTx.fromId} onChange={e=>setNuevaTx({...nuevaTx, fromId: e.target.value})} error={txErrors.fromId} />
+                  {/* ✨ ACTUALIZADO: Se agregó 'pocket' (Inversión y ahorro) a los orígenes permitidos */}
+                  <Select label="Origen (Sale de)" options={cuentas.filter(c=>['bank','cash','credit','pocket'].includes(c.type)).map(c => ({value: c.id, label: c.name}))} value={nuevaTx.fromId} onChange={e=>setNuevaTx({...nuevaTx, fromId: e.target.value})} error={txErrors.fromId} />
                   <Select label="Destino (Entra a)" options={cuentas.filter(c=>['bank','cash'].includes(c.type)).map(c => ({value: c.id, label: c.name}))} value={nuevaTx.toId} onChange={e=>setNuevaTx({...nuevaTx, toId: e.target.value})} error={txErrors.toId} />
                   <div className="grid grid-cols-2 gap-2">
                     <Input type="number" label="Monto ($)" value={nuevaTx.monto} onChange={e=>setNuevaTx({...nuevaTx, monto: e.target.value})} error={txErrors.monto} min="1" />
