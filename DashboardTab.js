@@ -1,3 +1,4 @@
+// --- Componentes de Pestañas ---
 const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
   const { useState, useMemo } = React;
   const [chartFilter, setChartFilter] = useState('Todos');
@@ -68,13 +69,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  const deudasActivas = cuentas.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).sort((a,b) => b.tasaEA - a.tasaEA);
-  const focoAvalancha = deudasActivas.length > 0 ? deudasActivas[0] : null;
-
-  const metaInversion = pagosFijos ? pagosFijos.filter(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro')).reduce((s, pf) => s + pf.monto, 0) : 0;
-  const invertidoActual = egresosMes.filter(e => e.categoria === 'Inversión' || e.descripcion.toLowerCase().includes('ahorro')).reduce((s, e) => s + e.monto, 0);
-  const progresoInversion = metaInversion > 0 ? Math.min((invertidoActual / metaInversion) * 100, 100) : 0;
-
+  // ✨ GRÁFICAS: EXTRACCIÓN DINÁMICA DE LA CATEGORÍA INTERESES/OTROS
   const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
   const gastosPorCategoria = {};
   
@@ -82,8 +77,15 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     const cat = g.categoria || 'Otros';
     const interes = g.interesesOtros || 0;
     const capitalGasto = g.monto - interes;
-    if (capitalGasto > 0) gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + capitalGasto;
-    if (interes > 0) gastosPorCategoria['Intereses y Cargos'] = (gastosPorCategoria['Intereses y Cargos'] || 0) + interes;
+    
+    // Asignar el capital a la categoría real
+    if (capitalGasto > 0) {
+      gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + capitalGasto;
+    }
+    // Extraer los intereses a una categoría única general
+    if (interes > 0) {
+      gastosPorCategoria['Intereses y Cargos'] = (gastosPorCategoria['Intereses y Cargos'] || 0) + interes;
+    }
   });
   
   const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
@@ -163,11 +165,11 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2">
               <div className="flex justify-between items-center text-xs mb-2">
                 <span className="text-slate-400">Gastos Fijos</span>
-                <span className="font-bold text-orange-400">{formatCOP(totalPresupuestadoFijo)}</span>
+                <span className="font-bold text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400">Gastos Variables</span>
-                <span className="font-bold text-blue-400">{formatCOP(totalPresupuestadoVar)}</span>
+                <span className="font-bold text-indigo-400">{formatCOP(totalPresupuestadoVar)}</span>
               </div>
             </div>
           )}
@@ -210,71 +212,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <Card className="border-t-4 border-t-rose-500 bg-slate-900/80 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-             <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-               <ShieldAlert size={16} className="text-rose-400" /> Foco Avalancha (Deudas)
-             </h3>
-             <span className="text-[10px] font-bold bg-rose-500/20 text-rose-400 px-2 py-1 rounded border border-rose-500/20">Prioridad 1</span>
-          </div>
-          {focoAvalancha ? (
-            <div>
-              <p className="text-xl font-bold text-white mb-1">{focoAvalancha.name}</p>
-              <div className="flex justify-between items-end mb-3">
-                <div>
-                  <p className="text-xs text-slate-400">Deuda Restante</p>
-                  <p className="text-lg font-bold text-rose-400">{formatCOP(focoAvalancha.currentDebt)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-400">Tasa Interés</p>
-                  <p className="text-base font-bold text-amber-400">{focoAvalancha.tasaEA}% E.A.</p>
-                </div>
-              </div>
-              <p className="text-xs text-slate-400 bg-slate-950 p-2 rounded-lg border border-slate-800">
-                💡 <strong>Estrategia:</strong> Paga el mínimo en las demás obligaciones y todo el dinero sobrante del mes aplícalo a esta deuda.
-              </p>
-            </div>
-          ) : (
-             <div className="flex flex-col items-center justify-center py-4 text-emerald-400">
-               <CheckCircle2 size={32} className="mb-2 opacity-80" />
-               <p className="text-sm font-bold">¡Libre de deudas activas!</p>
-             </div>
-          )}
-        </Card>
-
-        <Card className="border-t-4 border-t-emerald-500 bg-slate-900/80 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-             <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-               <PiggyBank size={16} className="text-emerald-400" /> Meta de Ahorro / Inversión
-             </h3>
-             {progresoInversion >= 100 && <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded border border-emerald-500/20">¡Logrado!</span>}
-          </div>
-          {metaInversion > 0 ? (
-             <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-400">Aportado este mes</span>
-                  <span className="font-bold text-emerald-400">{formatCOP(invertidoActual)} <span className="text-slate-500">/ {formatCOP(metaInversion)}</span></span>
-                </div>
-                <div className="w-full bg-slate-950 rounded-full h-4 border border-slate-800 relative overflow-hidden mb-3">
-                  <div className="h-full bg-emerald-500 transition-all duration-1000" style={{width: `${progresoInversion}%`}}></div>
-                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-md">
-                    {progresoInversion.toFixed(0)}%
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 text-center">
-                  {progresoInversion < 100 ? `Te faltan ${formatCOP(metaInversion - invertidoActual)} para cumplir tu objetivo mensual.` : '¡Has cumplido tu cuota de "Págate a ti mismo primero" este mes!'}
-                </p>
-             </div>
-          ) : (
-             <div className="flex flex-col items-center justify-center py-4 text-amber-400">
-               <Target size={32} className="mb-2 opacity-80" />
-               <p className="text-sm font-bold text-center">No hay metas configuradas.<br/><span className="text-xs text-slate-400 font-normal">Ve a Simuladores y activa un Plan de Ahorro.</span></p>
-             </div>
-          )}
-        </Card>
-      </div>
-
       <Card className="flex flex-col border-t-4 border-t-indigo-500 bg-slate-900/80">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
           <Calculator size={18} className="text-indigo-400" /> Resumen y Realidad (En Vivo)
@@ -308,7 +245,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
               <div className="flex flex-col"><span className="text-sm text-slate-400">Total Ingresos</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(proyeccionIngresosMes)}</span></div>
               <span className="font-bold text-emerald-400">{formatCOP(ingresosMesTotal)}</span>
             </div>
-            {/* ✨ COLORES NARANJA Y AZUL APLICADOS AQUÍ TAMBIÉN */}
             <div className="flex justify-between items-center">
               <div className="flex flex-col"><span className="text-sm text-slate-400">Pagos Fijos (Sin TC)</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(totalPresupuestadoFijo)}</span></div>
               <span className="font-bold text-orange-400">{formatCOP(gastadoFijoSinTC)}</span>
@@ -363,9 +299,8 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         <Card className="flex flex-col">
           <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2"><BarChart3 size={18} className="text-indigo-400" /> Distribución de Egresos</h2>
-            {/* ✨ FILTROS DE GRÁFICA CON COLORES */}
             <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-xs font-medium w-full md:w-auto">
-              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
               <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
               <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
             </div>
@@ -375,24 +310,23 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             {chartData.map(([name, amount]) => {
               const width = Math.max((amount / maxMonto) * 100, 2);
               const pres = presupuestos.find(p => p.categoria === name);
-              const isFijo = egresosMes.some(e => e.categoria === name && e.tipo === 'Fijo');
               
-              // ✨ BARRAS DE LA GRÁFICA CON EL COLOR ADECUADO
-              let barColorClass = 'bg-blue-500'; // Azul para Variable por defecto
-              if (isFijo || chartFilter === 'Fijo') barColorClass = 'bg-orange-500'; // Naranja para Fijos
-              
+              let barColorClass = 'bg-blue-500';
               if (name === 'Intereses y Cargos') barColorClass = 'bg-amber-500';
               else if (pres && pres.limite > 0) {
                  const pct = (amount / pres.limite) * 100;
                  if (pct >= 100) barColorClass = 'bg-rose-500';
-                 else if (pct >= 85) barColorClass = 'bg-yellow-500';
+                 else if (pct >= 80) barColorClass = 'bg-amber-500';
+                 else barColorClass = 'bg-emerald-500';
+              } else if (chartFilter === 'Fijo') {
+                 barColorClass = 'bg-amber-500';
               }
 
               return (
                 <div key={name} className="relative group">
                   <div className="flex justify-between text-sm mb-1.5">
                     <span className="text-slate-300 font-medium truncate pr-4">{name}</span>
-                    <span className={`font-bold ${name === 'Intereses y Cargos' ? 'text-amber-400' : (isFijo || chartFilter === 'Fijo' ? 'text-orange-400' : 'text-blue-400')}`}>{formatCOP(amount)}</span>
+                    <span className={`font-bold ${name === 'Intereses y Cargos' ? 'text-amber-400' : 'text-slate-200'}`}>{formatCOP(amount)}</span>
                   </div>
                   <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
                     <div className={`h-full rounded-full transition-all duration-1000 ${barColorClass}`} style={{ width: `${width}%` }}></div>
