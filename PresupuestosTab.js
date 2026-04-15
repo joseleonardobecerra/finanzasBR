@@ -1,6 +1,7 @@
 const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, removePresupuesto,
                         pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
                         egresos, selectedMonth, showToast, categoriasMaestras }) => {
+  const { useState, useRef, useMemo } = React;
   const [tipoForm, setTipoForm] = useState('variable'); 
   const [nuevoVar, setNuevoVar] = useState({ categoria: '', limite: '' });
   const [nuevoFijo, setNuevoFijo] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
@@ -136,22 +137,79 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
   const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
 
-  const items = useMemo(() => {
-    const list = [];
-    if (filtroLista === 'Todos' || filtroLista === 'Fijos') {
-      pagosFijos.forEach(pf => {
-        const gastado = egresosMes.filter(e => e.pagoFijoId === pf.id).reduce((s, e) => s + e.monto, 0);
-        list.push({ id: pf.id, tipo: 'Fijo', nombre: pf.descripcion, categoria: pf.categoria, limite: pf.monto, gastado, diaPago: pf.diaPago });
-      });
+  // ✨ NUEVO: Separar los items desde el useMemo para renderizarlos en bloques distintos
+  const { fijosItems, varItems } = useMemo(() => {
+    const fijos = [];
+    const variables = [];
+
+    pagosFijos.forEach(pf => {
+      const gastado = egresosMes.filter(e => e.pagoFijoId === pf.id).reduce((s, e) => s + e.monto, 0);
+      fijos.push({ id: pf.id, tipo: 'Fijo', nombre: pf.descripcion, categoria: pf.categoria, limite: pf.monto, gastado, diaPago: pf.diaPago });
+    });
+
+    presupuestos.forEach(p => {
+      const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
+      variables.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
+    });
+
+    return { 
+      fijosItems: fijos.sort((a, b) => b.limite - a.limite), 
+      varItems: variables.sort((a, b) => b.limite - a.limite) 
+    };
+  }, [pagosFijos, presupuestos, egresosMes]);
+
+  // ✨ COMPONENTE REUTILIZABLE PARA TARJETA COMPACTA
+  const RenderCardCompacta = ({ p, themeColor }) => {
+    const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
+    const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
+    const diferencia = p.limite - p.gastado;
+    const isDanger = porcentajeReal >= 100;
+    const isWarning = porcentajeReal >= 85 && !isDanger;
+
+    // Colores dinámicos basados en el tipo (fijo = amber, variable = indigo) y su estado
+    let barColor = `bg-${themeColor}-500`;
+    let textColor = `text-${themeColor}-400`;
+
+    if (isDanger) {
+      barColor = 'bg-rose-500';
+      textColor = 'text-rose-400';
+    } else if (isWarning) {
+      barColor = 'bg-orange-500';
+      textColor = 'text-orange-400';
     }
-    if (filtroLista === 'Todos' || filtroLista === 'Variables') {
-      presupuestos.forEach(p => {
-        const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
-        list.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
-      });
-    }
-    return list.sort((a, b) => b.limite - a.limite);
-  }, [pagosFijos, presupuestos, egresosMes, filtroLista]);
+
+    return (
+      <div key={p.id} className={`bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-col gap-2.5 hover:border-slate-700 transition-colors ${editId === p.id ? `border-${themeColor}-500 bg-${themeColor}-950/10` : ''}`}>
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col pr-2">
+            <span className="font-bold text-slate-200 text-sm leading-tight truncate">{p.nombre}</span>
+            <span className="text-[10px] text-slate-500 mt-0.5">{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
+          </div>
+          <div className="flex gap-0.5 shrink-0">
+            <button onClick={() => cargarParaEditar(p)} className="text-slate-600 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
+            <button onClick={() => {
+              if (p.tipo === 'Variable') { removePresupuesto(p.id); showToast("Presupuesto eliminado"); } 
+              else { removePagoFijo(p.id); showToast("Gasto Fijo eliminado."); }
+            }} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+          </div>
+        </div>
+
+        <div className="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800 overflow-hidden">
+          <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${porcentaje}%` }}></div>
+        </div>
+
+        <div className="flex justify-between items-end text-[10px]">
+          <div className="flex flex-col">
+             <span className="text-slate-400">Gastado: <span className="text-white font-bold">{formatCOP(p.gastado)}</span></span>
+             <span className={`font-medium ${diferencia >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
+               {diferencia >= 0 ? 'Disponible: ' : 'Excedido: '} {formatCOP(Math.abs(diferencia))}
+             </span>
+          </div>
+          <span className={`font-bold ${textColor} text-xs`}>{porcentajeReal.toFixed(1)}%</span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
@@ -172,27 +230,27 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
+          <p className="text-[10px] text-amber-500 uppercase font-bold mb-1">Presupuesto Fijo</p>
           <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
         </div>
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
+          <p className="text-[10px] text-indigo-400 uppercase font-bold mb-1">Presupuesto Variable</p>
           <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
         </div>
-        <div className="bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
-          <p className="text-[10px] text-indigo-400 uppercase font-bold mb-1">Total Presupuesto Egreso</p>
-          <p className="text-lg font-bold text-indigo-400">{formatCOP(totalFijo + totalVar)}</p>
+        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+          <p className="text-[10px] text-slate-300 uppercase font-bold mb-1">Total Presupuestado</p>
+          <p className="text-lg font-bold text-white">{formatCOP(totalFijo + totalVar)}</p>
         </div>
       </div>
 
       {showForm && (
-        <Card className={editId ? "border-t-4 border-t-amber-500 bg-amber-950/10" : "border-t-4 border-t-indigo-500 bg-slate-900/80"}>
+        <Card className={editId ? "border-t-4 border-t-emerald-500 bg-emerald-950/10" : "border-t-4 border-t-indigo-500 bg-slate-900/80"}>
           <div className="flex justify-between items-center mb-4" ref={formRef}>
             <div className="flex gap-4">
               <button 
                 onClick={() => { if(!editId) setTipoForm('variable') }} 
                 type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
+                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
               >
                 {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
               </button>
@@ -200,20 +258,20 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
               <button 
                 onClick={() => { if(!editId) setTipoForm('fijo') }} 
                 type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-white' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
               >
                 {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
               </button>
             </div>
-            {editId && <button onClick={cancelarEdicion} className="text-xs text-amber-400 hover:underline">Cancelar Edición</button>}
+            {editId && <button onClick={cancelarEdicion} className="text-xs text-amber-400 hover:underline bg-slate-950 px-2 py-1 rounded">Cancelar Edición</button>}
           </div>
-          <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end mt-2">
             {tipoForm === 'variable' ? (
               <React.Fragment>
                 <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} disabled={!!editId} className="sm:col-span-5" />
                 <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
                 <div className="sm:col-span-3 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
+                   <button type="submit" className={`w-full ${editId ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
                 </div>
               </React.Fragment>
             ) : (
@@ -223,7 +281,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
                 <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
                 <div className="sm:col-span-2 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
+                   <button type="submit" className={`w-full ${editId ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
                 </div>
               </React.Fragment>
             )}
@@ -232,61 +290,44 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       )}
 
       <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium w-full md:w-max">
-        <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
-        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
+        <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Todos' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Fijos</button>
+        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Variables</button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {items.map(p => {
-          const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
-          const diferencia = p.limite - p.gastado; // ✨ AQUÍ CALCULAMOS LA DIFERENCIA
-          const isDanger = porcentaje > 90;
-          const isWarning = porcentaje > 75 && !isDanger;
-          const bgBar = p.tipo === 'Fijo' ? 'bg-amber-500' : (isDanger ? 'bg-rose-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500');
+      {/* ✨ NUEVO RENDERIZADO: SECCIONES SEPARADAS Y COMPACTAS */}
+      <div className="space-y-8">
+        
+        {(filtroLista === 'Todos' || filtroLista === 'Fijos') && (
+          <div className="space-y-4 animate-in fade-in">
+            <h2 className="text-sm font-bold text-amber-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+              <CheckSquare size={16} /> Gastos Fijos Estimados
+            </h2>
+            {fijosItems.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="amber" />)}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No hay gastos fijos configurados.</p>
+            )}
+          </div>
+        )}
 
-          return (
-            <Card key={p.id + p.tipo} className={`border-t-4 ${p.tipo === 'Fijo' ? 'border-t-amber-500/50' : (isDanger ? 'border-t-rose-500' : isWarning ? 'border-t-amber-500' : 'border-t-emerald-500')}`}>
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="font-bold text-white text-base leading-tight pr-2">{p.nombre}</h3>
-                  <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded mt-1 inline-block ${p.tipo === 'Fijo' ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'}`}>{p.tipo}</span>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => cargarParaEditar(p)} className="text-slate-600 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
-                  <button onClick={() => {
-                    if (p.tipo === 'Variable') {
-                      removePresupuesto(p.id);
-                      showToast("Presupuesto eliminado");
-                    } else {
-                      removePagoFijo(p.id);
-                      showToast("Gasto Fijo eliminado de esta vista y de la pestaña Egresos.");
-                    }
-                  }} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
-                </div>
+        {(filtroLista === 'Todos' || filtroLista === 'Variables') && (
+          <div className="space-y-4 animate-in fade-in">
+            <h2 className="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+              <PieChart size={16} /> Límites de Gasto Variable
+            </h2>
+            {varItems.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                {varItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="indigo" />)}
               </div>
+            ) : (
+              <p className="text-sm text-slate-500">No hay presupuestos variables configurados.</p>
+            )}
+          </div>
+        )}
 
-              {/* ✨ TEXTOS ACTUALIZADOS PARA MOSTRAR LA DIFERENCIA */}
-              <div className="flex justify-between text-xs text-slate-400 mb-1 mt-4">
-                <span>Gastado: <strong className="text-white">{formatCOP(p.gastado)}</strong></span>
-                <span>{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
-              </div>
-              <div className="text-right mb-3">
-                <span className={`text-[11px] font-bold ${diferencia >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {diferencia >= 0 ? 'Disponible: ' : 'Excedido: '} {formatCOP(Math.abs(diferencia))}
-                </span>
-              </div>
-
-              <div className="w-full bg-slate-950 rounded-full h-3 mb-2 border border-slate-800">
-                <div className={`h-full rounded-full transition-all duration-1000 ${bgBar}`} style={{ width: `${porcentaje}%` }}></div>
-              </div>
-              <p className={`text-xs text-right font-bold ${p.tipo === 'Fijo' ? 'text-amber-400' : (isDanger ? 'text-rose-400' : isWarning ? 'text-amber-400' : 'text-emerald-400')}`}>
-                {porcentaje.toFixed(1)}% consumido
-              </p>
-            </Card>
-          );
-        })}
-        {items.length === 0 && <p className="col-span-1 md:col-span-2 lg:col-span-3 text-center text-slate-500 py-10 border border-dashed border-slate-800 rounded-xl">No hay elementos para mostrar en esta vista.</p>}
       </div>
     </div>
   );
