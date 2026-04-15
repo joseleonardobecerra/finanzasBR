@@ -2,11 +2,8 @@
 function App() {
   const { useState, useMemo, useEffect, useRef } = React;
   const [appCargando, setAppCargando] = useState(true);
-  
-  // ✨ NUEVO: Estado de Autenticación
   const [authUser, setAuthUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
-  
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -22,7 +19,6 @@ function App() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // ✨ NUEVO: Listener de Firebase Auth
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
       setAuthUser(user);
@@ -49,9 +45,7 @@ function App() {
   const markLoaded = () => { loadedRef.current += 1; if (loadedRef.current >= TOTAL_COL) setAppCargando(false); };
 
   useEffect(() => {
-    // Si no hay usuario, no intenta descargar datos de Firestore
     if (!authUser) return;
-
     const col = (name, setter) => db.collection(name).onSnapshot(snap => { setter(snap.docs.map(d => d.data())); markLoaded(); });
     const unsubs = [
       col('cuentas', setCuentas), col('transferencias', setTransferencias), col('ingresos', setIngresos),
@@ -182,23 +176,27 @@ function App() {
 
   useEffect(() => { const cM = new Date().toISOString().slice(0, 7); if (selectedMonth === cM && !appCargando) { setScoreHistory(prev => { if (prev[selectedMonth] !== scoreData.score) { const next = { ...prev, [selectedMonth]: scoreData.score }; db.collection('sistema').doc('scoreHistory').set(next, {merge: true}); return next; } return prev; }); } }, [scoreData.score, selectedMonth, appCargando]);
 
-
-  // ✨ NUEVAS RUTAS DE CARGA Y LOGIN
   if (authChecking) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Validando seguridad...</p></div>;
   if (!authUser) return <Login />;
   if (appCargando) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Descargando datos de la nube...</p></div>;
 
+  // ✨ ORDEN DE PESTAÑAS: Analítica ahora está en "Estrategia"
   const navItems = [
+    // Diario (6 ítems)
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
-    { id: 'analitica', label: 'Analítica', icon: BarChart },
     { id: 'ingresos', label: 'Ingresos', icon: Wallet },
     { id: 'egresos', label: 'Egresos', icon: Receipt }, 
     { id: 'cuentas', label: 'Cuentas', icon: Landmark },
     { id: 'deudas', label: 'Deudas', icon: ShieldAlert },
     { id: 'inversiones', label: 'Inversión y ahorro', icon: PiggyBank }, 
+    
+    // Estrategia (4 ítems)
+    { id: 'analitica', label: 'Analítica', icon: BarChart }, 
     { id: 'score', label: 'Score Familia', icon: Activity },
     { id: 'presupuestos', label: 'Presupuestos', icon: PieChart },
     { id: 'simulador', label: 'Simuladores', icon: Calculator },
+    
+    // Sistema (1 ítem)
     { id: 'settings', label: 'Ajustes', icon: Settings2 },
   ];
 
@@ -209,13 +207,14 @@ function App() {
         <div className="p-6 border-b border-slate-800"><h1 className="text-xl font-bold text-white flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">F</div>FinanzasFamilia</h1></div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mb-2">Diario</div>
-          {navItems.slice(0, 7).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
+          {navItems.slice(0, 6).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
+          
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Estrategia</div>
-          {navItems.slice(7, 10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
+          {navItems.slice(6, 10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
+          
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Sistema</div>
           {navItems.slice(10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
           
-          {/* ✨ BOTÓN CERRAR SESIÓN PC */}
           <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all mt-4 border border-rose-500/20">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
             Cerrar Sesión
@@ -225,7 +224,6 @@ function App() {
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0">
         <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex justify-between items-center gap-4">
-          {/* ✨ BOTÓN CERRAR SESIÓN MÓVIL (Escondido en PC) */}
           <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2">
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           </button>
