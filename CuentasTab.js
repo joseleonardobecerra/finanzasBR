@@ -162,6 +162,13 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
         </div>
       );
 
+      // ✨ Helper para colores dinámicos basados en el valor (positivo, negativo o cero)
+      const getValueColor = (val) => {
+        if (val > 0) return 'text-emerald-400';
+        if (val < 0) return 'text-rose-500';
+        return 'text-amber-500';
+      };
+
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
           <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-2">
@@ -179,42 +186,42 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
             </div>
           </header>
 
-          {/* ✨ NUEVO: TARJETAS DE RESUMEN DE LIQUIDEZ */}
+          {/* ✨ ACTUALIZADO: Tarjetas con colores neutrales para personas y colores de valor dinámico */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Tarjeta Leo */}
-            <Card className="border-t-4 border-t-emerald-500 flex flex-col justify-between bg-slate-900/80">
-              <h3 className="text-sm font-bold text-emerald-500 uppercase mb-3 flex items-center gap-2"><Wallet size={16}/> Liquidez Leo</h3>
+            {/* Tarjeta Leo (Índigo neutral) */}
+            <Card className="border-t-4 border-t-indigo-500 flex flex-col justify-between bg-slate-900/80">
+              <h3 className="text-sm font-bold text-indigo-400 uppercase mb-3 flex items-center gap-2"><Wallet size={16}/> Liquidez Leo</h3>
               <div className="space-y-2">
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-400">Cuentas (Bancos)</span>
-                    <span className="font-bold text-slate-200">{formatCOP(leoBank)}</span>
+                    <span className={`font-bold ${getValueColor(leoBank)}`}>{formatCOP(leoBank)}</span>
                  </div>
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-400">Efectivo</span>
-                    <span className="font-bold text-slate-200">{formatCOP(leoCash)}</span>
+                    <span className={`font-bold ${getValueColor(leoCash)}`}>{formatCOP(leoCash)}</span>
                  </div>
                  <div className="flex justify-between items-center text-base border-t border-slate-800 pt-2 mt-2">
                     <span className="text-slate-300 font-bold uppercase text-xs">Total Disponible</span>
-                    <span className="font-black text-emerald-400">{formatCOP(leoBank + leoCash)}</span>
+                    <span className={`font-black ${getValueColor(leoBank + leoCash)}`}>{formatCOP(leoBank + leoCash)}</span>
                  </div>
               </div>
             </Card>
 
-            {/* Tarjeta Andre */}
-            <Card className="border-t-4 border-t-rose-500 flex flex-col justify-between bg-slate-900/80">
-              <h3 className="text-sm font-bold text-rose-500 uppercase mb-3 flex items-center gap-2"><Wallet size={16}/> Liquidez Andre</h3>
+            {/* Tarjeta Andre (Violeta neutral) */}
+            <Card className="border-t-4 border-t-violet-500 flex flex-col justify-between bg-slate-900/80">
+              <h3 className="text-sm font-bold text-violet-400 uppercase mb-3 flex items-center gap-2"><Wallet size={16}/> Liquidez Andre</h3>
               <div className="space-y-2">
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-400">Cuentas (Bancos)</span>
-                    <span className="font-bold text-slate-200">{formatCOP(andreBank)}</span>
+                    <span className={`font-bold ${getValueColor(andreBank)}`}>{formatCOP(andreBank)}</span>
                  </div>
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-400">Efectivo</span>
-                    <span className="font-bold text-slate-200">{formatCOP(andreCash)}</span>
+                    <span className={`font-bold ${getValueColor(andreCash)}`}>{formatCOP(andreCash)}</span>
                  </div>
                  <div className="flex justify-between items-center text-base border-t border-slate-800 pt-2 mt-2">
                     <span className="text-slate-300 font-bold uppercase text-xs">Total Disponible</span>
-                    <span className="font-black text-rose-400">{formatCOP(andreBank + andreCash)}</span>
+                    <span className={`font-black ${getValueColor(andreBank + andreCash)}`}>{formatCOP(andreBank + andreCash)}</span>
                  </div>
               </div>
             </Card>
