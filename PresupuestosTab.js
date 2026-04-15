@@ -12,7 +12,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const formRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // --- IMPORTAR / EXPORTAR INDIVIDUAL DE PRESUPUESTOS ---
   const handleExport = async () => {
     try {
       const xlsx = await loadSheetJS();
@@ -137,7 +136,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
   const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
 
-  // ✨ NUEVO: Separar los items desde el useMemo para renderizarlos en bloques distintos
   const { fijosItems, varItems } = useMemo(() => {
     const fijos = [];
     const variables = [];
@@ -158,7 +156,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     };
   }, [pagosFijos, presupuestos, egresosMes]);
 
-  // ✨ COMPONENTE REUTILIZABLE PARA TARJETA COMPACTA
   const RenderCardCompacta = ({ p, themeColor }) => {
     const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
     const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
@@ -166,27 +163,33 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     const isDanger = porcentajeReal >= 100;
     const isWarning = porcentajeReal >= 85 && !isDanger;
 
-    // Colores dinámicos basados en el tipo (fijo = amber, variable = indigo) y su estado
-    let barColor = `bg-${themeColor}-500`;
-    let textColor = `text-${themeColor}-400`;
+    // ✨ CONFIGURACIÓN EXACTA DE LOS COLORES (Naranja y Azul)
+    const themeMap = {
+      orange: { bar: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500', bgEdit: 'bg-orange-950/10', tag: 'bg-orange-500/20 text-orange-400' },
+      blue: { bar: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', bgEdit: 'bg-blue-950/10', tag: 'bg-blue-500/20 text-blue-400' }
+    };
+
+    let t = themeMap[themeColor];
+    let barColor = t.bar;
+    let textColor = t.text;
 
     if (isDanger) {
       barColor = 'bg-rose-500';
       textColor = 'text-rose-400';
     } else if (isWarning) {
-      barColor = 'bg-orange-500';
-      textColor = 'text-orange-400';
+      barColor = 'bg-yellow-500';
+      textColor = 'text-yellow-400';
     }
 
     return (
-      <div key={p.id} className={`bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-col gap-2.5 hover:border-slate-700 transition-colors ${editId === p.id ? `border-${themeColor}-500 bg-${themeColor}-950/10` : ''}`}>
+      <div key={p.id} className={`bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-col gap-2.5 hover:border-slate-700 transition-colors ${editId === p.id ? `${t.border} ${t.bgEdit}` : ''}`}>
         <div className="flex justify-between items-start">
           <div className="flex flex-col pr-2">
             <span className="font-bold text-slate-200 text-sm leading-tight truncate">{p.nombre}</span>
             <span className="text-[10px] text-slate-500 mt-0.5">{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
           </div>
           <div className="flex gap-0.5 shrink-0">
-            <button onClick={() => cargarParaEditar(p)} className="text-slate-600 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
+            <button onClick={() => cargarParaEditar(p)} className={`text-slate-600 hover:${t.text} p-1`}><Edit3 size={14}/></button>
             <button onClick={() => {
               if (p.tipo === 'Variable') { removePresupuesto(p.id); showToast("Presupuesto eliminado"); } 
               else { removePagoFijo(p.id); showToast("Gasto Fijo eliminado."); }
@@ -215,11 +218,11 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><PieChart className="text-indigo-400 w-8 h-8"/> Presupuestos y Ejecución</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><PieChart className="text-blue-400 w-8 h-8"/> Presupuestos y Ejecución</h1>
           <p className="text-sm md:text-base text-slate-400 mt-1">Controla cómo se está gastando el dinero vs lo que tenías planificado.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+          <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
             <Plus size={16}/> {showForm ? 'Ocultar' : 'Añadir presupuesto'}
           </button>
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
@@ -230,11 +233,11 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <p className="text-[10px] text-amber-500 uppercase font-bold mb-1">Presupuesto Fijo</p>
+          <p className="text-[10px] text-orange-500 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
           <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
         </div>
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <p className="text-[10px] text-indigo-400 uppercase font-bold mb-1">Presupuesto Variable</p>
+          <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
           <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
         </div>
         <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
@@ -244,13 +247,13 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       </div>
 
       {showForm && (
-        <Card className={editId ? "border-t-4 border-t-emerald-500 bg-emerald-950/10" : "border-t-4 border-t-indigo-500 bg-slate-900/80"}>
+        <Card className={editId ? "border-t-4 border-t-yellow-500 bg-yellow-950/10" : "border-t-4 border-t-slate-500 bg-slate-900/80"}>
           <div className="flex justify-between items-center mb-4" ref={formRef}>
             <div className="flex gap-4">
               <button 
                 onClick={() => { if(!editId) setTipoForm('variable') }} 
                 type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
+                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
               >
                 {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
               </button>
@@ -258,12 +261,12 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
               <button 
                 onClick={() => { if(!editId) setTipoForm('fijo') }} 
                 type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
               >
                 {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
               </button>
             </div>
-            {editId && <button onClick={cancelarEdicion} className="text-xs text-amber-400 hover:underline bg-slate-950 px-2 py-1 rounded">Cancelar Edición</button>}
+            {editId && <button onClick={cancelarEdicion} className="text-xs text-yellow-400 hover:underline bg-slate-950 px-2 py-1 rounded">Cancelar Edición</button>}
           </div>
           <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end mt-2">
             {tipoForm === 'variable' ? (
@@ -271,7 +274,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} disabled={!!editId} className="sm:col-span-5" />
                 <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
                 <div className="sm:col-span-3 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
+                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
                 </div>
               </React.Fragment>
             ) : (
@@ -281,7 +284,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
                 <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
                 <div className="sm:col-span-2 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
+                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-orange-600 hover:bg-orange-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
                 </div>
               </React.Fragment>
             )}
@@ -291,21 +294,19 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
       <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium w-full md:w-max">
         <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Todos' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Fijos</button>
-        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Variables</button>
+        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Fijos</button>
+        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Variables</button>
       </div>
 
-      {/* ✨ NUEVO RENDERIZADO: SECCIONES SEPARADAS Y COMPACTAS */}
       <div className="space-y-8">
-        
         {(filtroLista === 'Todos' || filtroLista === 'Fijos') && (
           <div className="space-y-4 animate-in fade-in">
-            <h2 className="text-sm font-bold text-amber-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+            <h2 className="text-sm font-bold text-orange-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
               <CheckSquare size={16} /> Gastos Fijos Estimados
             </h2>
             {fijosItems.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="amber" />)}
+                {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="orange" />)}
               </div>
             ) : (
               <p className="text-sm text-slate-500">No hay gastos fijos configurados.</p>
@@ -315,19 +316,18 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
         {(filtroLista === 'Todos' || filtroLista === 'Variables') && (
           <div className="space-y-4 animate-in fade-in">
-            <h2 className="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+            <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
               <PieChart size={16} /> Límites de Gasto Variable
             </h2>
             {varItems.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                {varItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="indigo" />)}
+                {varItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="blue" />)}
               </div>
             ) : (
               <p className="text-sm text-slate-500">No hay presupuestos variables configurados.</p>
             )}
           </div>
         )}
-
       </div>
     </div>
   );
