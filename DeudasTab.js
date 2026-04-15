@@ -1,4 +1,5 @@
 const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, egresos }) => {
+  const { useState, useRef } = React;
   const [showNewCard, setShowNewCard] = useState(false);
   const [showNewLoan, setShowNewLoan] = useState(false);
   
@@ -9,23 +10,6 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   const [editData, setEditData] = useState({});
   const fileInputRef = useRef(null);
 
-  // ✨ CÁLCULO DE TRAZA DE INTERESES (Corregido para histórico de Préstamos)
-  // Tarjetas: Suma los campos nuevos de "InteresesOtros" registrados en Egresos
-  const intTC = egresos.filter(e => {
-      if (!e.interesesOtros) return false;
-      const c = cuentas.find(acc => acc.id === e.cuentaId || acc.id === e.deudaId);
-      return c && c.type === 'credit';
-  }).reduce((s, e) => s + e.interesesOtros, 0);
-
-  // Préstamos: Calcula el histórico real (Total pagado histórico - Capital abonado real)
-  const intPrestamos = cuentas.filter(c => c.type === 'loan').reduce((sum, d) => {
-      const capitalPagado = (d.montoPrestado || 0) - d.currentDebt;
-      const interesesHist = (d.totalPagado || 0) - capitalPagado;
-      return sum + Math.max(0, interesesHist);
-  }, 0);
-
-  const intTotal = intTC + intPrestamos;
-
   const deudasAnalizadas = cuentas
     .filter(c => ['credit', 'loan'].includes(c.type))
     .map(d => {
@@ -35,8 +19,11 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
     })
     .sort((a, b) => b.tasaEA - a.tasaEA);
 
-  const tcDeudas = deudasAnalizadas.filter(c => c.type === 'credit' && c.currentDebt > 0);
-  const loanDeudas = deudasAnalizadas.filter(c => c.type === 'loan' && c.currentDebt > 0);
+  // ✨ CÁLCULOS PARA LA FILA DE TOTALES DE TARJETAS
+  const todasLasTC = deudasAnalizadas.filter(d => d.type === 'credit');
+  const totalCupoTC = todasLasTC.reduce((sum, d) => sum + (Number(d.limit) || 0), 0);
+  const totalDeudaTC = todasLasTC.reduce((sum, d) => sum + (Number(d.currentDebt) || 0), 0);
+  const totalDispTC = todasLasTC.reduce((sum, d) => sum + Math.max(0, (Number(d.limit) || 0) - (Number(d.currentDebt) || 0)), 0);
 
   const handleAddCard = (e) => {
     e.preventDefault();
@@ -103,6 +90,7 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   };
 
   const actualizarCampo = (id, field, val) => updateCuenta(id, { [field]: Number(val) });
+  
   const actualizarIBR = (id, ibrValue, ibrPuntos) => {
     const val = Number(ibrValue); const pts = Number(ibrPuntos); const namv = val + pts;
     const nuevaEA = (Math.pow(1 + (namv/100)/12, 12) - 1) * 100;
@@ -181,21 +169,6 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-        <Card className="bg-slate-900/80 border-t-4 border-t-amber-500 py-3">
-           <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Total Intereses (Histórico Registrado)</p>
-           <p className="text-xl font-bold text-amber-400">{formatCOP(intTotal)}</p>
-        </Card>
-        <Card className="bg-slate-900/80 border-t-4 border-t-indigo-500 py-3">
-           <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Intereses en Tarjetas de Crédito</p>
-           <p className="text-xl font-bold text-indigo-400">{formatCOP(intTC)}</p>
-        </Card>
-        <Card className="bg-slate-900/80 border-t-4 border-t-rose-500 py-3">
-           <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Intereses en Préstamos</p>
-           <p className="text-xl font-bold text-rose-400">{formatCOP(intPrestamos)}</p>
-        </Card>
-      </div>
-
       {showNewCard && (
         <div className="bg-slate-950 border border-indigo-500/50 p-4 rounded-xl mb-4 animate-in slide-in-from-top-2">
           <div className="flex justify-between items-center mb-3">
@@ -271,7 +244,7 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {deudasAnalizadas.filter(d=>d.type==='credit').map(d => {
+              {todasLasTC.map(d => {
                 const isEditing = editId === d.id;
                 const tasaMV = getTasaMensual(d.tasaEA) * 100;
                 
@@ -312,8 +285,20 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
                   </tr>
                 )
               })}
-              {deudasAnalizadas.filter(d=>d.type==='credit').length === 0 && (
+              {todasLasTC.length === 0 && (
                 <tr><td colSpan="7" className="px-3 py-6 text-center text-slate-500">No hay tarjetas de crédito registradas.</td></tr>
+              )}
+              {/* ✨ NUEVO: FILA DE TOTALES PARA TARJETAS DE CRÉDITO */}
+              {todasLasTC.length > 0 && (
+                <tr className="bg-slate-950 font-bold text-white border-t-2 border-slate-800">
+                  <td className="px-3 py-4">TOTAL</td>
+                  <td className="px-3 py-4 text-right">{formatCOP(totalCupoTC)}</td>
+                  <td className="px-3 py-4 text-right text-emerald-400">{formatCOP(totalDispTC)}</td>
+                  <td className="px-3 py-4 text-right text-rose-400">{formatCOP(totalDeudaTC)}</td>
+                  <td className="px-3 py-4 text-center">-</td>
+                  <td className="px-3 py-4 text-center">-</td>
+                  <td className="px-3 py-4 text-center"></td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -444,7 +429,7 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
               </div>
             )
           })}
-          {loanDeudas.length === 0 && <p className="text-slate-500 text-sm col-span-1 lg:col-span-2 text-center py-6">No hay préstamos configurados.</p>}
+          {deudasAnalizadas.filter(d=>d.type==='loan').length === 0 && <p className="text-slate-500 text-sm col-span-1 lg:col-span-2 text-center py-6">No hay préstamos configurados.</p>}
         </div>
       </Card>
     </div>
