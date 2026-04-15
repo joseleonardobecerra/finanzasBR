@@ -4,7 +4,6 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                        cuentas, selectedMonth, presupuestos, categoriasMaestras, showToast }) => {
       const todayStr = getLocalToday();
       
-      // ✨ CAMPO NUEVO: interesesOtros añadido al estado del formulario
       const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', interesesOtros: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
       const [errorsVar, setErrorsVar] = useState({});
       
@@ -261,7 +260,6 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                 <Select label="Método de pago" options={[{value: 'cash', label: 'Efectivo'}, {value: 'bank', label: 'Débito'}, {value: 'credit', label: 'Crédito'}]} value={gastoForm.metodoPago} onChange={handleMetodoChange} error={errorsVar.metodoPago} required className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
                 <Select label={gastoForm.metodoPago === 'credit' ? 'Tarjeta' : 'Cuenta / Bolsillo'} options={cuentasFiltradas.map(c=>({value:c.id, label:c.name}))} value={gastoForm.cuentaId} onChange={handleCuentaChange} error={errorsVar.cuentaId} disabled={!gastoForm.metodoPago} className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
                 
-                {/* ✨ NUEVOS CAMPOS DIVIDIDOS (Monto Total e Intereses) */}
                 <Input type="number" label="Monto Total ($)" value={gastoForm.monto} onChange={e=>setGastoForm({...gastoForm, monto: e.target.value})} error={errorsVar.monto} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-1'}`} />
                 <Input type="number" label="Intereses/Otros (Opcional)" title="Si este pago incluye intereses o cargos bancarios, anota el valor aquí." value={gastoForm.interesesOtros} onChange={e=>setGastoForm({...gastoForm, interesesOtros: e.target.value})} error={errorsVar.interesesOtros} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'hidden' : 'md:col-span-2 bg-amber-950/20'}`} />
 
@@ -372,12 +370,16 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
                     {egresosMes.map(g => (
                       <tr key={g.id} className={`transition-colors ${gastoForm.id === g.id && gastoForm.editSource === 'historial' ? 'bg-amber-900/20' : 'hover:bg-slate-800/20'}`}>
                         <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{g.fecha}</td>
-                        <td className="px-4 py-3 text-slate-300 font-medium">{g.descripcion}{g.tipo === 'Fijo' && <span className="ml-2 text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded uppercase tracking-wider">Fijo</span>}</td>
+                        <td className="px-4 py-3 text-slate-300 font-medium">
+                          {g.descripcion}
+                          {/* ✨ ETIQUETAS NARANJA (FIJO) Y AZUL (VARIABLE) APLICADAS AQUÍ */}
+                          {g.tipo === 'Fijo' && <span className="ml-2 text-[9px] bg-orange-500/20 text-orange-400 border border-orange-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Fijo</span>}
+                          {g.tipo === 'Variable' && <span className="ml-2 text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Variable</span>}
+                        </td>
                         <td className="px-4 py-3 text-slate-400">
                           <span className="bg-slate-800 px-2 py-1 rounded-md text-xs block w-max mb-1">{g.categoria}</span>
                           <span className="text-[10px] text-indigo-400/80">Pagado con: {cuentas.find(c => c.id === g.cuentaId)?.name || '?'}</span>
                         </td>
-                        {/* ✨ MOSTRANDO EL DESGLOSE DE INTERESES EN LA TABLA */}
                         <td className="px-4 py-3 text-right">
                            <span className="font-bold text-rose-400 block">{formatCOP(g.monto)}</span>
                            {g.interesesOtros > 0 && <span className="text-[10px] text-amber-500 font-medium block leading-none mt-1">Int: {formatCOP(g.interesesOtros)}</span>}
