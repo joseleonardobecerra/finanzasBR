@@ -160,26 +160,15 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
     const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
     const diferencia = p.limite - p.gastado;
-    const isDanger = porcentajeReal >= 100;
-    const isWarning = porcentajeReal >= 85 && !isDanger;
 
-    // ✨ CONFIGURACIÓN EXACTA DE LOS COLORES (Naranja y Azul)
+    // ✨ CONFIGURACIÓN EXACTA DE LOS COLORES (Amarillo para Fijos, Azul para Variables)
+    // Se elimina la lógica de "isDanger" o "isWarning" para el color principal de la tarjeta.
     const themeMap = {
-      orange: { bar: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500', bgEdit: 'bg-orange-950/10', tag: 'bg-orange-500/20 text-orange-400' },
-      blue: { bar: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', bgEdit: 'bg-blue-950/10', tag: 'bg-blue-500/20 text-blue-400' }
+      yellow: { bar: 'bg-yellow-400', text: 'text-yellow-400', border: 'border-yellow-500', bgEdit: 'bg-yellow-950/10' },
+      blue: { bar: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', bgEdit: 'bg-blue-950/10' }
     };
 
     let t = themeMap[themeColor];
-    let barColor = t.bar;
-    let textColor = t.text;
-
-    if (isDanger) {
-      barColor = 'bg-rose-500';
-      textColor = 'text-rose-400';
-    } else if (isWarning) {
-      barColor = 'bg-yellow-500';
-      textColor = 'text-yellow-400';
-    }
 
     return (
       <div key={p.id} className={`bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-col gap-2.5 hover:border-slate-700 transition-colors ${editId === p.id ? `${t.border} ${t.bgEdit}` : ''}`}>
@@ -198,17 +187,20 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
 
         <div className="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800 overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${porcentaje}%` }}></div>
+          {/* ✨ LA BARRA MANTIENE SU COLOR FIJO (AMARILLO O AZUL) SIEMPRE */}
+          <div className={`h-full rounded-full transition-all duration-1000 ${t.bar}`} style={{ width: `${porcentaje}%` }}></div>
         </div>
 
         <div className="flex justify-between items-end text-[10px]">
           <div className="flex flex-col">
              <span className="text-slate-400">Gastado: <span className="text-white font-bold">{formatCOP(p.gastado)}</span></span>
+             {/* El texto pequeño de "Excedido" sigue siendo rojo para mantener la alerta sin manchar el diseño */}
              <span className={`font-medium ${diferencia >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
                {diferencia >= 0 ? 'Disponible: ' : 'Excedido: '} {formatCOP(Math.abs(diferencia))}
              </span>
           </div>
-          <span className={`font-bold ${textColor} text-xs`}>{porcentajeReal.toFixed(1)}%</span>
+          {/* ✨ EL PORCENTAJE MANTIENE SU COLOR FIJO (AMARILLO O AZUL) SIEMPRE */}
+          <span className={`font-bold ${t.text} text-xs`}>{porcentajeReal.toFixed(1)}%</span>
         </div>
       </div>
     );
@@ -233,7 +225,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <p className="text-[10px] text-orange-500 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
+          <p className="text-[10px] text-yellow-400 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
           <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
         </div>
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
@@ -261,7 +253,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
               <button 
                 onClick={() => { if(!editId) setTipoForm('fijo') }} 
                 type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
               >
                 {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
               </button>
@@ -284,7 +276,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
                 <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
                 <div className="sm:col-span-2 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-orange-600 hover:bg-orange-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
+                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-yellow-500 hover:bg-yellow-600'} text-slate-900 font-bold py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
                 </div>
               </React.Fragment>
             )}
@@ -294,19 +286,19 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
       <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium w-full md:w-max">
         <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Todos' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Fijos</button>
+        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-yellow-500 text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200'}`}>Solo Fijos</button>
         <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Variables</button>
       </div>
 
       <div className="space-y-8">
         {(filtroLista === 'Todos' || filtroLista === 'Fijos') && (
           <div className="space-y-4 animate-in fade-in">
-            <h2 className="text-sm font-bold text-orange-500 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+            <h2 className="text-sm font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
               <CheckSquare size={16} /> Gastos Fijos Estimados
             </h2>
             {fijosItems.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="orange" />)}
+                {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="yellow" />)}
               </div>
             ) : (
               <p className="text-sm text-slate-500">No hay gastos fijos configurados.</p>
