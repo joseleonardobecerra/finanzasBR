@@ -1,8 +1,8 @@
-const AnaliticaTab = ({ ingresos, egresos, cuentas, selectedMonth }) => {
+const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
   const formatCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
 
   // 1. Generar historial de los últimos 12 meses
-  const historialMensual = useMemo(() => {
+  const historialMensual = React.useMemo(() => {
     const meses = [];
     const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
     
@@ -12,8 +12,8 @@ const AnaliticaTab = ({ ingresos, egresos, cuentas, selectedMonth }) => {
       const mesStr = d.toISOString().slice(0, 7);
       const label = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace(/^\w/, c => c.toUpperCase());
       
-      const ingMes = ingresos.filter(i => i.fecha.startsWith(mesStr)).reduce((s, i) => s + i.monto, 0);
-      const egrMes = egresos.filter(e => e.fecha.startsWith(mesStr)).reduce((s, e) => s + e.monto, 0);
+      const ingMes = ingresos.filter(i => i.fecha.startsWith(mesStr)).reduce((s, i) => s + Number(i.monto), 0);
+      const egrMes = egresos.filter(e => e.fecha.startsWith(mesStr)).reduce((s, e) => s + Number(e.monto), 0);
       
       meses.push({ mesStr, label, ingresos: ingMes, egresos: egrMes, neto: ingMes - egrMes });
     }
@@ -42,7 +42,6 @@ const AnaliticaTab = ({ ingresos, egresos, cuentas, selectedMonth }) => {
               </div>
               <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase">{m.label}</span>
               
-              {/* Tooltip */}
               <div className="opacity-0 group-hover:opacity-100 absolute -top-20 bg-slate-950 border border-slate-700 p-2 rounded shadow-xl z-20 pointer-events-none transition-opacity text-[10px] min-w-[120px]">
                 <p className="text-emerald-400 font-bold">Ing: {formatCOP(m.ingresos)}</p>
                 <p className="text-rose-400 font-bold">Egr: {formatCOP(m.egresos)}</p>
