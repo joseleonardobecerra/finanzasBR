@@ -2,6 +2,11 @@
 function App() {
   const { useState, useMemo, useEffect, useRef } = React;
   const [appCargando, setAppCargando] = useState(true);
+  
+  // ✨ NUEVO: Estado de Autenticación
+  const [authUser, setAuthUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -15,6 +20,15 @@ function App() {
     window.addEventListener('online', on);
     window.addEventListener('offline', off);
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
+  // ✨ NUEVO: Listener de Firebase Auth
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      setAuthUser(user);
+      setAuthChecking(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
@@ -35,6 +49,9 @@ function App() {
   const markLoaded = () => { loadedRef.current += 1; if (loadedRef.current >= TOTAL_COL) setAppCargando(false); };
 
   useEffect(() => {
+    // Si no hay usuario, no intenta descargar datos de Firestore
+    if (!authUser) return;
+
     const col = (name, setter) => db.collection(name).onSnapshot(snap => { setter(snap.docs.map(d => d.data())); markLoaded(); });
     const unsubs = [
       col('cuentas', setCuentas), col('transferencias', setTransferencias), col('ingresos', setIngresos),
@@ -43,7 +60,7 @@ function App() {
       db.collection('sistema').doc('scoreHistory').onSnapshot(snap => { if (snap.exists) setScoreHistory(snap.data()); markLoaded(); }),
     ];
     return () => unsubs.forEach(u => u());
-  }, []);
+  }, [authUser]);
 
   const fire = {
     add: (colName, data) => db.collection(colName).doc(data.id).set(data),
@@ -165,7 +182,11 @@ function App() {
 
   useEffect(() => { const cM = new Date().toISOString().slice(0, 7); if (selectedMonth === cM && !appCargando) { setScoreHistory(prev => { if (prev[selectedMonth] !== scoreData.score) { const next = { ...prev, [selectedMonth]: scoreData.score }; db.collection('sistema').doc('scoreHistory').set(next, {merge: true}); return next; } return prev; }); } }, [scoreData.score, selectedMonth, appCargando]);
 
-  if (appCargando) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Sincronizando...</p></div>;
+
+  // ✨ NUEVAS RUTAS DE CARGA Y LOGIN
+  if (authChecking) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Validando seguridad...</p></div>;
+  if (!authUser) return <Login />;
+  if (appCargando) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Descargando datos de la nube...</p></div>;
 
   const navItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -193,13 +214,24 @@ function App() {
           {navItems.slice(7, 10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Sistema</div>
           {navItems.slice(10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
+          
+          {/* ✨ BOTÓN CERRAR SESIÓN PC */}
+          <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all mt-4 border border-rose-500/20">
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            Cerrar Sesión
+          </button>
         </nav>
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0">
-        <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex justify-between items-center gap-4">
+          {/* ✨ BOTÓN CERRAR SESIÓN MÓVIL (Escondido en PC) */}
+          <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </button>
+
           {['ingresos', 'cuentas', 'deudas'].includes(activeTab) && <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 text-xs font-bold w-full md:w-auto"><button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Total' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>TOTAL</button><button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Andre' ? 'bg-violet-600 text-white' : 'text-slate-400'}`}>ANDRE</button><button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Leo' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>LEO</button></div>}
-          <div className="flex-1 flex justify-center md:justify-end w-full md:w-auto"><div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-full md:max-w-[240px] justify-between"><button onClick={() => changeMonth(-1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronLeft size={18}/></button><span className="font-bold text-white capitalize text-sm">{getMonthName(selectedMonth)}</span><button onClick={() => changeMonth(1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronRight size={18}/></button></div></div>
+          <div className="flex-1 flex justify-end md:justify-end w-full md:w-auto"><div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-full md:max-w-[240px] justify-between"><button onClick={() => changeMonth(-1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronLeft size={18}/></button><span className="font-bold text-white capitalize text-sm">{getMonthName(selectedMonth)}</span><button onClick={() => changeMonth(1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronRight size={18}/></button></div></div>
         </div>
 
         <div className="p-4 md:p-8 overflow-y-auto flex-1">
