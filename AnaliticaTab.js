@@ -2,11 +2,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
   const { useMemo } = React;
   const formatCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
 
-  // 1. GENERAR HISTORIAL DE LOS ÚLTIMOS 12 MESES
-  const { historialMensual, totalIngresosAnual, totalEgresosAnual } = useMemo(() => {
+  // 1. GENERAR HISTORIAL DE LOS ÚLTIMOS 12 MESES Y ESTRUCTURA DE COSTOS
+  const { historialMensual, totalIngresosAnual, totalEgresosAnual, totalFijosAnual, totalVariablesAnual } = useMemo(() => {
     const meses = [];
     const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
     let sumIng = 0; let sumEgr = 0;
+    let sumFijos = 0; let sumVar = 0;
     
     for (let i = 11; i >= 0; i--) {
       const d = new Date(fechaBase);
@@ -15,14 +16,28 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
       const label = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace(/^\w/, c => c.toUpperCase());
       
       const ingMes = ingresos.filter(i => i.fecha.startsWith(mesStr)).reduce((s, i) => s + Number(i.monto), 0);
-      const egrMes = egresos.filter(e => e.fecha.startsWith(mesStr)).reduce((s, e) => s + Number(e.monto), 0);
+      
+      const egresosMesFiltrados = egresos.filter(e => e.fecha.startsWith(mesStr));
+      const egrMes = egresosMesFiltrados.reduce((s, e) => s + Number(e.monto), 0);
+      
+      const fijosMes = egresosMesFiltrados.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+      const varMes = egresosMesFiltrados.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+      
       const neto = ingMes - egrMes;
       const tasaAhorro = ingMes > 0 ? (neto > 0 ? (neto / ingMes) * 100 : 0) : 0;
       
       sumIng += ingMes; sumEgr += egrMes;
+      sumFijos += fijosMes; sumVar += varMes;
+      
       meses.push({ mesStr, label, ingresos: ingMes, egresos: egrMes, neto, tasaAhorro });
     }
-    return { historialMensual: meses, totalIngresosAnual: sumIng, totalEgresosAnual: sumEgr };
+    return { 
+      historialMensual: meses, 
+      totalIngresosAnual: sumIng, 
+      totalEgresosAnual: sumEgr,
+      totalFijosAnual: sumFijos,
+      totalVariablesAnual: sumVar
+    };
   }, [ingresos, egresos, selectedMonth]);
 
   // 2. CÁLCULOS AVANZADOS (KPIs y Top Categorías)
@@ -32,6 +47,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
       neto: (totalIngresosAnual - totalEgresosAnual) / 12,
       tasaAhorro: totalIngresosAnual > 0 ? ((totalIngresosAnual - totalEgresosAnual) / totalIngresosAnual) * 100 : 0
   };
+
+  const pctFijos = totalEgresosAnual > 0 ? (totalFijosAnual / totalEgresosAnual) * 100 : 0;
+  const pctVariables = totalEgresosAnual > 0 ? (totalVariablesAnual / totalEgresosAnual) * 100 : 0;
 
   const { mejorMes, peorMes } = useMemo(() => {
       let mejor = historialMensual[0]; let peor = historialMensual[0];
@@ -56,7 +74,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
       return Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0, 5); // Top 5
   }, [egresos, selectedMonth]);
 
-  const maxValHist = Math.max(...historialMensual.map(m => Math.max(m.ingresos, m.egresos)), 1);
+  const maxNetoAbs = Math.max(...historialMensual.map(m => Math.abs(m.neto)), 1);
   const maxValCat = topCategoriasAnual.length > 0 ? topCategoriasAnual[0][1] : 1;
 
   return (
@@ -88,34 +106,81 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
         </Card>
       </div>
 
-      {/* ✨ 2. GRÁFICA PRINCIPAL: HISTÓRICO DE FLUJO */}
-      <Card className="border-t-4 border-t-indigo-500">
-        <h2 className="text-lg font-bold text-white mb-6">Comparativo Histórico: Ingresos vs Egresos</h2>
-        <div className="h-64 flex items-end justify-between gap-1 md:gap-4 border-b border-slate-800 pb-2 mt-4">
-          {historialMensual.map((m, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-              <div className="flex gap-0.5 md:gap-1 w-full justify-center items-end h-full">
-                <div style={{ height: `${Math.max((m.ingresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-emerald-500/80 rounded-t-sm group-hover:bg-emerald-400 transition-all"></div>
-                <div style={{ height: `${Math.max((m.egresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-rose-500/80 rounded-t-sm group-hover:bg-rose-400 transition-all"></div>
-              </div>
-              <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase">{m.label}</span>
+      {/* ✨ 2. NUEVA SECCIÓN: FLUJO NETO Y ESTRUCTURA DE GASTO */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Gráfica de Capacidad de Ahorro (Solo el Neto) */}
+        <Card className="lg:col-span-2 border-t-4 border-t-indigo-500 flex flex-col">
+          <h2 className="text-lg font-bold text-white mb-2">Evolución de Capacidad de Ahorro (Flujo Libre)</h2>
+          <p className="text-[10px] text-slate-400 mb-4">Muestra la diferencia exacta entre lo que ganaste y gastaste cada mes.</p>
+          
+          <div className="flex-1 flex items-end justify-between gap-1 md:gap-4 border-b border-slate-800 pb-2 relative h-56 mt-4">
+            {historialMensual.map((m, i) => {
+              const heightPct = Math.max((Math.abs(m.neto) / maxNetoAbs) * 100, 2);
+              const isPos = m.neto >= 0;
               
-              <div className="opacity-0 group-hover:opacity-100 absolute -top-24 bg-slate-950 border border-slate-700 p-3 rounded shadow-2xl z-20 pointer-events-none transition-opacity text-[10px] min-w-[140px]">
-                <p className="text-slate-300 font-bold uppercase mb-2 border-b border-slate-800 pb-1">{m.label}</p>
-                <div className="flex justify-between mb-1"><span className="text-emerald-400 font-bold">Ingresos:</span> <span className="text-white">{formatCOP(m.ingresos)}</span></div>
-                <div className="flex justify-between mb-1"><span className="text-rose-400 font-bold">Egresos:</span> <span className="text-white">{formatCOP(m.egresos)}</span></div>
-                <div className="border-t border-slate-800 my-1.5"></div>
-                <div className="flex justify-between font-black"><span className={m.neto >= 0 ? 'text-indigo-400' : 'text-amber-500'}>Neto:</span> <span className={m.neto >= 0 ? 'text-indigo-400' : 'text-amber-500'}>{formatCOP(m.neto)}</span></div>
-                <div className="flex justify-between mt-1 text-[9px]"><span className="text-slate-500">Retención:</span> <span className="text-slate-300">{m.tasaAhorro.toFixed(1)}%</span></div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-center gap-6 mt-4 text-xs font-bold uppercase tracking-wider">
-           <span className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> Ingresos</span>
-           <span className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm"></div> Egresos</span>
-        </div>
-      </Card>
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                  <div 
+                    style={{ height: `${heightPct}%` }} 
+                    className={`w-3 md:w-6 rounded-t-sm transition-all duration-500 ${isPos ? 'bg-emerald-500/80 group-hover:bg-emerald-400' : 'bg-rose-500/80 group-hover:bg-rose-400'}`}>
+                  </div>
+                  <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase">{m.label}</span>
+                  
+                  <div className="opacity-0 group-hover:opacity-100 absolute -top-24 bg-slate-950 border border-slate-700 p-3 rounded shadow-2xl z-20 pointer-events-none transition-opacity text-[10px] min-w-[140px]">
+                    <p className="text-slate-300 font-bold uppercase mb-2 border-b border-slate-800 pb-1">{m.label}</p>
+                    <div className="flex justify-between mb-1"><span className="text-emerald-400">Ingresos:</span> <span className="text-white font-bold">{formatCOP(m.ingresos)}</span></div>
+                    <div className="flex justify-between mb-1"><span className="text-rose-400">Egresos:</span> <span className="text-white font-bold">{formatCOP(m.egresos)}</span></div>
+                    <div className="border-t border-slate-800 my-1.5"></div>
+                    <div className="flex justify-between font-black text-xs"><span className={isPos ? 'text-emerald-400' : 'text-rose-500'}>{isPos ? 'Ahorro:' : 'Déficit:'}</span> <span className={isPos ? 'text-emerald-400' : 'text-rose-500'}>{formatCOP(Math.abs(m.neto))}</span></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-center gap-6 mt-4 text-[10px] font-bold uppercase tracking-wider">
+             <span className="flex items-center gap-2 text-emerald-400"><div className="w-2.5 h-2.5 bg-emerald-500 rounded-sm"></div> Superávit (Ahorro)</span>
+             <span className="flex items-center gap-2 text-rose-400"><div className="w-2.5 h-2.5 bg-rose-500 rounded-sm"></div> Déficit (Pérdida)</span>
+          </div>
+        </Card>
+
+        {/* Estructura del Gasto (Fijo vs Variable) */}
+        <Card className="border-t-4 border-t-slate-500 flex flex-col justify-between">
+          <div>
+             <h2 className="text-lg font-bold text-white mb-2">Estructura del Gasto</h2>
+             <p className="text-[10px] text-slate-400 mb-6">Promedio de los últimos 12 meses.</p>
+          </div>
+          
+          <div className="flex flex-col gap-6 mb-4">
+             <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                   <span className="text-slate-300 font-bold">Gastos Fijos</span>
+                   <span className="text-orange-400 font-bold">{pctFijos.toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-slate-950 rounded-full h-4 border border-slate-800 overflow-hidden shadow-inner">
+                   <div className="h-full bg-orange-500 rounded-full transition-all duration-1000" style={{width: `${pctFijos}%`}}></div>
+                </div>
+                <p className="text-[10px] text-slate-500 text-right mt-1 font-medium">{formatCOP(totalFijosAnual)} gastados</p>
+             </div>
+             
+             <div>
+                <div className="flex justify-between text-sm mb-1.5">
+                   <span className="text-slate-300 font-bold">Gastos Variables</span>
+                   <span className="text-blue-400 font-bold">{pctVariables.toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-slate-950 rounded-full h-4 border border-slate-800 overflow-hidden shadow-inner">
+                   <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{width: `${pctVariables}%`}}></div>
+                </div>
+                <p className="text-[10px] text-slate-500 text-right mt-1 font-medium">{formatCOP(totalVariablesAnual)} gastados</p>
+             </div>
+          </div>
+          
+          <div className="text-center text-xs text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner">
+             💡 <strong>Regla saludable:</strong> Se recomienda que tus gastos fijos (Naranja) no superen el <strong className="text-orange-400">50%</strong> de tus ingresos totales.
+          </div>
+        </Card>
+
+      </div>
 
       {/* ✨ 3. SECCIÓN DE PROFUNDIDAD: FUGAS Y EXTREMOS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -146,12 +211,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
         </Card>
 
         {/* Extremos e Insights */}
-        <Card className="flex flex-col border-t-4 border-t-indigo-500">
+        <Card className="flex flex-col border-t-4 border-t-rose-500">
           <h2 className="text-lg font-bold text-white mb-6">Extremos e Insights</h2>
           <div className="flex-1 flex flex-col justify-center gap-6">
              
              {/* Mejor Mes */}
-             <div className="bg-emerald-950/20 border border-emerald-500/30 p-4 rounded-xl flex items-center gap-4">
+             <div className="bg-emerald-950/20 border border-emerald-500/30 p-4 rounded-xl flex items-center gap-4 shadow-sm">
                 <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 flex items-center justify-center rounded-full shrink-0">
                   <TrendingUp size={24} />
                 </div>
@@ -163,7 +228,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
              </div>
 
              {/* Peor Mes */}
-             <div className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-xl flex items-center gap-4">
+             <div className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-xl flex items-center gap-4 shadow-sm">
                 <div className="w-12 h-12 bg-rose-500/20 text-rose-400 flex items-center justify-center rounded-full shrink-0">
                   <AlertCircle size={24} />
                 </div>
@@ -174,8 +239,8 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
                 </div>
              </div>
 
-             <div className="mt-2 text-center text-xs text-slate-400 bg-slate-950 p-3 rounded-lg border border-slate-800">
-                💡 <strong>Análisis:</strong> Tienes una diferencia de <strong className="text-indigo-400">{formatCOP((mejorMes?.neto || 0) - (peorMes?.neto || 0))}</strong> entre tu mejor y peor momento. Identificar qué hiciste diferente en {mejorMes?.label} es clave para mejorar tu Score.
+             <div className="mt-2 text-center text-xs text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner">
+                💡 <strong>Análisis:</strong> Tienes una diferencia de <strong className="text-indigo-400">{formatCOP((mejorMes?.neto || 0) - (peorMes?.neto || 0))}</strong> entre tu mejor y peor momento. Identificar qué hiciste diferente en {mejorMes?.label} es clave para acelerar tu crecimiento.
              </div>
           </div>
         </Card>
