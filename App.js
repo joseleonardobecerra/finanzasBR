@@ -2,8 +2,11 @@
 function App() {
   const { useState, useMemo, useEffect, useRef } = React;
   const [appCargando, setAppCargando] = useState(true);
+  
+  // Estado de Autenticación
   const [authUser, setAuthUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
+  
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -19,6 +22,7 @@ function App() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
+  // Listener de Firebase Auth
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
       setAuthUser(user);
@@ -176,33 +180,30 @@ function App() {
 
   useEffect(() => { const cM = new Date().toISOString().slice(0, 7); if (selectedMonth === cM && !appCargando) { setScoreHistory(prev => { if (prev[selectedMonth] !== scoreData.score) { const next = { ...prev, [selectedMonth]: scoreData.score }; db.collection('sistema').doc('scoreHistory').set(next, {merge: true}); return next; } return prev; }); } }, [scoreData.score, selectedMonth, appCargando]);
 
+  // Validaciones de carga y login
   if (authChecking) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Validando seguridad...</p></div>;
   if (!authUser) return <Login />;
   if (appCargando) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Descargando datos de la nube...</p></div>;
 
-  // ✨ ORDEN DE PESTAÑAS: Analítica ahora está en "Estrategia"
   const navItems = [
-    // Diario (6 ítems)
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'ingresos', label: 'Ingresos', icon: Wallet },
     { id: 'egresos', label: 'Egresos', icon: Receipt }, 
     { id: 'cuentas', label: 'Cuentas', icon: Landmark },
     { id: 'deudas', label: 'Deudas', icon: ShieldAlert },
     { id: 'inversiones', label: 'Inversión y ahorro', icon: PiggyBank }, 
-    
-    // Estrategia (4 ítems)
     { id: 'analitica', label: 'Analítica', icon: BarChart }, 
     { id: 'score', label: 'Score Familia', icon: Activity },
     { id: 'presupuestos', label: 'Presupuestos', icon: PieChart },
     { id: 'simulador', label: 'Simuladores', icon: Calculator },
-    
-    // Sistema (1 ítem)
     { id: 'settings', label: 'Ajustes', icon: Settings2 },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans pt-[24px]">
+    <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px]">
       <Toast toast={toast} onClose={() => setToast(null)} />
+      
+      {/* 💻 BARRA LATERAL PARA COMPUTADORA (Se oculta en celulares por el "hidden md:flex") */}
       <aside className="hidden md:flex w-64 bg-[#17171a] border-r border-slate-800 flex-shrink-0 flex-col z-20">
         <div className="p-6 border-b border-slate-800"><h1 className="text-xl font-bold text-white flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">F</div>FinanzasFamilia</h1></div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -222,6 +223,7 @@ function App() {
         </nav>
       </aside>
 
+      {/* 📱 CONTENIDO PRINCIPAL */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0">
         <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex justify-between items-center gap-4">
           <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2">
@@ -251,6 +253,7 @@ function App() {
         </div>
       </main>
 
+      {/* 📱 BARRA INFERIOR PARA CELULARES (Se oculta en PC por el "md:hidden") */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-50 flex overflow-x-auto h-[72px]">
         <div className="flex px-1 min-w-max w-full">
           {navItems.map(item => <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-[76px] flex flex-col items-center justify-center p-2 transition-colors ${activeTab === item.id ? 'text-indigo-400' : 'text-slate-500'}`}><item.icon size={24} className={activeTab === item.id ? 'mb-1 text-indigo-400' : 'mb-1 opacity-70'}/><span className={`text-[10px] font-medium truncate w-full text-center ${activeTab === item.id ? 'font-bold' : ''}`}>{item.label}</span></button>)}
