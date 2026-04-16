@@ -1,4 +1,3 @@
-// --- Componentes de Pestañas ---
 const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
   const { useState, useMemo } = React;
   const [chartFilter, setChartFilter] = useState('Todos');
@@ -69,7 +68,13 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  // ✨ GRÁFICAS: EXTRACCIÓN DINÁMICA DE LA CATEGORÍA INTERESES/OTROS
+  const deudasActivas = cuentas.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).sort((a,b) => b.tasaEA - a.tasaEA);
+  const focoAvalancha = deudasActivas.length > 0 ? deudasActivas[0] : null;
+
+  const metaInversion = pagosFijos ? pagosFijos.filter(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro')).reduce((s, pf) => s + pf.monto, 0) : 0;
+  const invertidoActual = egresosMes.filter(e => e.categoria === 'Inversión' || e.descripcion.toLowerCase().includes('ahorro')).reduce((s, e) => s + e.monto, 0);
+  const progresoInversion = metaInversion > 0 ? Math.min((invertidoActual / metaInversion) * 100, 100) : 0;
+
   const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
   const gastosPorCategoria = {};
   
@@ -77,15 +82,8 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     const cat = g.categoria || 'Otros';
     const interes = g.interesesOtros || 0;
     const capitalGasto = g.monto - interes;
-    
-    // Asignar el capital a la categoría real
-    if (capitalGasto > 0) {
-      gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + capitalGasto;
-    }
-    // Extraer los intereses a una categoría única general
-    if (interes > 0) {
-      gastosPorCategoria['Intereses y Cargos'] = (gastosPorCategoria['Intereses y Cargos'] || 0) + interes;
-    }
+    if (capitalGasto > 0) gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + capitalGasto;
+    if (interes > 0) gastosPorCategoria['Intereses y Cargos'] = (gastosPorCategoria['Intereses y Cargos'] || 0) + interes;
   });
   
   const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
@@ -132,7 +130,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 {chartData.map(([cat, amount]) => (
                   <li key={cat} className="flex justify-between items-center text-slate-300">
                     <span className="truncate pr-2 font-medium">{cat}</span>
-                    <span className={`font-bold ${cat === 'Intereses y Cargos' ? 'text-amber-400' : 'text-rose-400'}`}>{formatCOP(amount)}</span>
+                    <span className="font-bold text-rose-400">{formatCOP(amount)}</span>
                   </li>
                 ))}
                 {chartData.length === 0 && <li className="text-slate-500 text-center py-2">No hay egresos registrados</li>}
@@ -165,11 +163,11 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2">
               <div className="flex justify-between items-center text-xs mb-2">
                 <span className="text-slate-400">Gastos Fijos</span>
-                <span className="font-bold text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
+                <span className="font-bold text-orange-400">{formatCOP(totalPresupuestadoFijo)}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-400">Gastos Variables</span>
-                <span className="font-bold text-indigo-400">{formatCOP(totalPresupuestadoVar)}</span>
+                <span className="font-bold text-blue-400">{formatCOP(totalPresupuestadoVar)}</span>
               </div>
             </div>
           )}
@@ -300,7 +298,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2"><BarChart3 size={18} className="text-indigo-400" /> Distribución de Egresos</h2>
             <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-xs font-medium w-full md:w-auto">
-              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
               <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
               <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
             </div>
@@ -309,24 +307,27 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             {chartData.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No hay egresos registrados.</p>}
             {chartData.map(([name, amount]) => {
               const width = Math.max((amount / maxMonto) * 100, 2);
-              const pres = presupuestos.find(p => p.categoria === name);
               
-              let barColorClass = 'bg-blue-500';
-              if (name === 'Intereses y Cargos') barColorClass = 'bg-amber-500';
-              else if (pres && pres.limite > 0) {
-                 const pct = (amount / pres.limite) * 100;
-                 if (pct >= 100) barColorClass = 'bg-rose-500';
-                 else if (pct >= 80) barColorClass = 'bg-amber-500';
-                 else barColorClass = 'bg-emerald-500';
+              // ✨ LOGICA DE COLORES BASADA ESTRICTAMENTE EN EL FILTRO
+              let barColorClass = '';
+              let textColorClass = '';
+
+              if (chartFilter === 'Todos') {
+                barColorClass = 'bg-rose-500';
+                textColorClass = 'text-rose-400';
               } else if (chartFilter === 'Fijo') {
-                 barColorClass = 'bg-amber-500';
+                barColorClass = 'bg-orange-500';
+                textColorClass = 'text-orange-400';
+              } else if (chartFilter === 'Variable') {
+                barColorClass = 'bg-blue-500';
+                textColorClass = 'text-blue-400';
               }
 
               return (
                 <div key={name} className="relative group">
                   <div className="flex justify-between text-sm mb-1.5">
                     <span className="text-slate-300 font-medium truncate pr-4">{name}</span>
-                    <span className={`font-bold ${name === 'Intereses y Cargos' ? 'text-amber-400' : 'text-slate-200'}`}>{formatCOP(amount)}</span>
+                    <span className={`font-bold ${textColorClass}`}>{formatCOP(amount)}</span>
                   </div>
                   <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
                     <div className={`h-full rounded-full transition-all duration-1000 ${barColorClass}`} style={{ width: `${width}%` }}></div>
