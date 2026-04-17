@@ -10,7 +10,6 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
       
       const [expanded, setExpanded] = useState({ form: true, cuotas: false, fijos: false, historial: true });
 
-      // ✨ NUEVO ESTADO CONSOLIDADO PARA ORDENAMIENTO Y FILTROS EN TABLA
       const [sortConfig, setSortConfig] = useState({ key: 'fecha', direction: 'desc' });
       const [filtros, setFiltros] = useState({ descripcion: '', tipo: 'Todos', categoria: 'Todas', cuenta: 'Todas' });
 
@@ -185,7 +184,6 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
         return [];
       }, [cuentas, gastoForm.metodoPago]);
 
-      // ✨ LÓGICA REFINADA PARA EL NUEVO SISTEMA DE TABLA (FILTROS Y ORDENAMIENTO EN CABECERAS)
       const { egresosProcesados, categoriasPresentes, cuentasPresentes } = useMemo(() => {
         const categoriasSet = new Set();
         const cuentasSet = new Set();
@@ -196,7 +194,6 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
             if (e.cuentaId) cuentasSet.add(e.cuentaId);
         });
 
-        // 1. Filtrado Integrado
         if (filtros.tipo !== 'Todos') lista = lista.filter(e => e.tipo === filtros.tipo);
         if (filtros.categoria !== 'Todas') lista = lista.filter(e => e.categoria === filtros.categoria);
         if (filtros.cuenta !== 'Todas') lista = lista.filter(e => e.cuentaId === filtros.cuenta);
@@ -205,7 +202,6 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
             lista = lista.filter(e => e.descripcion.toLowerCase().includes(search));
         }
 
-        // 2. Ordenamiento Dinámico al hacer clic en las columnas
         lista.sort((a, b) => {
             let aVal = a[sortConfig.key];
             let bVal = b[sortConfig.key];
@@ -403,13 +399,16 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
             {expanded.fijos && (
               <div className="mt-5 animate-in slide-in-from-top-2">
                 {pagosFijos.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {pagosPendientes.map(pf => {
                       if (pf.pagado) {
                         return (
-                          <div key={pf.id} className="bg-emerald-900/10 border border-emerald-500/20 rounded-lg p-3 flex justify-between items-center opacity-70">
-                            <div><p className="font-bold text-emerald-400 line-through">{pf.descripcion}</p><p className="text-[10px] text-emerald-500/70">Pagado con {cuentas.find(c=>c.id===pf.egresoInfo.cuentaId)?.name}</p></div>
-                            <CheckCircle2 size={24} className="text-emerald-500" />
+                          <div key={pf.id} className="bg-emerald-950/20 border border-emerald-500/20 rounded-lg p-2.5 flex justify-between items-center opacity-60 hover:opacity-100 transition-opacity">
+                            <div className="overflow-hidden pr-2">
+                              <p className="font-bold text-emerald-500 text-sm truncate line-through leading-tight">{pf.descripcion}</p>
+                              <p className="text-[9px] text-emerald-500/70 truncate mt-0.5 uppercase tracking-wider">Pagado con {cuentas.find(c=>c.id===pf.egresoInfo.cuentaId)?.name}</p>
+                            </div>
+                            <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
                           </div>
                         );
                       }
