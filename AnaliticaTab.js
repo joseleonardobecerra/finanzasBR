@@ -2,8 +2,11 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
   const { useMemo } = React;
   const formatCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
 
-  // 1. GENERAR HISTORIAL DE LOS ÚLTIMOS 12 MESES Y ESTRUCTURA DE COSTOS
-  const { historialMensual, totalIngresosAnual, totalEgresosAnual, totalFijosAnual, totalVariablesAnual } = useMemo(() => {
+  // ✨ EL DÍA CERO DE LA APLICACIÓN
+  const FECHA_INICIO_APP = "2026-04";
+
+  // 1. GENERAR HISTORIAL (SOLO DESDE ABRIL 2026) Y ESTRUCTURA DE COSTOS
+  const { historialMensual, totalIngresosAnual, totalEgresosAnual, totalFijosAnual, totalVariablesAnual, mesesValidos } = useMemo(() => {
     const meses = [];
     const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
     let sumIng = 0; let sumEgr = 0;
@@ -13,6 +16,10 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
       const d = new Date(fechaBase);
       d.setMonth(d.getMonth() - i);
       const mesStr = d.toISOString().slice(0, 7);
+      
+      // Filtro estricto: Omitir cualquier mes antes de Abril 2026
+      if (mesStr < FECHA_INICIO_APP) continue;
+      
       const label = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace(/^\w/, c => c.toUpperCase());
       
       const ingMes = ingresos.filter(i => i.fecha.startsWith(mesStr)).reduce((s, i) => s + Number(i.monto), 0);
@@ -36,15 +43,16 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
       totalIngresosAnual: sumIng, 
       totalEgresosAnual: sumEgr,
       totalFijosAnual: sumFijos,
-      totalVariablesAnual: sumVar
+      totalVariablesAnual: sumVar,
+      mesesValidos: Math.max(1, meses.length) // Para que los promedios sean exactos
     };
   }, [ingresos, egresos, selectedMonth]);
 
-  // 2. CÁLCULOS AVANZADOS (KPIs y Top Categorías)
+  // 2. CÁLCULOS AVANZADOS REALES (Usando solo los meses que llevan usando la app)
   const promedios = {
-      ingreso: totalIngresosAnual / 12,
-      egreso: totalEgresosAnual / 12,
-      neto: (totalIngresosAnual - totalEgresosAnual) / 12,
+      ingreso: totalIngresosAnual / mesesValidos,
+      egreso: totalEgresosAnual / mesesValidos,
+      neto: (totalIngresosAnual - totalEgresosAnual) / mesesValidos,
       tasaAhorro: totalIngresosAnual > 0 ? ((totalIngresosAnual - totalEgresosAnual) / totalIngresosAnual) * 100 : 0
   };
 
@@ -52,6 +60,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
   const pctVariables = totalEgresosAnual > 0 ? (totalVariablesAnual / totalEgresosAnual) * 100 : 0;
 
   const { mejorMes, peorMes } = useMemo(() => {
+      if (historialMensual.length === 0) return { mejorMes: null, peorMes: null };
       let mejor = historialMensual[0]; let peor = historialMensual[0];
       historialMensual.forEach(m => {
           if (m.neto > mejor.neto) mejor = m;
@@ -63,7 +72,10 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
   const topCategoriasAnual = useMemo(() => {
       const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
       fechaBase.setMonth(fechaBase.getMonth() - 11);
-      const hace12MesesStr = fechaBase.toISOString().slice(0, 7);
+      let hace12MesesStr = fechaBase.toISOString().slice(0, 7);
+      
+      // Tampoco buscar categorías antes de la fecha de inicio
+      if (hace12MesesStr < FECHA_INICIO_APP) hace12MesesStr = FECHA_INICIO_APP;
 
       const gastos12m = egresos.filter(e => e.fecha >= hace12MesesStr);
       const catMap = {};
@@ -71,7 +83,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
           const c = g.categoria || 'Otros';
           catMap[c] = (catMap[c] || 0) + Number(g.monto);
       });
-      return Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0, 5); // Top 5
+      return Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
   }, [egresos, selectedMonth]);
 
   const maxNetoAbs = Math.max(...historialMensual.map(m => Math.abs(m.neto)), 1);
@@ -83,10 +95,10 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
           <BarChart className="text-indigo-400 w-8 h-8"/> Analítica y Trazabilidad
         </h1>
-        <p className="text-sm text-slate-400 mt-1">Análisis macro de tus finanzas durante los últimos 12 meses.</p>
+        <p className="text-sm text-slate-400 mt-1">Análisis macro de tus finanzas (Datos medidos desde Abril 2026).</p>
       </header>
 
-      {/* ✨ 1. TARJETAS DE KPIs (Métricas Clave) */}
+      {/* TARJETAS DE KPIs (Métricas Clave Ajustadas) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card className="p-4 border-t-4 border-t-emerald-500">
           <p className="text-[10px] md:text-xs text-slate-400 uppercase font-bold mb-1">Ingreso Promedio (Mes)</p>
@@ -106,24 +118,23 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
         </Card>
       </div>
 
-      {/* ✨ 2. NUEVA SECCIÓN: FLUJO NETO Y ESTRUCTURA DE GASTO */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Gráfica de Capacidad de Ahorro (Solo el Neto) */}
+        {/* Gráfica de Capacidad de Ahorro */}
         <Card className="lg:col-span-2 border-t-4 border-t-indigo-500 flex flex-col">
           <h2 className="text-lg font-bold text-white mb-2">Evolución de Capacidad de Ahorro (Flujo Libre)</h2>
-          <p className="text-[10px] text-slate-400 mb-4">Muestra la diferencia exacta entre lo que ganaste y gastaste cada mes.</p>
+          <p className="text-[10px] text-slate-400 mb-4">Diferencia exacta entre lo que ganaste y gastaste desde el inicio.</p>
           
-          <div className="flex-1 flex items-end justify-between gap-1 md:gap-4 border-b border-slate-800 pb-2 relative h-56 mt-4">
+          <div className="flex-1 flex items-end justify-center gap-4 md:gap-8 border-b border-slate-800 pb-2 relative h-56 mt-4">
             {historialMensual.map((m, i) => {
               const heightPct = Math.max((Math.abs(m.neto) / maxNetoAbs) * 100, 2);
               const isPos = m.neto >= 0;
               
               return (
-                <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                <div key={i} className="flex flex-col items-center group relative h-full justify-end">
                   <div 
                     style={{ height: `${heightPct}%` }} 
-                    className={`w-3 md:w-6 rounded-t-sm transition-all duration-500 ${isPos ? 'bg-emerald-500/80 group-hover:bg-emerald-400' : 'bg-rose-500/80 group-hover:bg-rose-400'}`}>
+                    className={`w-6 md:w-10 rounded-t-sm transition-all duration-500 ${isPos ? 'bg-emerald-500/80 group-hover:bg-emerald-400' : 'bg-rose-500/80 group-hover:bg-rose-400'}`}>
                   </div>
                   <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase">{m.label}</span>
                   
@@ -137,6 +148,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
                 </div>
               );
             })}
+            {historialMensual.length === 0 && <div className="text-slate-500 text-sm flex items-center h-full">No hay datos desde Abril 2026.</div>}
           </div>
           <div className="flex justify-center gap-6 mt-4 text-[10px] font-bold uppercase tracking-wider">
              <span className="flex items-center gap-2 text-emerald-400"><div className="w-2.5 h-2.5 bg-emerald-500 rounded-sm"></div> Superávit (Ahorro)</span>
@@ -144,11 +156,11 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
           </div>
         </Card>
 
-        {/* Estructura del Gasto (Fijo vs Variable) */}
+        {/* Estructura del Gasto */}
         <Card className="border-t-4 border-t-slate-500 flex flex-col justify-between">
           <div>
              <h2 className="text-lg font-bold text-white mb-2">Estructura del Gasto</h2>
-             <p className="text-[10px] text-slate-400 mb-6">Promedio de los últimos 12 meses.</p>
+             <p className="text-[10px] text-slate-400 mb-6">Promedio basado en tu historial desde Abril 2026.</p>
           </div>
           
           <div className="flex flex-col gap-6 mb-4">
@@ -182,13 +194,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
 
       </div>
 
-      {/* ✨ 3. SECCIÓN DE PROFUNDIDAD: FUGAS Y EXTREMOS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Top 5 Gastos Históricos */}
         <Card className="flex flex-col border-t-4 border-t-amber-500">
-          <h2 className="text-lg font-bold text-white mb-2">Top 5 Fugas de Capital (12 Meses)</h2>
-          <p className="text-[10px] text-slate-400 mb-6">Descubre en qué categorías se te ha ido más dinero en el último año.</p>
+          <h2 className="text-lg font-bold text-white mb-2">Top 5 Fugas de Capital</h2>
+          <p className="text-[10px] text-slate-400 mb-6">Categorías donde se te ha ido más dinero desde el inicio.</p>
           <div className="flex-1 space-y-5">
             {topCategoriasAnual.map(([cat, amount], i) => {
               const width = Math.max((amount / maxValCat) * 100, 5);
@@ -215,33 +226,37 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth }) => {
           <h2 className="text-lg font-bold text-white mb-6">Extremos e Insights</h2>
           <div className="flex-1 flex flex-col justify-center gap-6">
              
-             {/* Mejor Mes */}
-             <div className="bg-emerald-950/20 border border-emerald-500/30 p-4 rounded-xl flex items-center gap-4 shadow-sm">
-                <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 flex items-center justify-center rounded-full shrink-0">
-                  <TrendingUp size={24} />
-                </div>
-                <div className="flex-1">
-                   <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider mb-1">Tu Mejor Mes ({mejorMes?.label})</p>
-                   <p className="text-xl font-black text-emerald-400">{formatCOP(mejorMes?.neto)}</p>
-                   <p className="text-[10px] text-slate-400 mt-1">Retuviste el {mejorMes?.tasaAhorro.toFixed(1)}% de tus ingresos.</p>
-                </div>
-             </div>
+             {mejorMes && (
+               <div className="bg-emerald-950/20 border border-emerald-500/30 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+                  <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 flex items-center justify-center rounded-full shrink-0">
+                    <TrendingUp size={24} />
+                  </div>
+                  <div className="flex-1">
+                     <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider mb-1">Tu Mejor Mes ({mejorMes.label})</p>
+                     <p className="text-xl font-black text-emerald-400">{formatCOP(mejorMes.neto)}</p>
+                     <p className="text-[10px] text-slate-400 mt-1">Retuviste el {mejorMes.tasaAhorro.toFixed(1)}% de tus ingresos.</p>
+                  </div>
+               </div>
+             )}
 
-             {/* Peor Mes */}
-             <div className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-xl flex items-center gap-4 shadow-sm">
-                <div className="w-12 h-12 bg-rose-500/20 text-rose-400 flex items-center justify-center rounded-full shrink-0">
-                  <AlertCircle size={24} />
-                </div>
-                <div className="flex-1">
-                   <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider mb-1">Mes de Mayor Déficit ({peorMes?.label})</p>
-                   <p className="text-xl font-black text-rose-400">{formatCOP(peorMes?.neto)}</p>
-                   <p className="text-[10px] text-slate-400 mt-1">Gastaste {formatCOP(peorMes?.egresos)} frente a ingresos de {formatCOP(peorMes?.ingresos)}.</p>
-                </div>
-             </div>
+             {peorMes && (
+               <div className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-xl flex items-center gap-4 shadow-sm">
+                  <div className="w-12 h-12 bg-rose-500/20 text-rose-400 flex items-center justify-center rounded-full shrink-0">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div className="flex-1">
+                     <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider mb-1">Mes de Mayor Déficit ({peorMes.label})</p>
+                     <p className="text-xl font-black text-rose-400">{formatCOP(peorMes.neto)}</p>
+                     <p className="text-[10px] text-slate-400 mt-1">Gastaste {formatCOP(peorMes.egresos)} frente a ingresos de {formatCOP(peorMes.ingresos)}.</p>
+                  </div>
+               </div>
+             )}
 
-             <div className="mt-2 text-center text-xs text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner">
-                💡 <strong>Análisis:</strong> Tienes una diferencia de <strong className="text-indigo-400">{formatCOP((mejorMes?.neto || 0) - (peorMes?.neto || 0))}</strong> entre tu mejor y peor momento. Identificar qué hiciste diferente en {mejorMes?.label} es clave para acelerar tu crecimiento.
-             </div>
+             {mejorMes && peorMes && (
+               <div className="mt-2 text-center text-xs text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner">
+                  💡 <strong>Análisis:</strong> Tienes una diferencia de <strong className="text-indigo-400">{formatCOP((mejorMes.neto || 0) - (peorMes.neto || 0))}</strong> entre tu mejor y peor momento. Identificar qué hiciste diferente en {mejorMes.label} es clave para acelerar tu crecimiento.
+               </div>
+             )}
           </div>
         </Card>
 
