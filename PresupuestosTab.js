@@ -156,13 +156,16 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     };
   }, [pagosFijos, presupuestos, egresosMes]);
 
+  // ✨ NUEVO: Cálculos de lo gastado para las tarjetas superiores
+  const totalGastadoFijo = useMemo(() => fijosItems.reduce((s, item) => s + item.gastado, 0), [fijosItems]);
+  const totalGastadoVar = useMemo(() => varItems.reduce((s, item) => s + item.gastado, 0), [varItems]);
+  const totalGastadoAmbos = totalGastadoFijo + totalGastadoVar;
+
   const RenderCardCompacta = ({ p, themeColor }) => {
     const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
     const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
     const diferencia = p.limite - p.gastado;
 
-    // ✨ CONFIGURACIÓN EXACTA DE LOS COLORES (Amarillo para Fijos, Azul para Variables)
-    // Se elimina la lógica de "isDanger" o "isWarning" para el color principal de la tarjeta.
     const themeMap = {
       yellow: { bar: 'bg-yellow-400', text: 'text-yellow-400', border: 'border-yellow-500', bgEdit: 'bg-yellow-950/10' },
       blue: { bar: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', bgEdit: 'bg-blue-950/10' }
@@ -187,19 +190,16 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
 
         <div className="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800 overflow-hidden">
-          {/* ✨ LA BARRA MANTIENE SU COLOR FIJO (AMARILLO O AZUL) SIEMPRE */}
           <div className={`h-full rounded-full transition-all duration-1000 ${t.bar}`} style={{ width: `${porcentaje}%` }}></div>
         </div>
 
         <div className="flex justify-between items-end text-[10px]">
           <div className="flex flex-col">
              <span className="text-slate-400">Gastado: <span className="text-white font-bold">{formatCOP(p.gastado)}</span></span>
-             {/* El texto pequeño de "Excedido" sigue siendo rojo para mantener la alerta sin manchar el diseño */}
              <span className={`font-medium ${diferencia >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
                {diferencia >= 0 ? 'Disponible: ' : 'Excedido: '} {formatCOP(Math.abs(diferencia))}
              </span>
           </div>
-          {/* ✨ EL PORCENTAJE MANTIENE SU COLOR FIJO (AMARILLO O AZUL) SIEMPRE */}
           <span className={`font-bold ${t.text} text-xs`}>{porcentajeReal.toFixed(1)}%</span>
         </div>
       </div>
@@ -223,18 +223,37 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
       </header>
 
+      {/* ✨ TARJETAS ACTUALIZADAS CON LO GASTADO */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <p className="text-[10px] text-yellow-400 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
-          <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
+        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] text-yellow-400 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
+            <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
+            <span className="text-slate-400">Gastado:</span>
+            <span className="font-bold text-white">{formatCOP(totalGastadoFijo)}</span>
+          </div>
         </div>
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
-          <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
+        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
+            <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
+            <span className="text-slate-400">Gastado:</span>
+            <span className="font-bold text-white">{formatCOP(totalGastadoVar)}</span>
+          </div>
         </div>
-        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-          <p className="text-[10px] text-slate-300 uppercase font-bold mb-1">Total Presupuestado</p>
-          <p className="text-lg font-bold text-white">{formatCOP(totalFijo + totalVar)}</p>
+        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] text-slate-300 uppercase font-bold mb-1">Total Presupuestado</p>
+            <p className="text-lg font-bold text-white">{formatCOP(totalFijo + totalVar)}</p>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-600/50 flex justify-between items-center text-xs">
+            <span className="text-slate-300">Total Gastado:</span>
+            <span className="font-bold text-white">{formatCOP(totalGastadoAmbos)}</span>
+          </div>
         </div>
       </div>
 
