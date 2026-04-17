@@ -7,7 +7,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const [nuevoFijo, setNuevoFijo] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
   const [editId, setEditId] = useState(null);
   
-  // ✨ NUEVO ESTADO: Para rastrear el tipo original antes de convertir
   const [editOriginalType, setEditOriginalType] = useState(null); 
   
   const [errors, setErrors] = useState({});
@@ -75,7 +74,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     e.target.value = '';
   };
 
-  // ✨ LÓGICA ACTUALIZADA PARA PERMITIR CONVERSIÓN ENTRE TIPOS
   const guardar = (e) => {
     e.preventDefault();
     let errs = {};
@@ -87,11 +85,9 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       
       if (editId) {
         if (editOriginalType === 'variable') {
-            // Edición normal de Variable
             updatePresupuesto(editId, { categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
             showToast("Límite Variable actualizado.");
         } else {
-            // Conversión: De Fijo a Variable
             removePagoFijo(editId);
             addPresupuesto({ id: editId, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
             showToast("Convertido a Límite Variable.");
@@ -113,11 +109,9 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
       if (editId) {
         if (editOriginalType === 'fijo') {
-            // Edición normal de Fijo
             updatePagoFijo(editId, { descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
             showToast("Gasto Fijo actualizado.");
         } else {
-            // Conversión: De Variable a Fijo
             removePresupuesto(editId);
             addPagoFijo({ id: editId, descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
             showToast("Convertido a Gasto Fijo.");
@@ -141,7 +135,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     setEditOriginalType(isFijo ? 'fijo' : 'variable');
     setTipoForm(isFijo ? 'fijo' : 'variable');
     
-    // Poblamos ambos formularios por si el usuario decide hacer clic en la otra pestaña para convertirlo
     setNuevoFijo({ descripcion: isFijo ? p.nombre : (p.categoria + ' Fijo'), monto: p.limite.toString(), categoria: p.categoria, diaPago: (p.diaPago || 1).toString() });
     setNuevoVar({ categoria: p.categoria, limite: p.limite.toString() });
 
@@ -183,9 +176,21 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     };
   }, [pagosFijos, presupuestos, egresosMes]);
 
+  // Cálculos de Totales y Diferencias
   const totalGastadoFijo = useMemo(() => fijosItems.reduce((s, item) => s + item.gastado, 0), [fijosItems]);
   const totalGastadoVar = useMemo(() => varItems.reduce((s, item) => s + item.gastado, 0), [varItems]);
   const totalGastadoAmbos = totalGastadoFijo + totalGastadoVar;
+
+  const difFijo = totalFijo - totalGastadoFijo;
+  const difVar = totalVar - totalGastadoVar;
+  const difTotal = (totalFijo + totalVar) - totalGastadoAmbos;
+
+  // Función para determinar el color de la diferencia
+  const getColorDif = (val) => {
+    if (val > 0) return 'text-emerald-400';
+    if (val < 0) return 'text-rose-500';
+    return 'text-orange-400'; // Exactamente 0
+  };
 
   const RenderCardCompacta = ({ p, themeColor }) => {
     const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
@@ -249,35 +254,59 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
       </header>
 
+      {/* ✨ TARJETAS ACTUALIZADAS CON ANÁLISIS DE DIFERENCIA */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Tarjeta Fijos */}
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
           <div>
             <p className="text-[10px] text-yellow-400 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
             <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-            <span className="text-slate-400">Gastado:</span>
-            <span className="font-bold text-white">{formatCOP(totalGastadoFijo)}</span>
+          <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-col gap-1 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-orange-400 font-bold">Gastado:</span>
+              <span className="font-bold text-white">{formatCOP(totalGastadoFijo)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">{difFijo >= 0 ? 'Restante:' : 'Excedido:'}</span>
+              <span className={`font-bold ${getColorDif(difFijo)}`}>{formatCOP(difFijo)}</span>
+            </div>
           </div>
         </div>
+        
+        {/* Tarjeta Variables */}
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
           <div>
             <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
             <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-            <span className="text-slate-400">Gastado:</span>
-            <span className="font-bold text-white">{formatCOP(totalGastadoVar)}</span>
+          <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-col gap-1 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-blue-400 font-bold">Gastado:</span>
+              <span className="font-bold text-white">{formatCOP(totalGastadoVar)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">{difVar >= 0 ? 'Restante:' : 'Excedido:'}</span>
+              <span className={`font-bold ${getColorDif(difVar)}`}>{formatCOP(difVar)}</span>
+            </div>
           </div>
         </div>
+
+        {/* Tarjeta Total Consolidado */}
         <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col justify-between">
           <div>
             <p className="text-[10px] text-slate-300 uppercase font-bold mb-1">Total Presupuestado</p>
             <p className="text-lg font-bold text-white">{formatCOP(totalFijo + totalVar)}</p>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-600/50 flex justify-between items-center text-xs">
-            <span className="text-slate-300">Total Gastado:</span>
-            <span className="font-bold text-white">{formatCOP(totalGastadoAmbos)}</span>
+          <div className="mt-3 pt-2 border-t border-slate-600/50 flex flex-col gap-1 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-300 font-bold">Total Gastado:</span>
+              <span className="font-bold text-white">{formatCOP(totalGastadoAmbos)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">{difTotal >= 0 ? 'Restante:' : 'Excedido:'}</span>
+              <span className={`font-bold ${getColorDif(difTotal)}`}>{formatCOP(difTotal)}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -286,7 +315,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         <Card className={editId ? "border-t-4 border-t-yellow-500 bg-yellow-950/10" : "border-t-4 border-t-slate-500 bg-slate-900/80"}>
           <div className="flex justify-between items-center mb-4" ref={formRef}>
             
-            {/* ✨ PESTAÑAS DESBLOQUEADAS: Ahora muestran "Convertir a..." si cambias el tipo */}
             <div className="flex gap-4">
               <button 
                 onClick={() => setTipoForm('variable')} 
