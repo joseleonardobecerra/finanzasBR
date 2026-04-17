@@ -1,7 +1,7 @@
 const { useState, useMemo, useEffect, useRef } = React;
 
 // ============================================================================
-// ☁️ CONFIGURACIÓN DE FIREBASE (Con tus credenciales)
+// ☁️ CONFIGURACIÓN DE FIREBASE
 // ============================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyDRreZW3bVZG7h7frWeOy0jqrgqLpTw6cw",
@@ -17,11 +17,8 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.firestore();
-
-// ✨ NUEVO: Inicializar Autenticación de Firebase
 const auth = firebase.auth();
 
-// ✨ ACTIVAR MODO OFFLINE
 db.enablePersistence().catch((err) => {
     console.warn("Error habilitando persistencia offline:", err.code);
 });
@@ -79,26 +76,15 @@ class ErrorBoundary extends React.Component {
     super(props); 
     this.state = { hasError: false, error: null }; 
   }
-  
-  static getDerivedStateFromError(error) { 
-    return { hasError: true, error }; 
-  }
-  
-  componentDidCatch(error, errorInfo) { 
-    console.error("Error en pestaña:", error, errorInfo); 
-  }
-  
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, errorInfo) { console.error("Error en pestaña:", error, errorInfo); }
   render() {
     if (this.state.hasError) {
       return (
         <div className="p-6 bg-rose-950/30 border border-rose-500 rounded-xl m-4 md:m-8 text-rose-400">
-          <h2 className="font-bold text-lg mb-2 flex items-center gap-2">
-            <AlertCircle size={20} /> Error en esta sección
-          </h2>
+          <h2 className="font-bold text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error en esta sección</h2>
           <p className="text-sm opacity-80">{this.state.error.toString()}</p>
-          <button onClick={() => this.setState({hasError: false})} className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded text-sm font-bold">
-            Intentar cargar de nuevo
-          </button>
+          <button onClick={() => this.setState({hasError: false})} className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded text-sm font-bold">Intentar cargar de nuevo</button>
         </div>
       );
     }
@@ -113,7 +99,6 @@ const formatCOP = (value) => new Intl.NumberFormat('es-CO', { style: 'currency',
 const getTasaMensual = (tasaEA) => Math.pow(1 + tasaEA / 100, 1 / 12) - 1;
 const deleteItem = (setter, id) => setter(prev => prev.filter(item => item.id !== id));
 
-// Fallback robusto para generación de IDs
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
@@ -140,9 +125,7 @@ const loadSheetJS = async () => {
 // --- Componentes UI Base ---
 // ============================================================================
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-slate-900 border border-slate-800 rounded-xl shadow-lg p-4 md:p-5 ${className}`}>
-    {children}
-  </div>
+  <div className={`bg-slate-900 border border-slate-800 rounded-xl shadow-lg p-4 md:p-5 ${className}`}>{children}</div>
 );
 
 const Input = ({ label, type = "text", value, onChange, placeholder, className="", min, max, step, disabled, error, title }) => (
@@ -181,41 +164,37 @@ const Toast = ({ toast, onClose }) => {
   );
 };
 
+// ✨ TARJETA COMPACTA (Checklist de Egresos)
 const PagoFijoCard = ({ pf, cuentasPermitidas, onPay }) => {
   const [cuentaId, setCuentaId] = useState('');
   const [montoCustom, setMontoCustom] = useState(pf.monto);
   const [editMonto, setEditMonto] = useState(false);
 
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg flex flex-col justify-between">
-      <div>
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <p className="font-bold text-white text-base">{pf.descripcion}</p>
-            <p className="text-xs text-slate-400">{pf.categoria}</p>
-          </div>
-          <div className="text-right">
-            {!editMonto ? (
-              <p className="font-bold text-amber-400 cursor-pointer flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800 hover:border-amber-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto">
-                {formatCOP(montoCustom)} <Edit3 size={12}/>
-              </p>
-            ) : (
-              <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-24 text-sm bg-slate-950 text-white border border-indigo-500 rounded p-1.5 text-right outline-none shadow-inner" autoFocus />
-            )}
-          </div>
+    <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 shadow-md flex flex-col gap-2 relative overflow-hidden transition-colors hover:border-amber-500/30">
+      <div className="flex justify-between items-start">
+        <div className="overflow-hidden pr-2 flex-1">
+          <p className="font-bold text-slate-200 text-sm truncate leading-tight">{pf.descripcion}</p>
+          <p className="text-[9px] text-slate-500 truncate uppercase mt-0.5">{pf.categoria}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          {!editMonto ? (
+            <p className="font-bold text-amber-400 text-sm cursor-pointer flex items-center justify-end gap-1 hover:text-amber-300" onClick={() => setEditMonto(true)} title="Modificar monto">
+              {formatCOP(montoCustom)} <Edit3 size={10} className="opacity-50"/>
+            </p>
+          ) : (
+            <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-20 text-xs bg-slate-900 text-white border border-amber-500 rounded p-1 text-right outline-none" autoFocus />
+          )}
         </div>
       </div>
-      <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-slate-800">
-        <label className="text-[10px] text-slate-500 font-bold uppercase">Medio de pago</label>
-        <div className="flex gap-2">
-          <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-xs text-slate-200 outline-none focus:border-indigo-500">
-            <option value="">Selecciona...</option>
-            {cuentasPermitidas.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-          <button onClick={() => onPay(cuentaId, montoCustom)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg font-bold flex items-center justify-center transition-colors shadow-md">
-            OK
-          </button>
-        </div>
+      <div className="flex gap-1.5 items-center mt-1 border-t border-slate-800/50 pt-2">
+        <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-300 outline-none focus:border-amber-500 cursor-pointer h-7">
+          <option value="">Medio de pago...</option>
+          {cuentasPermitidas.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <button onClick={() => onPay(cuentaId, montoCustom)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 rounded font-bold flex items-center justify-center transition-colors h-7 text-xs shadow-sm">
+          OK
+        </button>
       </div>
     </div>
   );
