@@ -68,22 +68,38 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  const deudasActivas = cuentas.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).sort((a,b) => b.tasaEA - a.tasaEA);
-  const focoAvalancha = deudasActivas.length > 0 ? deudasActivas[0] : null;
-
-  const metaInversion = pagosFijos ? pagosFijos.filter(pf => pf.categoria === 'Inversión' || pf.descripcion.toLowerCase().includes('ahorro')).reduce((s, pf) => s + pf.monto, 0) : 0;
-  const invertidoActual = egresosMes.filter(e => e.categoria === 'Inversión' || e.descripcion.toLowerCase().includes('ahorro')).reduce((s, e) => s + e.monto, 0);
-  const progresoInversion = metaInversion > 0 ? Math.min((invertidoActual / metaInversion) * 100, 100) : 0;
+  // ✨ MOTOR DE MACRO-CATEGORÍAS (Agrupa los datos solo para visualización)
+  const getMacroCategoria = (catName) => {
+      if (!catName) return 'Otros Gastos';
+      const lower = catName.toLowerCase();
+      
+      if (lower.includes('tarjeta') || lower.includes('crédito') || lower.includes('credito') || lower.includes('interes') || lower.includes('davibank') || lower.includes('lulo')) return 'Tarjetas y Créditos';
+      if (lower.includes('vehículo') || lower.includes('vehiculo') || lower.includes('gasolina') || lower.includes('peaje') || lower.includes('parqueadero')) return 'Vehículo y Gasolina';
+      if (lower.includes('hogar') || lower.includes('aseo') || lower.includes('agua') || lower.includes('públicos') || lower.includes('publicos') || lower.includes('internet') || lower.includes('administración') || lower.includes('gas') || lower.includes('arriendo')) return 'Hogar y Servicios';
+      if (lower.includes('mercado') || lower.includes('alimentación') || lower.includes('alimentacion') || lower.includes('comida') || lower.includes('panadería') || lower.includes('restaurante')) return 'Mercado y Alimentación';
+      if (lower.includes('seguro') || lower.includes('salud') || lower.includes('médico') || lower.includes('medico') || lower.includes('farmacia')) return 'Seguros y Salud';
+      if (lower.includes('tobías') || lower.includes('tobias') || lower.includes('salomé') || lower.includes('salome') || lower.includes('niños') || lower.includes('colegio') || lower.includes('educación') || lower.includes('natación')) return 'Tobías y Salomé';
+      if (lower === 'andre' || lower === 'andrea' || lower.includes('ropa andre')) return 'Andre';
+      if (lower === 'leo' || lower.includes('ropa leo')) return 'Leo';
+      if (lower.includes('inversión') || lower.includes('inversion') || lower.includes('ahorro')) return 'Inversión y Ahorro';
+      
+      return catName; // Si no cuadra en ninguna, muestra su nombre original
+  };
 
   const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
   const gastosPorCategoria = {};
   
   gastosFiltrados.forEach(g => {
-    const cat = g.categoria || 'Otros';
-    const interes = g.interesesOtros || 0;
-    const capitalGasto = g.monto - interes;
-    if (capitalGasto > 0) gastosPorCategoria[cat] = (gastosPorCategoria[cat] || 0) + capitalGasto;
-    if (interes > 0) gastosPorCategoria['Intereses y Cargos'] = (gastosPorCategoria['Intereses y Cargos'] || 0) + interes;
+    const catOriginal = g.categoria || 'Otros';
+    const interesOriginal = g.interesesOtros || 0;
+    const capitalGasto = g.monto - interesOriginal;
+    
+    // Aplicamos el conversor a las "Bolsas" grandes
+    const macroCat = getMacroCategoria(catOriginal);
+    const macroInteres = getMacroCategoria('Intereses y Cargos');
+    
+    if (capitalGasto > 0) gastosPorCategoria[macroCat] = (gastosPorCategoria[macroCat] || 0) + capitalGasto;
+    if (interesOriginal > 0) gastosPorCategoria[macroInteres] = (gastosPorCategoria[macroInteres] || 0) + interesOriginal;
   });
   
   const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
@@ -308,7 +324,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
             {chartData.map(([name, amount]) => {
               const width = Math.max((amount / maxMonto) * 100, 2);
               
-              // ✨ LOGICA DE COLORES BASADA ESTRICTAMENTE EN EL FILTRO
               let barColorClass = '';
               let textColorClass = '';
 
