@@ -6,6 +6,10 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const [nuevoVar, setNuevoVar] = useState({ categoria: '', limite: '' });
   const [nuevoFijo, setNuevoFijo] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
   const [editId, setEditId] = useState(null);
+  
+  // ✨ NUEVO ESTADO: Para rastrear el tipo original antes de convertir
+  const [editOriginalType, setEditOriginalType] = useState(null); 
+  
   const [errors, setErrors] = useState({});
   const [filtroLista, setFiltroLista] = useState('Todos'); 
   const [showForm, setShowForm] = useState(false);
@@ -71,6 +75,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     e.target.value = '';
   };
 
+  // ✨ LÓGICA ACTUALIZADA PARA PERMITIR CONVERSIÓN ENTRE TIPOS
   const guardar = (e) => {
     e.preventDefault();
     let errs = {};
@@ -81,14 +86,24 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       if(Object.keys(errs).length > 0) { setErrors(errs); return; }
       
       if (editId) {
-        updatePresupuesto(editId, { categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
+        if (editOriginalType === 'variable') {
+            // Edición normal de Variable
+            updatePresupuesto(editId, { categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
+            showToast("Límite Variable actualizado.");
+        } else {
+            // Conversión: De Fijo a Variable
+            removePagoFijo(editId);
+            addPresupuesto({ id: editId, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
+            showToast("Convertido a Límite Variable.");
+        }
         setEditId(null);
-        showToast("Límite actualizado.");
+        setEditOriginalType(null);
       } else {
         addPresupuesto({ id: generateId(), categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
         showToast("Presupuesto agregado.");
       }
       setNuevoVar({ categoria: '', limite: '' });
+      
     } else {
       if(!nuevoFijo.descripcion) errs.descripcion = "Requerido";
       if(!nuevoFijo.categoria) errs.categoria = "Requerido";
@@ -97,9 +112,18 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       if(Object.keys(errs).length > 0) { setErrors(errs); return; }
 
       if (editId) {
-        updatePagoFijo(editId, { descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
+        if (editOriginalType === 'fijo') {
+            // Edición normal de Fijo
+            updatePagoFijo(editId, { descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
+            showToast("Gasto Fijo actualizado.");
+        } else {
+            // Conversión: De Variable a Fijo
+            removePresupuesto(editId);
+            addPagoFijo({ id: editId, descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
+            showToast("Convertido a Gasto Fijo.");
+        }
         setEditId(null);
-        showToast("Gasto Fijo actualizado.");
+        setEditOriginalType(null);
       } else {
         addPagoFijo({ id: generateId(), descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
         showToast("Gasto Fijo agregado.");
@@ -112,19 +136,22 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const cargarParaEditar = (p) => {
     setEditId(p.id);
     setErrors({});
-    if (p.tipo === 'Fijo') {
-      setTipoForm('fijo');
-      setNuevoFijo({ descripcion: p.nombre, monto: p.limite.toString(), categoria: p.categoria, diaPago: (p.diaPago || 1).toString() });
-    } else {
-      setTipoForm('variable');
-      setNuevoVar({ categoria: p.categoria, limite: p.limite.toString() });
-    }
+    
+    const isFijo = p.tipo === 'Fijo';
+    setEditOriginalType(isFijo ? 'fijo' : 'variable');
+    setTipoForm(isFijo ? 'fijo' : 'variable');
+    
+    // Poblamos ambos formularios por si el usuario decide hacer clic en la otra pestaña para convertirlo
+    setNuevoFijo({ descripcion: isFijo ? p.nombre : (p.categoria + ' Fijo'), monto: p.limite.toString(), categoria: p.categoria, diaPago: (p.diaPago || 1).toString() });
+    setNuevoVar({ categoria: p.categoria, limite: p.limite.toString() });
+
     setShowForm(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   }
 
   const cancelarEdicion = () => {
     setEditId(null);
+    setEditOriginalType(null);
     setNuevoVar({ categoria: '', limite: '' });
     setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
     setErrors({});
@@ -156,7 +183,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     };
   }, [pagosFijos, presupuestos, egresosMes]);
 
-  // ✨ NUEVO: Cálculos de lo gastado para las tarjetas superiores
   const totalGastadoFijo = useMemo(() => fijosItems.reduce((s, item) => s + item.gastado, 0), [fijosItems]);
   const totalGastadoVar = useMemo(() => varItems.reduce((s, item) => s + item.gastado, 0), [varItems]);
   const totalGastadoAmbos = totalGastadoFijo + totalGastadoVar;
@@ -223,7 +249,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
       </header>
 
-      {/* ✨ TARJETAS ACTUALIZADAS CON LO GASTADO */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
           <div>
@@ -260,32 +285,36 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       {showForm && (
         <Card className={editId ? "border-t-4 border-t-yellow-500 bg-yellow-950/10" : "border-t-4 border-t-slate-500 bg-slate-900/80"}>
           <div className="flex justify-between items-center mb-4" ref={formRef}>
+            
+            {/* ✨ PESTAÑAS DESBLOQUEADAS: Ahora muestran "Convertir a..." si cambias el tipo */}
             <div className="flex gap-4">
               <button 
-                onClick={() => { if(!editId) setTipoForm('variable') }} 
+                onClick={() => setTipoForm('variable')} 
                 type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'variable' ? 'hidden' : ''}`}
+                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
               >
-                {editId && tipoForm === 'variable' ? '✏️ Editar Límite Variable' : 'Añadir Límite Variable'}
+                {editId ? (editOriginalType === 'variable' ? '✏️ Editando Límite Variable' : '🔄 Convertir a Variable') : 'Añadir Límite Variable'}
               </button>
-              {!editId && <span className="text-slate-700">|</span>}
+              <span className="text-slate-700">|</span>
               <button 
-                onClick={() => { if(!editId) setTipoForm('fijo') }} 
+                onClick={() => setTipoForm('fijo')} 
                 type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'} ${editId && tipoForm !== 'fijo' ? 'hidden' : ''}`}
+                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}`}
               >
-                {editId && tipoForm === 'fijo' ? '✏️ Editar Gasto Fijo' : 'Añadir Gasto Fijo'}
+                {editId ? (editOriginalType === 'fijo' ? '✏️ Editando Gasto Fijo' : '🔄 Convertir a Fijo') : 'Añadir Gasto Fijo'}
               </button>
             </div>
+            
             {editId && <button onClick={cancelarEdicion} className="text-xs text-yellow-400 hover:underline bg-slate-950 px-2 py-1 rounded">Cancelar Edición</button>}
           </div>
+          
           <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end mt-2">
             {tipoForm === 'variable' ? (
               <React.Fragment>
-                <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} disabled={!!editId} className="sm:col-span-5" />
+                <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-5" />
                 <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
                 <div className="sm:col-span-3 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Límite'}</button>
+                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? (editOriginalType === 'variable' ? 'Actualizar' : 'Convertir') : 'Añadir Límite'}</button>
                 </div>
               </React.Fragment>
             ) : (
@@ -295,7 +324,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
                 <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
                 <div className="sm:col-span-2 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-yellow-500 hover:bg-yellow-600'} text-slate-900 font-bold py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? 'Actualizar' : 'Añadir Fijo'}</button>
+                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-yellow-500 hover:bg-yellow-600'} text-slate-900 font-bold py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? (editOriginalType === 'fijo' ? 'Actualizar' : 'Convertir') : 'Añadir Fijo'}</button>
                 </div>
               </React.Fragment>
             )}
