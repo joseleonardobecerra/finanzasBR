@@ -8,12 +8,11 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
       const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', interesesOtros: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
       const [errorsVar, setErrorsVar] = useState({});
       
-      const [expanded, setExpanded] = useState({ form: true, cuotas: false, fijos: false, historial: false });
+      const [expanded, setExpanded] = useState({ form: true, cuotas: false, fijos: false, historial: true });
 
-      // ✨ NUEVOS ESTADOS PARA FILTROS Y ORDENAMIENTO EN HISTORIAL
-      const [filtroTipo, setFiltroTipo] = useState('Todos');
-      const [filtroCategoria, setFiltroCategoria] = useState('Todas');
-      const [ordenHistorial, setOrdenHistorial] = useState('fecha_desc');
+      // ✨ NUEVO ESTADO CONSOLIDADO PARA ORDENAMIENTO Y FILTROS EN TABLA
+      const [sortConfig, setSortConfig] = useState({ key: 'fecha', direction: 'desc' });
+      const [filtros, setFiltros] = useState({ descripcion: '', tipo: 'Todos', categoria: 'Todas', cuenta: 'Todas' });
 
       const varRef = useRef(null);
       const fileInputRef = useRef(null);
@@ -186,38 +185,65 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
         return [];
       }, [cuentas, gastoForm.metodoPago]);
 
-      // ✨ LÓGICA DE FILTRADO Y ORDENAMIENTO PARA EL HISTORIAL
-      const { egresosProcesados, categoriasPresentes } = useMemo(() => {
+      // ✨ LÓGICA REFINADA PARA EL NUEVO SISTEMA DE TABLA (FILTROS Y ORDENAMIENTO EN CABECERAS)
+      const { egresosProcesados, categoriasPresentes, cuentasPresentes } = useMemo(() => {
         const categoriasSet = new Set();
+        const cuentasSet = new Set();
         let lista = [...egresosMesBase];
 
-        // Obtener categorías únicas de este mes para el selector
-        lista.forEach(e => categoriasSet.add(e.categoria));
+        lista.forEach(e => {
+            categoriasSet.add(e.categoria);
+            if (e.cuentaId) cuentasSet.add(e.cuentaId);
+        });
 
-        // 1. Filtrar por Tipo
-        if (filtroTipo !== 'Todos') {
-            lista = lista.filter(e => e.tipo === filtroTipo);
+        // 1. Filtrado Integrado
+        if (filtros.tipo !== 'Todos') lista = lista.filter(e => e.tipo === filtros.tipo);
+        if (filtros.categoria !== 'Todas') lista = lista.filter(e => e.categoria === filtros.categoria);
+        if (filtros.cuenta !== 'Todas') lista = lista.filter(e => e.cuentaId === filtros.cuenta);
+        if (filtros.descripcion.trim() !== '') {
+            const search = filtros.descripcion.toLowerCase();
+            lista = lista.filter(e => e.descripcion.toLowerCase().includes(search));
         }
 
-        // 2. Filtrar por Categoría
-        if (filtroCategoria !== 'Todas') {
-            lista = lista.filter(e => e.categoria === filtroCategoria);
-        }
-
-        // 3. Ordenar
+        // 2. Ordenamiento Dinámico al hacer clic en las columnas
         lista.sort((a, b) => {
-            if (ordenHistorial === 'fecha_desc') return new Date(b.fecha) - new Date(a.fecha);
-            if (ordenHistorial === 'fecha_asc') return new Date(a.fecha) - new Date(b.fecha);
-            if (ordenHistorial === 'monto_desc') return b.monto - a.monto;
-            if (ordenHistorial === 'monto_asc') return a.monto - b.monto;
+            let aVal = a[sortConfig.key];
+            let bVal = b[sortConfig.key];
+
+            if (sortConfig.key === 'fecha') {
+                aVal = new Date(a.fecha).getTime();
+                bVal = new Date(b.fecha).getTime();
+            } else if (sortConfig.key === 'descripcion' || sortConfig.key === 'tipo' || sortConfig.key === 'categoria') {
+                aVal = (aVal || '').toString().toLowerCase();
+                bVal = (bVal || '').toString().toLowerCase();
+            } else if (sortConfig.key === 'monto') {
+                aVal = Number(a.monto) || 0;
+                bVal = Number(b.monto) || 0;
+            }
+
+            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
 
         return { 
             egresosProcesados: lista, 
-            categoriasPresentes: Array.from(categoriasSet).sort() 
+            categoriasPresentes: Array.from(categoriasSet).sort(),
+            cuentasPresentes: Array.from(cuentasSet)
         };
-      }, [egresosMesBase, filtroTipo, filtroCategoria, ordenHistorial]);
+      }, [egresosMesBase, filtros, sortConfig]);
+
+      const handleSort = (key) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+        }));
+      };
+
+      const SortIcon = ({ column }) => {
+          if (sortConfig.key !== column) return <span className="text-[10px] opacity-30 px-1 font-sans">↕</span>;
+          return sortConfig.direction === 'asc' ? <span className="text-[10px] text-indigo-400 px-1 font-bold font-sans">↑</span> : <span className="text-[10px] text-indigo-400 px-1 font-bold font-sans">↓</span>;
+      };
 
       const handleExport = async () => {
         try {
@@ -403,48 +429,83 @@ const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
             
             {expanded.historial && (
               <div className="mt-5 animate-in slide-in-from-top-2">
-                
-                {/* ✨ BARRA DE FILTROS Y ORDENAMIENTO */}
-                <div className="flex flex-col md:flex-row gap-3 mb-4 bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  <Select 
-                    label="Filtrar por Tipo" 
-                    options={['Todos', 'Fijo', 'Variable'].map(o => ({value: o, label: o}))} 
-                    value={filtroTipo} 
-                    onChange={e => setFiltroTipo(e.target.value)} 
-                    className="flex-1"
-                  />
-                  <Select 
-                    label="Filtrar por Categoría" 
-                    options={[{value: 'Todas', label: 'Todas'}, ...categoriasPresentes.map(c => ({value: c, label: c}))]} 
-                    value={filtroCategoria} 
-                    onChange={e => setFiltroCategoria(e.target.value)} 
-                    className="flex-1"
-                  />
-                  <Select 
-                    label="Ordenar por" 
-                    options={[
-                      {value: 'fecha_desc', label: 'Fecha (Más recientes primero)'},
-                      {value: 'fecha_asc', label: 'Fecha (Más antiguos primero)'},
-                      {value: 'monto_desc', label: 'Monto (Mayor a Menor)'},
-                      {value: 'monto_asc', label: 'Monto (Menor a Mayor)'}
-                    ]} 
-                    value={ordenHistorial} 
-                    onChange={e => setOrdenHistorial(e.target.value)} 
-                    className="flex-1 md:col-span-2"
-                  />
-                </div>
-
-                {/* ✨ TABLA REESTRUCTURADA CON LAS NUEVAS COLUMNAS */}
                 <div className="overflow-x-auto bg-slate-950 rounded-xl border border-slate-800">
-                  <table className="w-full text-sm text-left min-w-[750px]">
-                    <thead className="text-xs text-slate-400 uppercase bg-slate-900 border-b border-slate-800">
+                  <table className="w-full text-sm text-left min-w-[850px]">
+                    <thead className="text-[10px] text-slate-400 uppercase bg-slate-900 border-b border-slate-800">
                       <tr>
-                        <th className="px-4 py-4 rounded-tl-lg">Fecha</th>
-                        <th className="px-4 py-4">Descripción</th>
-                        <th className="px-4 py-4 text-center">Fijo/Variable</th>
-                        <th className="px-4 py-4">Categoría/Cuenta</th>
-                        <th className="px-4 py-4 text-right">Monto / Intereses</th>
-                        <th className="px-4 py-4 rounded-tr-lg"></th>
+                        {/* FECHA */}
+                        <th className="px-4 py-3 align-top w-28">
+                          <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort('fecha')}>
+                            Fecha <SortIcon column="fecha" />
+                          </div>
+                        </th>
+                        
+                        {/* DESCRIPCIÓN Y BÚSQUEDA */}
+                        <th className="px-4 py-3 align-top min-w-[200px]">
+                          <div className="flex items-center gap-1 cursor-pointer hover:text-white mb-2" onClick={() => handleSort('descripcion')}>
+                            Descripción <SortIcon column="descripcion" />
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="Buscar en descripción..." 
+                            value={filtros.descripcion} 
+                            onChange={e => setFiltros({...filtros, descripcion: e.target.value})} 
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case placeholder-slate-600 shadow-inner" 
+                          />
+                        </th>
+
+                        {/* TIPO */}
+                        <th className="px-4 py-3 align-top text-center w-32">
+                          <div className="flex items-center justify-center gap-1 cursor-pointer hover:text-white mb-2" onClick={() => handleSort('tipo')}>
+                            Fijo/Var <SortIcon column="tipo" />
+                          </div>
+                          <select 
+                            value={filtros.tipo} 
+                            onChange={e => setFiltros({...filtros, tipo: e.target.value})} 
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-1.5 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case text-center shadow-inner cursor-pointer"
+                          >
+                            <option value="Todos">Ambos</option>
+                            <option value="Fijo">Solo Fijos</option>
+                            <option value="Variable">Solo Variables</option>
+                          </select>
+                        </th>
+
+                        {/* CATEGORÍA Y CUENTA */}
+                        <th className="px-4 py-3 align-top min-w-[180px]">
+                          <div className="flex items-center gap-1 cursor-pointer hover:text-white mb-2" onClick={() => handleSort('categoria')}>
+                            Categoría / Cuenta <SortIcon column="categoria" />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <select 
+                              value={filtros.categoria} 
+                              onChange={e => setFiltros({...filtros, categoria: e.target.value})} 
+                              className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case shadow-inner cursor-pointer"
+                            >
+                              <option value="Todas">Categorías (Todas)</option>
+                              {categoriasPresentes.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <select 
+                              value={filtros.cuenta} 
+                              onChange={e => setFiltros({...filtros, cuenta: e.target.value})} 
+                              className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case shadow-inner cursor-pointer"
+                            >
+                              <option value="Todas">Cuentas (Todas)</option>
+                              {cuentasPresentes.map(cId => {
+                                  const acc = cuentas.find(a => a.id === cId);
+                                  return <option key={cId} value={cId}>{acc ? acc.name : cId}</option>
+                              })}
+                            </select>
+                          </div>
+                        </th>
+
+                        {/* MONTO */}
+                        <th className="px-4 py-3 align-top text-right w-40">
+                          <div className="flex items-center justify-end gap-1 cursor-pointer hover:text-white" onClick={() => handleSort('monto')}>
+                             Monto / Intereses <SortIcon column="monto" />
+                          </div>
+                        </th>
+                        
+                        <th className="px-4 py-3"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
