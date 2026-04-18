@@ -24,8 +24,12 @@ function App() {
   const [qeCuenta, setQeCuenta] = useState('');
 
   // Íconos
-  const XIcon = ({ size=24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
-  const ArrowLeftIcon = ({ size=24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
+  const XIcon = ({ size=24 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  );
+  const ArrowLeftIcon = ({ size=24 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+  );
 
   useEffect(() => {
     const on = () => setIsOffline(false);
@@ -87,6 +91,7 @@ function App() {
     },
   };
 
+  // Funciones de Base de Datos
   const addCuenta = (d) => fire.add('cuentas', d);
   const updateCuenta = (id, d) => fire.update('cuentas', id, d);
   const removeCuenta = (id) => fire.remove('cuentas', id);
@@ -160,16 +165,18 @@ function App() {
   };
 
   const belongsToFilter = (owner) => filtroPersona === 'Total' || owner === 'Shared' || owner === filtroPersona;
+  
+  // Filtros activos
   const activeCalculatedAccounts = useMemo(() => calculatedAccounts.filter(c => belongsToFilter(c.ownerId || getOwnerFallback(c.name))), [calculatedAccounts, filtroPersona]);
   const activeIngresos = useMemo(() => ingresos.filter(i => { const ownerAcc = cuentas.find(c => c.id === i.cuentaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (i.ownerId || getOwnerFallback(i.persona + ' ' + i.descripcion))); }), [ingresos, cuentas, filtroPersona]);
   const activeEgresos = useMemo(() => egresos.filter(e => { const ownerAcc = cuentas.find(c => c.id === e.cuentaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (e.ownerId || getOwnerFallback(e.descripcion + ' ' + e.categoria))); }), [egresos, cuentas, filtroPersona]);
   const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(pf.ownerId || getOwnerFallback(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
   const activeIngresosFijos = useMemo(() => { const currentMonthNum = selectedMonth.split('-')[1]; return ingresosFijos.filter(inf => { const passFilter = belongsToFilter(inf.ownerId || getOwnerFallback(inf.descripcion + ' ' + inf.persona)); const descLower = inf.descripcion.toLowerCase(); let passMonth = true; if (descLower.includes('prima 1')) passMonth = currentMonthNum === '07'; else if (descLower.includes('prima 2')) passMonth = currentMonthNum === '12'; return passFilter && passMonth; }); }, [ingresosFijos, filtroPersona, selectedMonth]);
   const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(p.ownerId || getOwnerFallback(p.categoria))), [presupuestos, filtroPersona]);
-  
   const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => { const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (c.ownerId || getOwnerFallback(c.descripcion))); }), [comprasCuotas, cuentas, filtroPersona]);
   const activeTransferencias = useMemo(() => transferencias.filter(t => { const ownerFrom = cuentas.find(c => c.id === t.fromId); const ownerTo = cuentas.find(c => c.id === t.toId); return belongsToFilter(ownerFrom ? (ownerFrom.ownerId || getOwnerFallback(ownerFrom.name)) : 'Shared') || belongsToFilter(ownerTo ? (ownerTo.ownerId || getOwnerFallback(ownerTo.name)) : 'Shared'); }), [transferencias, cuentas, filtroPersona]);
 
+  // Cálculos de Mes
   const isThisMonth = (f) => f && f.startsWith(selectedMonth);
   const ingresosMesTotal = useMemo(() => activeIngresos.filter(i => isThisMonth(i.fecha)).reduce((s, i) => s + Number(i.monto), 0), [activeIngresos, selectedMonth]);
   const egresosMesTotal = useMemo(() => activeEgresos.filter(e => isThisMonth(e.fecha)).reduce((s, e) => s + Number(e.monto), 0), [activeEgresos, selectedMonth]);
@@ -191,12 +198,30 @@ function App() {
     return { score: Math.max(0, scr), desglose: desgloseArr, recs: rr };
   }, [flujoNetoMes, cuotasMesTotal, ingresosMesTotal, liquidezTotal]);
 
-  useEffect(() => { const cM = new Date().toISOString().slice(0, 7); if (selectedMonth === cM && !appCargando) { setScoreHistory(prev => { if (prev[selectedMonth] !== scoreData.score) { const next = { ...prev, [selectedMonth]: scoreData.score }; db.collection('sistema').doc('scoreHistory').set(next, {merge: true}); return next; } return prev; }); } }, [scoreData.score, selectedMonth, appCargando]);
+  useEffect(() => { 
+    const cM = new Date().toISOString().slice(0, 7); 
+    if (selectedMonth === cM && !appCargando) { 
+      setScoreHistory(prev => { 
+        if (prev[selectedMonth] !== scoreData.score) { 
+          const next = { ...prev, [selectedMonth]: scoreData.score }; 
+          db.collection('sistema').doc('scoreHistory').set(next, {merge: true}); 
+          return next; 
+        } 
+        return prev; 
+      }); 
+    } 
+  }, [scoreData.score, selectedMonth, appCargando]);
 
 
   // ✨ FUNCIONES DEL WIZARD PASO A PASO
   const handleOpenWizard = () => {
-    setQeStep(1); setQeType(''); setQeMonto(''); setQeDescripcion(''); setQeCategoria(''); setQeMethod(''); setQeCuenta('');
+    setQeStep(1); 
+    setQeType(''); 
+    setQeMonto(''); 
+    setQeDescripcion(''); 
+    setQeCategoria(''); 
+    setQeMethod(''); 
+    setQeCuenta('');
     setQuickEntryOpen(true);
   };
 
@@ -237,21 +262,27 @@ function App() {
     setQuickEntryOpen(false);
   };
 
+  // Validaciones Iniciales
   if (authChecking) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Validando seguridad...</p></div>;
   if (!authUser) return <Login />;
   if (appCargando) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Descargando datos de la nube...</p></div>;
 
+  // ✨ ORDEN DE NAVEGACIÓN ACTUALIZADO (Presupuesto en Diario, Analítica fusionada)
   const navItems = [
+    // Diario (7 ítems)
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'ingresos', label: 'Ingresos', icon: Wallet },
     { id: 'egresos', label: 'Egresos', icon: Receipt }, 
     { id: 'cuentas', label: 'Cuentas', icon: Landmark },
     { id: 'deudas', label: 'Deudas', icon: ShieldAlert },
-    { id: 'inversiones', label: 'Inversión y ahorro', icon: PiggyBank }, 
-    { id: 'analitica', label: 'Analítica', icon: BarChart }, 
-    { id: 'score', label: 'Score Familia', icon: Activity },
     { id: 'presupuestos', label: 'Presupuestos', icon: PieChart },
+    { id: 'inversiones', label: 'Inversión y ahorro', icon: PiggyBank }, 
+    
+    // Estrategia (2 ítems)
+    { id: 'analitica', label: 'Analítica y Estrategia', icon: BarChart }, 
     { id: 'simulador', label: 'Simuladores', icon: Calculator },
+    
+    // Sistema (1 ítem)
     { id: 'settings', label: 'Ajustes', icon: Settings2 },
   ];
 
@@ -259,32 +290,67 @@ function App() {
     <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
       <Toast toast={toast} onClose={() => setToast(null)} />
       
+      {/* 💻 BARRA LATERAL (PC) */}
       <aside className="hidden md:flex w-64 bg-[#17171a] border-r border-slate-800 flex-shrink-0 flex-col z-20">
         <div className="p-6 border-b border-slate-800"><h1 className="text-xl font-bold text-white flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">F</div>FinanzasFamilia</h1></div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mb-2">Diario</div>
-          {navItems.slice(0, 6).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
+          {navItems.slice(0, 7).map(i => (
+            <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}>
+              <i.icon size={18}/> {i.label}
+            </button>
+          ))}
+          
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Estrategia</div>
-          {navItems.slice(6, 10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
+          {navItems.slice(7, 9).map(i => (
+            <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}>
+              <i.icon size={18}/> {i.label}
+            </button>
+          ))}
+          
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Sistema</div>
-          {navItems.slice(10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
-          <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all mt-4 border border-rose-500/20">Cerrar Sesión</button>
+          {navItems.slice(9).map(i => (
+            <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}>
+              <i.icon size={18}/> {i.label}
+            </button>
+          ))}
+          
+          <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all mt-4 border border-rose-500/20">
+            Cerrar Sesión
+          </button>
         </nav>
       </aside>
 
+      {/* 📱 CONTENIDO PRINCIPAL */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
         <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex justify-between items-center gap-4">
-          <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2"><svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
-          {['ingresos', 'cuentas', 'deudas'].includes(activeTab) && <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 text-xs font-bold w-full md:w-auto"><button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Total' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>TOTAL</button><button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Andre' ? 'bg-violet-600 text-white' : 'text-slate-400'}`}>ANDRE</button><button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Leo' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>LEO</button></div>}
-          <div className="flex-1 flex justify-end md:justify-end w-full md:w-auto"><div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-full md:max-w-[240px] justify-between"><button onClick={() => changeMonth(-1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronLeft size={18}/></button><span className="font-bold text-white capitalize text-sm">{getMonthName(selectedMonth)}</span><button onClick={() => changeMonth(1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronRight size={18}/></button></div></div>
+          <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </button>
+          
+          {['ingresos', 'cuentas', 'deudas'].includes(activeTab) && (
+            <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 text-xs font-bold w-full md:w-auto">
+              <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Total' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>TOTAL</button>
+              <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Andre' ? 'bg-violet-600 text-white' : 'text-slate-400'}`}>ANDRE</button>
+              <button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Leo' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>LEO</button>
+            </div>
+          )}
+          
+          <div className="flex-1 flex justify-end md:justify-end w-full md:w-auto">
+            <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-full md:max-w-[240px] justify-between">
+              <button onClick={() => changeMonth(-1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronLeft size={18}/></button>
+              <span className="font-bold text-white capitalize text-sm">{getMonthName(selectedMonth)}</span>
+              <button onClick={() => changeMonth(1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronRight size={18}/></button>
+            </div>
+          </div>
         </div>
 
         <div className="p-4 md:p-8 overflow-y-auto flex-1 relative">
           <div className="max-w-6xl mx-auto">
             <ErrorBoundary>
               {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} />}
-              {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} />}
-              {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={activePresupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} pagosFijos={activePagosFijos} />}
+              {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} />}
               {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} addEgreso={addEgreso} showToast={showToast} />}
               {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
               {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
@@ -298,9 +364,15 @@ function App() {
         </div>
       </main>
 
+      {/* 📱 BARRA INFERIOR (CELULAR) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-30 flex overflow-x-auto h-[72px]">
         <div className="flex px-1 min-w-max w-full">
-          {navItems.map(item => <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-[76px] flex flex-col items-center justify-center p-2 transition-colors ${activeTab === item.id ? 'text-indigo-400' : 'text-slate-500'}`}><item.icon size={24} className={activeTab === item.id ? 'mb-1 text-indigo-400' : 'mb-1 opacity-70'}/><span className={`text-[10px] font-medium truncate w-full text-center ${activeTab === item.id ? 'font-bold' : ''}`}>{item.label}</span></button>)}
+          {navItems.map(item => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-[76px] flex flex-col items-center justify-center p-2 transition-colors ${activeTab === item.id ? 'text-indigo-400' : 'text-slate-500'}`}>
+              <item.icon size={24} className={activeTab === item.id ? 'mb-1 text-indigo-400' : 'mb-1 opacity-70'}/>
+              <span className={`text-[10px] font-medium truncate w-full text-center ${activeTab === item.id ? 'font-bold' : ''}`}>{item.label}</span>
+            </button>
+          ))}
         </div>
       </nav>
 
@@ -395,7 +467,7 @@ function App() {
                 </div>
               )}
 
-              {/* PASO 4: MÉTODO DE PAGO (Nuevo Paso) */}
+              {/* PASO 4: MÉTODO DE PAGO */}
               {qeStep === 4 && (
                 <div className="space-y-4">
                   <h4 className="text-center text-slate-400 font-bold mb-6">{qeType === 'egreso' ? '¿Cómo lo pagaste?' : '¿A dónde entró el dinero?'}</h4>
