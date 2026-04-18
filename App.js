@@ -3,7 +3,6 @@ function App() {
   const { useState, useMemo, useEffect, useRef } = React;
   const [appCargando, setAppCargando] = useState(true);
   
-  // Estado de Autenticación
   const [authUser, setAuthUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   
@@ -14,6 +13,18 @@ function App() {
   const [filtroPersona, setFiltroPersona] = useState('Total');
   const [scoreHistory, setScoreHistory] = useState({});
 
+  // ✨ NUEVOS ESTADOS PARA EL REGISTRO RÁPIDO (Cero Fricción)
+  const [quickEntryOpen, setQuickEntryOpen] = useState(false);
+  const [qeType, setQeType] = useState('egreso'); // 'egreso' | 'ingreso'
+  const [qeMonto, setQeMonto] = useState('');
+  const [qeCategoria, setQeCategoria] = useState('');
+  const [qeCuenta, setQeCuenta] = useState('');
+
+  // Ícono de cerrar para el modal
+  const XIcon = ({ size=24 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  );
+
   useEffect(() => {
     const on = () => setIsOffline(false);
     const off = () => setIsOffline(true);
@@ -22,7 +33,6 @@ function App() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // Listener de Firebase Auth
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
       setAuthUser(user);
@@ -154,8 +164,6 @@ function App() {
   const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(pf.ownerId || getOwnerFallback(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
   const activeIngresosFijos = useMemo(() => { const currentMonthNum = selectedMonth.split('-')[1]; return ingresosFijos.filter(inf => { const passFilter = belongsToFilter(inf.ownerId || getOwnerFallback(inf.descripcion + ' ' + inf.persona)); const descLower = inf.descripcion.toLowerCase(); let passMonth = true; if (descLower.includes('prima 1')) passMonth = currentMonthNum === '07'; else if (descLower.includes('prima 2')) passMonth = currentMonthNum === '12'; return passFilter && passMonth; }); }, [ingresosFijos, filtroPersona, selectedMonth]);
   const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(p.ownerId || getOwnerFallback(p.categoria))), [presupuestos, filtroPersona]);
-  const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => { const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (c.ownerId || getOwnerFallback(c.descripcion))); }), [comprasCuotas, cuentas, filtroPersona]);
-  const activeTransferencias = useMemo(() => transferencias.filter(t => { const ownerFrom = cuentas.find(c => c.id === t.fromId); const ownerTo = cuentas.find(c => c.id === t.toId); return belongsToFilter(ownerFrom ? (ownerFrom.ownerId || getOwnerFallback(ownerFrom.name)) : 'Shared') || belongsToFilter(ownerTo ? (ownerTo.ownerId || getOwnerFallback(ownerTo.name)) : 'Shared'); }), [transferencias, cuentas, filtroPersona]);
 
   const isThisMonth = (f) => f && f.startsWith(selectedMonth);
   const ingresosMesTotal = useMemo(() => activeIngresos.filter(i => isThisMonth(i.fecha)).reduce((s, i) => s + Number(i.monto), 0), [activeIngresos, selectedMonth]);
@@ -180,7 +188,50 @@ function App() {
 
   useEffect(() => { const cM = new Date().toISOString().slice(0, 7); if (selectedMonth === cM && !appCargando) { setScoreHistory(prev => { if (prev[selectedMonth] !== scoreData.score) { const next = { ...prev, [selectedMonth]: scoreData.score }; db.collection('sistema').doc('scoreHistory').set(next, {merge: true}); return next; } return prev; }); } }, [scoreData.score, selectedMonth, appCargando]);
 
-  // Validaciones de carga y login
+  // ✨ LÓGICA PARA GUARDAR DESDE EL PANEL DE CARGA RÁPIDA
+  const handleQuickSave = () => {
+    if (!qeMonto || !qeCategoria || !qeCuenta) {
+      showToast("Faltan datos por seleccionar", "error");
+      return;
+    }
+    
+    const today = getLocalToday();
+    const montoNum = Number(qeMonto);
+
+    if (qeType === 'egreso') {
+      addEgreso({
+        id: generateId(),
+        fecha: today,
+        descripcion: `Gasto rápido (${qeCategoria})`,
+        categoria: qeCategoria,
+        monto: montoNum,
+        interesesOtros: 0,
+        cuentaId: qeCuenta,
+        tipo: 'Variable',
+        deudaId: null
+      });
+      showToast("Gasto registrado al instante.");
+    } else {
+      addIngreso({
+        id: generateId(),
+        fecha: today,
+        descripcion: `Ingreso rápido (${qeCategoria})`,
+        categoria: qeCategoria,
+        monto: montoNum,
+        cuentaId: qeCuenta,
+        persona: 'Total',
+        tipo: 'Variable'
+      });
+      showToast("Ingreso registrado al instante.");
+    }
+    
+    // Limpiar y cerrar modal
+    setQuickEntryOpen(false);
+    setQeMonto('');
+    setQeCategoria('');
+    setQeCuenta('');
+  };
+
   if (authChecking) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Validando seguridad...</p></div>;
   if (!authUser) return <Login />;
   if (appCargando) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Descargando datos de la nube...</p></div>;
@@ -200,41 +251,30 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px]">
+    <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
       <Toast toast={toast} onClose={() => setToast(null)} />
       
-      {/* 💻 BARRA LATERAL PARA COMPUTADORA (Se oculta en celulares por el "hidden md:flex") */}
       <aside className="hidden md:flex w-64 bg-[#17171a] border-r border-slate-800 flex-shrink-0 flex-col z-20">
         <div className="p-6 border-b border-slate-800"><h1 className="text-xl font-bold text-white flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">F</div>FinanzasFamilia</h1></div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mb-2">Diario</div>
           {navItems.slice(0, 6).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
-          
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Estrategia</div>
           {navItems.slice(6, 10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
-          
           <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Sistema</div>
           {navItems.slice(10).map(i => <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}><i.icon size={18}/> {i.label}</button>)}
-          
-          <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all mt-4 border border-rose-500/20">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            Cerrar Sesión
-          </button>
+          <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all mt-4 border border-rose-500/20">Cerrar Sesión</button>
         </nav>
       </aside>
 
-      {/* 📱 CONTENIDO PRINCIPAL */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
         <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex justify-between items-center gap-4">
-          <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2">
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          </button>
-
+          <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2"><svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
           {['ingresos', 'cuentas', 'deudas'].includes(activeTab) && <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 text-xs font-bold w-full md:w-auto"><button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Total' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>TOTAL</button><button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Andre' ? 'bg-violet-600 text-white' : 'text-slate-400'}`}>ANDRE</button><button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Leo' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>LEO</button></div>}
           <div className="flex-1 flex justify-end md:justify-end w-full md:w-auto"><div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-full md:max-w-[240px] justify-between"><button onClick={() => changeMonth(-1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronLeft size={18}/></button><span className="font-bold text-white capitalize text-sm">{getMonthName(selectedMonth)}</span><button onClick={() => changeMonth(1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronRight size={18}/></button></div></div>
         </div>
 
-        <div className="p-4 md:p-8 overflow-y-auto flex-1">
+        <div className="p-4 md:p-8 overflow-y-auto flex-1 relative">
           <div className="max-w-6xl mx-auto">
             <ErrorBoundary>
               {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} />}
@@ -253,12 +293,97 @@ function App() {
         </div>
       </main>
 
-      {/* 📱 BARRA INFERIOR PARA CELULARES (Se oculta en PC por el "md:hidden") */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-50 flex overflow-x-auto h-[72px]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-30 flex overflow-x-auto h-[72px]">
         <div className="flex px-1 min-w-max w-full">
           {navItems.map(item => <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-[76px] flex flex-col items-center justify-center p-2 transition-colors ${activeTab === item.id ? 'text-indigo-400' : 'text-slate-500'}`}><item.icon size={24} className={activeTab === item.id ? 'mb-1 text-indigo-400' : 'mb-1 opacity-70'}/><span className={`text-[10px] font-medium truncate w-full text-center ${activeTab === item.id ? 'font-bold' : ''}`}>{item.label}</span></button>)}
         </div>
       </nav>
+
+      {/* ✨ BOTÓN FLOTANTE (FAB) PARA REGISTRO RÁPIDO */}
+      <button 
+        onClick={() => setQuickEntryOpen(true)}
+        className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center justify-center z-40 transition-transform hover:scale-105 border-4 border-[#0f0f11]"
+      >
+        <Plus size={28} />
+      </button>
+
+      {/* ✨ MINI-MODAL DE CARGA RÁPIDA */}
+      {quickEntryOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center animate-in fade-in duration-200">
+          <div className="bg-[#17171a] w-full md:w-[450px] rounded-t-3xl md:rounded-3xl p-5 md:p-7 border border-slate-800 shadow-2xl animate-in slide-in-from-bottom-10 max-h-[90vh] flex flex-col">
+            
+            <div className="flex justify-between items-center mb-5 shrink-0">
+               <h3 className="text-xl font-black text-white tracking-tight">Registro Rápido</h3>
+               <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-slate-300 bg-slate-900 p-2 rounded-full transition-colors">
+                 <XIcon size={18}/>
+               </button>
+            </div>
+
+            <div className="flex bg-slate-900 rounded-lg p-1 mb-5 shrink-0">
+              <button onClick={()=>setQeType('egreso')} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${qeType==='egreso'?'bg-rose-600 text-white shadow-md':'text-slate-500 hover:text-slate-300'}`}>Gasto</button>
+              <button onClick={()=>setQeType('ingreso')} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${qeType==='ingreso'?'bg-emerald-600 text-white shadow-md':'text-slate-500 hover:text-slate-300'}`}>Ingreso</button>
+            </div>
+
+            <div className="overflow-y-auto pr-1 space-y-5 flex-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full pb-4">
+                
+                {/* 1. MONTO (Gigante) */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">1. ¿Cuánto fue?</label>
+                  <div className="relative">
+                    <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>$</span>
+                    <input 
+                      type="number" 
+                      value={qeMonto} 
+                      onChange={(e)=>setQeMonto(e.target.value)} 
+                      className={`w-full bg-slate-950 border-2 ${qeType === 'egreso' ? 'border-rose-500/30 focus:border-rose-500' : 'border-emerald-500/30 focus:border-emerald-500'} text-white rounded-xl pl-10 pr-4 py-4 text-2xl font-black outline-none transition-colors shadow-inner`}
+                      placeholder="0"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* 2. CATEGORÍA (Chips Visuales) */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">2. ¿Qué fue?</label>
+                  <div className="flex flex-wrap gap-2">
+                    {(qeType === 'egreso' ? categoriasMaestras : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
+                      <button 
+                        key={cat} 
+                        onClick={() => setQeCategoria(cat)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${qeCategoria === cat ? (qeType === 'egreso' ? 'bg-rose-500/20 text-rose-400 border-rose-500' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500') : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. CUENTA (Chips Visuales) */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">3. ¿De dónde salió?</label>
+                  <div className="flex flex-wrap gap-2">
+                    {activeCalculatedAccounts.filter(c => ['bank', 'cash', 'credit'].includes(c.type)).map(acc => (
+                      <button 
+                        key={acc.id} 
+                        onClick={() => setQeCuenta(acc.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 ${qeCuenta === acc.id ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
+                      >
+                        {acc.type === 'cash' ? '💵' : acc.type === 'credit' ? '💳' : '🏦'} {acc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+            </div>
+
+            <button 
+              onClick={handleQuickSave} 
+              className={`w-full py-4 rounded-xl font-black text-white text-lg mt-2 shrink-0 shadow-lg transition-transform hover:scale-[1.02] ${qeType === 'egreso' ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'}`}
+            >
+              ¡Guardar Movimiento!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
