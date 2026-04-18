@@ -31,7 +31,7 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // ÍCONOS SVG NATIVOS (Solución definitiva para ReferenceError: X is not defined)
+  // ÍCONOS SVG NATIVOS (Solución definitiva para ReferenceError)
   // ============================================================================
   const CheckIcon = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -172,7 +172,6 @@ const EgresosTab = ({
   // ============================================================================
   const registrarPagoFijo = (pf) => {
     const defaultCuenta = cuentasActivas.length > 0 ? cuentasActivas[0].id : '';
-    // ✨ FIX: Soporta datos viejos (monto) o nuevos (montoEstimado)
     const valorPago = Number(pf.monto || pf.montoEstimado || 0); 
     
     addEgreso({
@@ -234,6 +233,7 @@ const EgresosTab = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
+      {/* ENCABEZADO */}
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
           <Receipt className="text-rose-400 w-8 h-8"/> 
@@ -315,13 +315,16 @@ const EgresosTab = ({
           </div>
 
           <div className="flex-1 overflow-y-auto pr-1 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-            {/* ✨ FIX: Acepta las que dicen 'Activa' o las antiguas que no tienen estado (!c.estado) */}
             {comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-10">No tienes compras a cuotas activas.</p>
             ) : (
               comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).map(cuota => {
                 const tarjetaAsociada = tarjetasCredito.find(t => t.id === cuota.tarjetaId);
-                const valorCuotaAprox = cuota.montoTotal / cuota.numeroCuotas;
+                
+                // ✨ FIX ANTI NaN: Si no tiene numeroCuotas o montoTotal válido, le asigna 1 o 0 por defecto.
+                const numCuotasSeguro = Number(cuota.numeroCuotas) || 1;
+                const montoTotalSeguro = Number(cuota.montoTotal) || Number(cuota.monto) || 0;
+                const valorCuotaAprox = montoTotalSeguro / numCuotasSeguro;
 
                 return (
                   <div key={cuota.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between items-center relative overflow-hidden group">
@@ -329,12 +332,12 @@ const EgresosTab = ({
                     <div className="pl-3">
                        <p className="text-sm font-bold text-white">{cuota.descripcion}</p>
                        <p className="text-[10px] text-slate-400 mt-0.5">
-                         {tarjetaAsociada?.name || 'Tarjeta'} • {cuota.cuotasPagadas || 0}/{cuota.numeroCuotas} Cuotas
+                         {tarjetaAsociada?.name || 'Tarjeta'} • {cuota.cuotasPagadas || 0}/{cuota.numeroCuotas || '?'} Cuotas
                        </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right pr-6">
                        <p className="text-sm font-black text-indigo-400">{formatCOP(valorCuotaAprox)} <span className="text-[9px] text-slate-500 font-normal">/mes</span></p>
-                       <p className="text-[10px] text-slate-500 mt-0.5">Total: {formatCOP(cuota.montoTotal)}</p>
+                       <p className="text-[10px] text-slate-500 mt-0.5">Total: {formatCOP(montoTotalSeguro)}</p>
                     </div>
                     <button onClick={() => removeComprasCuotas(cuota.id)} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-2 rounded-lg shadow-lg transition-all hover:bg-rose-400">
                       <Trash2 size={14}/>
@@ -366,7 +369,6 @@ const EgresosTab = ({
             ) : (
               pagosFijos.sort((a,b) => a.diaPago - b.diaPago).map(pf => {
                 const isPaid = checkPagoRealizado(pf.descripcion);
-                // ✨ FIX: Soporta datos viejos (monto) o nuevos (montoEstimado) para evitar el $ NaN
                 const valorPagoFijo = Number(pf.monto || pf.montoEstimado || 0);
 
                 return (
@@ -416,7 +418,7 @@ const EgresosTab = ({
                 <th className="p-4 font-bold w-[12%] text-center">Fijo/Var</th>
                 <th className="p-4 font-bold w-[15%]">Categoría</th>
                 <th className="p-4 font-bold w-[15%]">Cuenta</th>
-                <th className="p-4 font-bold w-[15%] text-right">Monto</th>
+                <th className="p-4 font-bold w-[15%] text-right">Monto / Intereses</th>
                 <th className="p-4 font-bold text-center w-[8%]">Acciones</th>
               </tr>
               
@@ -531,62 +533,6 @@ const EgresosTab = ({
           </table>
         </div>
       </Card>
-
-      {/* ============================================================================ */}
-      {/* MODAL PARA AGREGAR NUEVA COMPRA A CUOTAS */}
-      {/* ============================================================================ */}
-      {showModalCuotas && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200 p-4">
-          <div className="bg-[#17171a] w-full max-w-md rounded-2xl border border-slate-800 shadow-2xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-white">Nueva Compra a Cuotas</h3>
-              <button onClick={() => setShowModalCuotas(false)} className="text-slate-500 hover:text-rose-400 transition-colors">
-                <XIcon size={24}/>
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddCuotas} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Fecha de compra</label>
-                <input type="date" required value={cuotaData.fecha} onChange={e => setCuotaData({...cuotaData, fecha: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Descripción</label>
-                <input type="text" required value={cuotaData.descripcion} onChange={e => setCuotaData({...cuotaData, descripcion: e.target.value})} placeholder="Ej. Computador, Viaje..." className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
-                  <select required value={cuotaData.categoria} onChange={e => setCuotaData({...cuotaData, categoria: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none">
-                    <option value="">Seleccione...</option>
-                    {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Tarjeta de Crédito</label>
-                  <select required value={cuotaData.tarjetaId} onChange={e => setCuotaData({...cuotaData, tarjetaId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none">
-                    <option value="">Seleccione...</option>
-                    {tarjetasCredito.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Monto Total</label>
-                  <input type="number" required value={cuotaData.montoTotal} onChange={e => setCuotaData({...cuotaData, montoTotal: e.target.value})} placeholder="$ 0" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Número de Cuotas</label>
-                  <input type="number" required min="1" max="72" value={cuotaData.numeroCuotas} onChange={e => setCuotaData({...cuotaData, numeroCuotas: e.target.value})} placeholder="Ej. 12" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
-                </div>
-              </div>
-              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl mt-6 transition-colors shadow-lg shadow-indigo-500/20 active:scale-95">
-                Guardar Compra a Cuotas
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
