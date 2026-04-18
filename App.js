@@ -13,7 +13,7 @@ function App() {
   const [filtroPersona, setFiltroPersona] = useState('Total');
   const [scoreHistory, setScoreHistory] = useState({});
 
-  // ✨ NUEVOS ESTADOS PARA EL REGISTRO RÁPIDO (Cero Fricción)
+  // ✨ ESTADOS PARA EL REGISTRO RÁPIDO (Cero Fricción)
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [qeType, setQeType] = useState('egreso'); // 'egreso' | 'ingreso'
   const [qeMonto, setQeMonto] = useState('');
@@ -164,6 +164,10 @@ function App() {
   const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(pf.ownerId || getOwnerFallback(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
   const activeIngresosFijos = useMemo(() => { const currentMonthNum = selectedMonth.split('-')[1]; return ingresosFijos.filter(inf => { const passFilter = belongsToFilter(inf.ownerId || getOwnerFallback(inf.descripcion + ' ' + inf.persona)); const descLower = inf.descripcion.toLowerCase(); let passMonth = true; if (descLower.includes('prima 1')) passMonth = currentMonthNum === '07'; else if (descLower.includes('prima 2')) passMonth = currentMonthNum === '12'; return passFilter && passMonth; }); }, [ingresosFijos, filtroPersona, selectedMonth]);
   const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(p.ownerId || getOwnerFallback(p.categoria))), [presupuestos, filtroPersona]);
+  
+  // ✨ VARIABLES RESTAURADAS: Compras a Cuotas y Transferencias
+  const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => { const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (c.ownerId || getOwnerFallback(c.descripcion))); }), [comprasCuotas, cuentas, filtroPersona]);
+  const activeTransferencias = useMemo(() => transferencias.filter(t => { const ownerFrom = cuentas.find(c => c.id === t.fromId); const ownerTo = cuentas.find(c => c.id === t.toId); return belongsToFilter(ownerFrom ? (ownerFrom.ownerId || getOwnerFallback(ownerFrom.name)) : 'Shared') || belongsToFilter(ownerTo ? (ownerTo.ownerId || getOwnerFallback(ownerTo.name)) : 'Shared'); }), [transferencias, cuentas, filtroPersona]);
 
   const isThisMonth = (f) => f && f.startsWith(selectedMonth);
   const ingresosMesTotal = useMemo(() => activeIngresos.filter(i => isThisMonth(i.fecha)).reduce((s, i) => s + Number(i.monto), 0), [activeIngresos, selectedMonth]);
