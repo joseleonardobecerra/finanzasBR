@@ -43,7 +43,7 @@ const IngresosTab = ({
   const [editData, setEditData] = useState({});
 
   // ============================================================================
-  // ✨ NUEVO: ESTADOS DE LOS FILTROS DE LA TABLA
+  // ESTADOS DE LOS FILTROS DE LA TABLA
   // ============================================================================
   const [filters, setFilters] = useState({
     fecha: '',
@@ -53,7 +53,8 @@ const IngresosTab = ({
     monto: ''
   });
 
-  const cuentasActivas = cuentas.filter(c => ['bank', 'cash'].includes(c.type));
+  // ✨ CORRECCIÓN: Ahora incluimos 'pocket' (Bolsillos/Inversión) como destino válido
+  const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
 
   // ============================================================================
   // CÁLCULOS Y DATOS DEL MES
@@ -202,7 +203,9 @@ const IngresosTab = ({
             <select required value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none">
               <option value="">Seleccione...</option>
               {cuentasActivas.map(c => (
-                <option key={c.id} value={c.id}>{c.type === 'cash' ? '💵' : '🏦'} {c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.type === 'cash' ? '💵' : c.type === 'pocket' ? '📈' : '🏦'} {c.name}
+                </option>
               ))}
             </select>
           </div>
@@ -245,7 +248,7 @@ const IngresosTab = ({
                 <th className="p-4 font-bold text-center w-[8%]">Acciones</th>
               </tr>
               
-              {/* ✨ NUEVO: FILA DE FILTROS INTELIGENTES */}
+              {/* FILA DE FILTROS INTELIGENTES */}
               <tr className="border-b-2 border-slate-700 bg-slate-900/50">
                 <th className="p-2">
                   <input 
@@ -316,7 +319,9 @@ const IngresosTab = ({
               ) : (
                 ingresosFiltrados.map(ingreso => {
                   const isEditing = editingId === ingreso.id;
-                  const cuentaName = cuentas.find(c => c.id === ingreso.cuentaId)?.name || 'Cuenta eliminada';
+                  const cuentaObj = cuentas.find(c => c.id === ingreso.cuentaId);
+                  const cuentaName = cuentaObj?.name || 'Cuenta eliminada';
+                  const isPocket = cuentaObj?.type === 'pocket';
                   
                   return (
                     <tr key={ingreso.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
@@ -335,7 +340,7 @@ const IngresosTab = ({
                         ) : ingreso.descripcion}
                       </td>
 
-                      {/* ✨ TIPO (Columna Separada) */}
+                      {/* TIPO */}
                       <td className="p-4">
                         {isEditing ? (
                           <select value={editData.tipo} onChange={e => setEditData({...editData, tipo: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none">
@@ -354,7 +359,7 @@ const IngresosTab = ({
                         )}
                       </td>
 
-                      {/* ✨ DESTINO (Columna Separada) */}
+                      {/* DESTINO */}
                       <td className="p-4 text-slate-400 text-xs">
                         {isEditing ? (
                           <select value={editData.cuentaId} onChange={e => setEditData({...editData, cuentaId: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none">
@@ -362,7 +367,7 @@ const IngresosTab = ({
                           </select>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></div>
+                            <div className={`w-1.5 h-1.5 rounded-full ${isPocket ? 'bg-indigo-500/50' : 'bg-emerald-500/50'}`}></div>
                             {cuentaName}
                           </div>
                         )}
