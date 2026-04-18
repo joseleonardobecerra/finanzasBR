@@ -15,11 +15,12 @@ function App() {
 
   // ✨ ESTADOS PARA EL WIZARD DE REGISTRO RÁPIDO PASO A PASO
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
-  const [qeStep, setQeStep] = useState(1); // Pasos del 1 al 4
+  const [qeStep, setQeStep] = useState(1); // Pasos del 1 al 5
   const [qeType, setQeType] = useState(''); // 'egreso' | 'ingreso'
   const [qeMonto, setQeMonto] = useState('');
-  const [qeDescripcion, setQeDescripcion] = useState(''); // Nuevo campo
+  const [qeDescripcion, setQeDescripcion] = useState('');
   const [qeCategoria, setQeCategoria] = useState('');
+  const [qeMethod, setQeMethod] = useState(''); // 'cash' | 'bank' | 'credit'
   const [qeCuenta, setQeCuenta] = useState('');
 
   // Íconos
@@ -195,7 +196,7 @@ function App() {
 
   // ✨ FUNCIONES DEL WIZARD PASO A PASO
   const handleOpenWizard = () => {
-    setQeStep(1); setQeType(''); setQeMonto(''); setQeDescripcion(''); setQeCategoria(''); setQeCuenta('');
+    setQeStep(1); setQeType(''); setQeMonto(''); setQeDescripcion(''); setQeCategoria(''); setQeMethod(''); setQeCuenta('');
     setQuickEntryOpen(true);
   };
 
@@ -327,8 +328,8 @@ function App() {
                  <div>
                    <h3 className="text-lg font-black text-white tracking-tight">Registro Rápido</h3>
                    <div className="flex gap-1 mt-1.5">
-                      {[1,2,3,4].map(s => (
-                        <div key={s} className={`h-1 w-6 rounded-full transition-all duration-500 ${s <= qeStep ? 'bg-indigo-500' : 'bg-slate-800'}`}></div>
+                      {[1,2,3,4,5].map(s => (
+                        <div key={s} className={`h-1 w-[18px] rounded-full transition-all duration-500 ${s <= qeStep ? 'bg-indigo-500' : 'bg-slate-800'}`}></div>
                       ))}
                    </div>
                  </div>
@@ -394,23 +395,54 @@ function App() {
                 </div>
               )}
 
-              {/* PASO 4: CUENTA Y GUARDAR */}
+              {/* PASO 4: MÉTODO DE PAGO (Nuevo Paso) */}
               {qeStep === 4 && (
+                <div className="space-y-4">
+                  <h4 className="text-center text-slate-400 font-bold mb-6">{qeType === 'egreso' ? '¿Cómo lo pagaste?' : '¿A dónde entró el dinero?'}</h4>
+                  
+                  <button onClick={() => { setQeMethod('cash'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border flex items-center gap-3 bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10 active:scale-95">
+                    <span className="text-xl">💵</span> Efectivo
+                  </button>
+                  
+                  <button onClick={() => { setQeMethod('bank'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border flex items-center gap-3 bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10 active:scale-95">
+                    <span className="text-xl">🏦</span> Cuenta Débito / Ahorros
+                  </button>
+
+                  {/* Ocultamos Tarjeta de Crédito si es un Ingreso */}
+                  {qeType === 'egreso' && (
+                    <button onClick={() => { setQeMethod('credit'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border flex items-center gap-3 bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10 active:scale-95">
+                      <span className="text-xl">💳</span> Tarjeta de Crédito
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* PASO 5: CUENTA EXACTA Y GUARDAR */}
+              {qeStep === 5 && (
                 <div className="space-y-6">
-                  <h4 className="text-center text-slate-400 font-bold mb-2">¿Con qué cuenta fue?</h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    {activeCalculatedAccounts.filter(c => ['bank', 'cash', 'credit'].includes(c.type)).map(acc => (
+                  <h4 className="text-center text-slate-400 font-bold mb-2">{qeType === 'egreso' ? '¿De cuál cuenta exactamente?' : '¿A qué cuenta exactamente?'}</h4>
+                  
+                  <div className="grid grid-cols-1 gap-2 overflow-y-auto max-h-[250px] pr-1">
+                    {/* Renderizamos SÓLO las cuentas que coinciden con el método elegido en el paso 4 */}
+                    {activeCalculatedAccounts.filter(c => c.type === qeMethod).map(acc => (
                       <button 
                         key={acc.id} 
                         onClick={() => setQeCuenta(acc.id)}
                         className={`p-4 rounded-xl text-sm font-bold text-left transition-all border flex justify-between items-center ${qeCuenta === acc.id ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
                       >
                         <span className="flex items-center gap-2">
-                          {acc.type === 'cash' ? '💵' : acc.type === 'credit' ? '💳' : '🏦'} {acc.name}
+                          {acc.name}
                         </span>
                         {qeCuenta === acc.id && <div className="w-2 h-2 bg-white rounded-full"></div>}
                       </button>
                     ))}
+
+                    {/* Mensaje por si no hay cuentas de ese tipo registradas */}
+                    {activeCalculatedAccounts.filter(c => c.type === qeMethod).length === 0 && (
+                      <div className="text-center p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl mt-2">
+                        <p className="text-rose-400 text-xs font-bold">No tienes cuentas de este tipo registradas.</p>
+                      </div>
+                    )}
                   </div>
                   
                   {qeCuenta && (
