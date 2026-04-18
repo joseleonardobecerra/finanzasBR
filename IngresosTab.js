@@ -53,7 +53,6 @@ const IngresosTab = ({
     monto: ''
   });
 
-  // ✨ CORRECCIÓN: Ahora incluimos 'pocket' (Bolsillos/Inversión) como destino válido
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
 
   // ============================================================================
@@ -227,7 +226,14 @@ const IngresosTab = ({
       <Card className="flex flex-col border-t-4 border-t-slate-600">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <List size={18} className="text-slate-400"/>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
             Historial Completo de Ingresos
           </h2>
           <span className="bg-slate-900 border border-slate-700 text-slate-300 text-xs px-3 py-1 rounded-full font-bold">
