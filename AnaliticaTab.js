@@ -7,9 +7,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     maximumFractionDigits: 0
   }).format(val);
 
-  // ----------------------------------------------------
-  // 1. CÁLCULOS HISTÓRICOS Y ESTRUCTURA (ANALÍTICA)
-  // ----------------------------------------------------
+  // ============================================================================
+  // 1. MOTOR DE CÁLCULOS: HISTORIAL DE 12 MESES (ANALÍTICA CLÁSICA)
+  // ============================================================================
   const {
     historialMensual,
     totalIngresosAnual,
@@ -41,19 +41,13 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       const ingMes = ingresos.filter(i => i.fecha.startsWith(mesStr)).reduce((s, i) => s + Number(i.monto), 0);
       const egrMes = egresosMesFiltrados.reduce((s, e) => s + Number(e.monto), 0);
 
-      const fijosMes = egresosMesFiltrados
-        .filter(e => e.tipo === 'Fijo')
-        .reduce((s, e) => s + Number(e.monto), 0);
-
-      const varMes = egresosMesFiltrados
-        .filter(e => e.tipo !== 'Fijo')
-        .reduce((s, e) => s + Number(e.monto), 0);
+      const fijosMes = egresosMesFiltrados.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+      const varMes = egresosMesFiltrados.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
 
       const neto = ingMes - egrMes;
+      const tasaAhorroMes = ingMes > 0 ? (neto > 0 ? (neto / ingMes) * 100 : 0) : 0;
 
-      if (neto > 0) {
-        superavitCount++;
-      }
+      if (neto > 0) superavitCount++;
 
       sumIng += ingMes;
       sumEgr += egrMes;
@@ -65,7 +59,8 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         label,
         ingresos: ingMes,
         egresos: egrMes,
-        neto
+        neto,
+        tasaAhorro: tasaAhorroMes
       });
     }
 
@@ -79,215 +74,246 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     };
   }, [ingresos, egresos, selectedMonth]);
 
-  // ----------------------------------------------------
-  // 2. ESTRATEGIA AVALANCHA (SCORE FAMILIA)
-  // ----------------------------------------------------
+  // ============================================================================
+  // 2. MOTOR DE CÁLCULOS: SCORE Y DEUDAS (ESTRATEGIA AVALANCHA)
+  // ============================================================================
   const deudasOrdenadas = useMemo(() => {
     return cuentas
-      .filter(c => (c.type === 'credit' || c.type === 'loan') && c.currentDebt > 1000)
+      .filter(c => (c.type === 'credit' || c.type === 'loan') && c.currentDebt > 0)
       .sort((a, b) => b.tasaEA - a.tasaEA); // Ordenadas de mayor a menor tasa
   }, [cuentas]);
 
-  // ----------------------------------------------------
-  // 3. CARGA DE DEUDA Y RECOMENDACIONES INTELIGENTES
-  // ----------------------------------------------------
   const ingMesActual = historialMensual[11]?.ingresos || 0;
-
-  const cuotasMesActual = cuentas.reduce((sum, c) => {
-    if (c.currentDebt > 0) {
-      return sum + (Number(c.cuotaMinima) || 0);
-    }
-    return sum;
-  }, 0);
-
+  const cuotasMesActual = cuentas.reduce((sum, c) => sum + (c.currentDebt > 0 ? (Number(c.cuotaMinima) || 0) : 0), 0);
+  
+  // KPIs Estratégicos
   const cargaDeuda = ingMesActual > 0 ? (cuotasMesActual / ingMesActual) * 100 : 0;
   const tasaAhorroAnual = totalIngresosAnual > 0 ? ((totalIngresosAnual - totalEgresosAnual) / totalIngresosAnual) * 100 : 0;
+  const flujoPromedioMes = (totalIngresosAnual - totalEgresosAnual) / 12;
 
+  // ============================================================================
+  // 3. MOTOR DE RECOMENDACIONES INTELIGENTES (BASADO EN COMPORTAMIENTO)
+  // ============================================================================
   const recomendaciones = useMemo(() => {
     const recs = [];
 
+    // 1. Análisis de Carga de Deuda
     if (cargaDeuda > 40) {
       recs.push({
-        ico: '🔥',
-        title: 'Carga de Deuda Crítica',
-        desc: 'Tus deudas consumen más del 40% de tu ingreso. Prioriza abonos a capital y evita usar tarjetas de crédito por 3 meses.'
+        tipo: 'alerta',
+        ico: '🚨',
+        title: 'Carga de Deuda en Nivel Crítico',
+        desc: `Estás comprometiendo el ${cargaDeuda.toFixed(1)}% de tus ingresos solo en cuotas. Debes congelar inmediatamente el uso de tarjetas de crédito y aplicar todo el excedente a tu deuda más pequeña para liberar flujo de caja.`
       });
-    }
-
-    if (tasaAhorroAnual < 10) {
+    } else if (cargaDeuda > 20) {
       recs.push({
-        ico: '📉',
-        title: 'Capacidad de Ahorro Baja',
-        desc: 'Estás ahorrando menos del 10% anual. Revisa tus gastos variables; busca categorías donde puedas recortar para mejorar tu liquidez.'
-      });
-    }
-
-    if (mesesConSuperavit < 6) {
-      recs.push({
+        tipo: 'precaucion',
         ico: '⚠️',
-        title: 'Inconsistencia Financiera',
-        desc: 'En el último año has tenido más meses en pérdida que en ganancia. Es vital crear un fondo de emergencia para evitar endeudamiento.'
+        title: 'Carga de Deuda Moderada',
+        desc: `Tus cuotas consumen el ${cargaDeuda.toFixed(1)}% de tu ingreso. Estás en un rango manejable, pero no adquieras nuevas obligaciones hasta cancelar al menos una tarjeta.`
       });
     }
 
-    if (deudasOrdenadas.length > 0) {
+    // 2. Análisis de Tasa de Ahorro / Flujo
+    if (tasaAhorroAnual < 5) {
       recs.push({
-        ico: '🛡️',
-        title: 'Ataque de Avalancha',
-        desc: `Tu deuda más cara es ${deudasOrdenadas[0].name}. Cualquier ingreso extra (superávit) este mes debe ir directo a capital en esa cuenta.`
+        tipo: 'alerta',
+        ico: '📉',
+        title: 'Capacidad de Ahorro Mínima',
+        desc: 'Tu retención de capital es muy baja. Revisa tu "Estructura de Gasto" abajo: si tus gastos fijos superan el 60%, debes negociar servicios o seguros. Si los variables son el problema, recorta salidas y domicilios este mes.'
+      });
+    } else if (tasaAhorroAnual >= 20) {
+      recs.push({
+        tipo: 'exito',
+        ico: '🏆',
+        title: 'Excelente Tasa de Retención',
+        desc: `Estás ahorrando el ${tasaAhorroAnual.toFixed(1)}% de tu dinero. Es momento de mover ese capital a un fondo de inversión o cuenta de alto rendimiento para ganarle a la inflación.`
       });
     }
+
+    // 3. Análisis de Constancia (Meses positivos vs negativos)
+    if (mesesConSuperavit <= 6) {
+      recs.push({
+        tipo: 'precaucion',
+        ico: '⚖️',
+        title: 'Flujo de Caja Inconsistente',
+        desc: `En el último año, has tenido déficits en ${12 - mesesConSuperavit} meses. Esto significa que estás dependiendo de ahorros previos o tarjetas para cubrir tu estilo de vida. Crea un presupuesto más estricto.`
+      });
+    }
+
+    // 4. Integrar alertas del Score General
+    scoreData.recs.forEach(r => {
+      if (!recs.find(existing => existing.title === r.title)) {
+        recs.push({ tipo: 'info', ico: r.ico, title: r.title, desc: r.txt });
+      }
+    });
 
     if (recs.length === 0) {
       recs.push({
+        tipo: 'exito',
         ico: '🚀',
-        title: '¡Impecable!',
-        desc: 'Tus indicadores están en zona verde. Mantienes control de tu flujo, tienes buena tasa de ahorro y deudas bajo control. ¡Sigue así!'
+        title: 'Finanzas Saludables',
+        desc: 'Tus indicadores de flujo, deuda y ahorro están perfectos. Sigue tu estrategia actual.'
       });
     }
 
     return recs;
-  }, [cargaDeuda, tasaAhorroAnual, mesesConSuperavit, deudasOrdenadas]);
+  }, [cargaDeuda, tasaAhorroAnual, mesesConSuperavit, scoreData.recs]);
 
-  const maxNetoAbs = Math.max(...historialMensual.map(m => Math.abs(m.neto)), 1);
 
-  // Porcentajes de estructura de gastos
+  // ============================================================================
+  // 4. TOP 5 FUGAS DE CAPITAL
+  // ============================================================================
+  const topCategoriasAnual = useMemo(() => {
+    const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
+    fechaBase.setMonth(fechaBase.getMonth() - 11);
+    const hace12MesesStr = fechaBase.toISOString().slice(0, 7);
+
+    const gastos12m = egresos.filter(e => e.fecha >= hace12MesesStr);
+    const catMap = {};
+    gastos12m.forEach(g => {
+        const c = g.categoria || 'Otros';
+        catMap[c] = (catMap[c] || 0) + Number(g.monto);
+    });
+    return Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  }, [egresos, selectedMonth]);
+
+  const { mejorMes, peorMes } = useMemo(() => {
+    let mejor = historialMensual[0]; let peor = historialMensual[0];
+    historialMensual.forEach(m => {
+        if (m.neto > mejor.neto) mejor = m;
+        if (m.neto < peor.neto) peor = m;
+    });
+    return { mejorMes: mejor, peorMes: peor };
+  }, [historialMensual]);
+
+
+  // Valores Máximos para Gráficas
+  const maxValHist = Math.max(...historialMensual.map(m => Math.max(m.ingresos, m.egresos)), 1);
+  const maxValCat = topCategoriasAnual.length > 0 ? topCategoriasAnual[0][1] : 1;
   const pctFijos = totalEgresosAnual > 0 ? (totalFijosAnual / totalEgresosAnual) * 100 : 0;
   const pctVariables = totalEgresosAnual > 0 ? (totalVariablesAnual / totalEgresosAnual) * 100 : 0;
-  const relacionGasto = totalVariablesAnual > 0 ? (totalFijosAnual / totalVariablesAnual).toFixed(1) : 0;
 
+
+  // ============================================================================
+  // INTERFAZ DE USUARIO (UI)
+  // ============================================================================
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      
+      {/* ENCABEZADO */}
       <header>
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-          <BarChart className="text-indigo-400 w-8 h-8"/>
-          Analítica y Estrategia
+          <BarChart className="text-indigo-400 w-8 h-8"/> 
+          Analítica y Score Familia
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Visión de 12 meses, salud crediticia y hoja de ruta financiera.
+          El panel de control definitivo: Historial, métricas de riesgo y plan de acción.
         </p>
       </header>
 
       {/* ---------------------------------------------------- */}
-      {/* ✨ 1. TARJETAS DE KPIs DE SALUD FAMILIAR               */}
+      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA (FUSIÓN)     */}
       {/* ---------------------------------------------------- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 border-t-4 border-t-emerald-500 flex flex-col justify-center">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
-            Score Salud
-          </p>
-          <p className="text-2xl font-black text-white">
-            {scoreData.score} <span className="text-base font-medium text-slate-500">/ 100</span>
-          </p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        
+        {/* Score General */}
+        <Card className="p-4 border-t-4 border-t-indigo-500 bg-indigo-950/20">
+          <div className="flex justify-between items-start mb-1">
+            <p className="text-[10px] md:text-xs text-indigo-400 uppercase font-bold">Score Salud</p>
+            <Activity size={16} className="text-indigo-400"/>
+          </div>
+          <p className="text-2xl md:text-3xl font-black text-white">{scoreData.score} <span className="text-sm text-slate-500 font-medium">/100</span></p>
         </Card>
 
-        <Card className="p-4 border-t-4 border-t-indigo-500 flex flex-col justify-center">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
-            Carga de Deuda
-          </p>
-          <p className={`text-2xl font-black ${cargaDeuda > 40 ? 'text-rose-400' : 'text-indigo-400'}`}>
-            {cargaDeuda.toFixed(1)}%
-          </p>
+        {/* Carga de Deuda */}
+        <Card className={`p-4 border-t-4 ${cargaDeuda > 40 ? 'border-t-rose-500 bg-rose-950/20' : 'border-t-emerald-500 bg-emerald-950/20'}`}>
+          <div className="flex justify-between items-start mb-1">
+            <p className={`text-[10px] md:text-xs uppercase font-bold ${cargaDeuda > 40 ? 'text-rose-400' : 'text-emerald-400'}`}>Carga de Deuda</p>
+            <ShieldAlert size={16} className={cargaDeuda > 40 ? 'text-rose-400' : 'text-emerald-400'}/>
+          </div>
+          <p className="text-2xl md:text-3xl font-black text-white">{cargaDeuda.toFixed(1)}%</p>
         </Card>
 
-        <Card className="p-4 border-t-4 border-t-amber-500 flex flex-col justify-center">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
-            Tasa Ahorro (Anual)
-          </p>
-          <p className={`text-2xl font-black ${tasaAhorroAnual > 10 ? 'text-emerald-400' : 'text-amber-400'}`}>
-            {tasaAhorroAnual.toFixed(1)}%
-          </p>
+        {/* Tasa de Ahorro */}
+        <Card className={`p-4 border-t-4 ${tasaAhorroAnual >= 10 ? 'border-t-emerald-500 bg-emerald-950/20' : 'border-t-amber-500 bg-amber-950/20'}`}>
+          <div className="flex justify-between items-start mb-1">
+            <p className={`text-[10px] md:text-xs uppercase font-bold ${tasaAhorroAnual >= 10 ? 'text-emerald-400' : 'text-amber-400'}`}>Tasa de Ahorro</p>
+            <PiggyBank size={16} className={tasaAhorroAnual >= 10 ? 'text-emerald-400' : 'text-amber-400'}/>
+          </div>
+          <p className="text-2xl md:text-3xl font-black text-white">{tasaAhorroAnual.toFixed(1)}%</p>
         </Card>
 
-        <Card className="p-4 border-t-4 border-t-slate-500 flex flex-col justify-center">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
-            Meses Ganadores
-          </p>
-          <p className="text-2xl font-black text-white">
-            {mesesConSuperavit} <span className="text-base font-medium text-slate-500">de 12</span>
+        {/* Flujo Promedio Mensual */}
+        <Card className={`p-4 border-t-4 ${flujoPromedioMes >= 0 ? 'border-t-emerald-500' : 'border-t-rose-500'}`}>
+          <div className="flex justify-between items-start mb-1">
+            <p className="text-[10px] md:text-xs text-slate-400 uppercase font-bold">Flujo Promedio</p>
+            <Wallet size={16} className="text-slate-500"/>
+          </div>
+          <p className={`text-xl md:text-2xl font-black ${flujoPromedioMes >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {formatCOP(flujoPromedioMes)}
           </p>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
         {/* ---------------------------------------------------- */}
-        {/* ✨ 2. GRÁFICA DE FLUJO (Evolución de Capacidad)      */}
+        {/* SECCIÓN 2: COMPARATIVO HISTÓRICO (ANALÍTICA ORIGINAL)*/}
         {/* ---------------------------------------------------- */}
-        <Card className="lg:col-span-2 border-t-4 border-t-indigo-500 p-5 flex flex-col">
-          <h2 className="text-lg font-bold text-white mb-6">
-            Evolución de Capacidad de Ahorro
-          </h2>
-
-          <div className="flex-1 h-56 flex items-end justify-between gap-1 md:gap-4 border-b border-slate-800 pb-2 relative">
-            {historialMensual.map((m, i) => {
-              const heightPct = Math.max((Math.abs(m.neto) / maxNetoAbs) * 100, 2);
-              const isPos = m.neto >= 0;
-
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                  <div
-                    style={{ height: `${heightPct}%` }}
-                    className={`w-3 md:w-6 rounded-t-sm transition-all duration-500 ${isPos ? 'bg-emerald-500/80 group-hover:bg-emerald-400' : 'bg-rose-500/80 group-hover:bg-rose-400'}`}
-                  ></div>
-
-                  <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase">
-                    {m.label}
-                  </span>
-
-                  {/* Tooltip Hover (Aparece al poner el mouse) */}
-                  <div className="opacity-0 group-hover:opacity-100 absolute -top-24 bg-slate-950 border border-slate-700 p-3 rounded shadow-2xl z-20 pointer-events-none transition-opacity text-[10px] min-w-[140px]">
-                    <p className="text-slate-300 font-bold uppercase mb-2 border-b border-slate-800 pb-1">
-                      {m.label}
-                    </p>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-emerald-400">Ingresos:</span>
-                      <span className="text-white font-bold">{formatCOP(m.ingresos)}</span>
-                    </div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-rose-400">Egresos:</span>
-                      <span className="text-white font-bold">{formatCOP(m.egresos)}</span>
-                    </div>
-                    <div className="border-t border-slate-800 my-1.5"></div>
-                    <div className="flex justify-between font-black text-xs">
-                      <span className={isPos ? 'text-emerald-400' : 'text-rose-500'}>
-                        {isPos ? 'Ahorro:' : 'Déficit:'}
-                      </span>
-                      <span className={isPos ? 'text-emerald-400' : 'text-rose-500'}>
-                        {formatCOP(Math.abs(m.neto))}
-                      </span>
-                    </div>
-                  </div>
+        <Card className="xl:col-span-2 border-t-4 border-t-indigo-500">
+          <h2 className="text-lg font-bold text-white mb-6">Comparativo Histórico: Ingresos vs Egresos (12 Meses)</h2>
+          
+          <div className="h-64 flex items-end justify-between gap-1 md:gap-4 border-b border-slate-800 pb-2 mt-4">
+            {historialMensual.map((m, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                
+                {/* Barras Verdes y Rojas originales */}
+                <div className="flex gap-0.5 md:gap-1 w-full justify-center items-end h-full">
+                  <div style={{ height: `${Math.max((m.ingresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-emerald-500/80 rounded-t-sm group-hover:bg-emerald-400 transition-all"></div>
+                  <div style={{ height: `${Math.max((m.egresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-rose-500/80 rounded-t-sm group-hover:bg-rose-400 transition-all"></div>
                 </div>
-              );
-            })}
+                <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase">{m.label}</span>
+                
+                {/* Tooltip con los datos */}
+                <div className="opacity-0 group-hover:opacity-100 absolute -top-24 bg-slate-950 border border-slate-700 p-3 rounded shadow-2xl z-20 pointer-events-none transition-opacity text-[10px] min-w-[140px]">
+                  <p className="text-slate-300 font-bold uppercase mb-2 border-b border-slate-800 pb-1">{m.label}</p>
+                  <div className="flex justify-between mb-1"><span className="text-emerald-400 font-bold">Ingresos:</span> <span className="text-white">{formatCOP(m.ingresos)}</span></div>
+                  <div className="flex justify-between mb-1"><span className="text-rose-400 font-bold">Egresos:</span> <span className="text-white">{formatCOP(m.egresos)}</span></div>
+                  <div className="border-t border-slate-800 my-1.5"></div>
+                  <div className="flex justify-between font-black"><span className={m.neto >= 0 ? 'text-indigo-400' : 'text-amber-500'}>Neto:</span> <span className={m.neto >= 0 ? 'text-indigo-400' : 'text-amber-500'}>{formatCOP(m.neto)}</span></div>
+                  <div className="flex justify-between mt-1 text-[9px]"><span className="text-slate-500">Retención:</span> <span className="text-slate-300">{m.tasaAhorro.toFixed(1)}%</span></div>
+                </div>
+              </div>
+            ))}
           </div>
-
-          <div className="flex justify-center gap-6 mt-4 text-[10px] font-bold uppercase tracking-wider">
-             <span className="flex items-center gap-2 text-emerald-400">
-               <div className="w-2.5 h-2.5 bg-emerald-500 rounded-sm"></div>
-               Superávit (Ahorro)
-             </span>
-             <span className="flex items-center gap-2 text-rose-400">
-               <div className="w-2.5 h-2.5 bg-rose-500 rounded-sm"></div>
-               Déficit (Pérdida)
-             </span>
+          
+          <div className="flex justify-center gap-6 mt-4 text-xs font-bold uppercase tracking-wider">
+             <span className="flex items-center gap-2"><div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> Ingresos</span>
+             <span className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500 rounded-sm"></div> Egresos</span>
           </div>
         </Card>
 
         {/* ---------------------------------------------------- */}
-        {/* ✨ 3. RECOMENDACIONES (Insights e Inteligencia)      */}
+        {/* SECCIÓN 3: RECOMENDACIONES Y ACCIONES                */}
         {/* ---------------------------------------------------- */}
-        <Card className="border-t-4 border-t-amber-500 p-5 flex flex-col">
-           <h2 className="text-lg font-bold text-white mb-4">
-             Hoja de Ruta e Insights
-           </h2>
-           <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+        <Card className="border-t-4 border-t-amber-500 flex flex-col">
+           <div className="flex items-center gap-2 mb-6">
+              <Zap className="text-amber-400 w-5 h-5"/>
+              <h2 className="text-lg font-bold text-white">Acciones Sugeridas</h2>
+           </div>
+           
+           <div className="space-y-4 overflow-y-auto pr-1 flex-1 max-h-[300px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
               {recomendaciones.map((r, i) => (
-                <div key={i} className="bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner">
+                <div key={i} className={`p-4 rounded-xl border shadow-inner ${
+                  r.tipo === 'alerta' ? 'bg-rose-950/20 border-rose-500/30' : 
+                  r.tipo === 'precaucion' ? 'bg-amber-950/20 border-amber-500/30' : 
+                  r.tipo === 'exito' ? 'bg-emerald-950/20 border-emerald-500/30' : 
+                  'bg-slate-950 border-slate-800'
+                }`}>
                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{r.ico}</span>
-                      <span className="font-bold text-sm text-slate-200">{r.title}</span>
+                      <span className="text-xl">{r.ico}</span>
+                      <span className="font-bold text-sm text-white">{r.title}</span>
                    </div>
                    <p className="text-[11px] text-slate-400 leading-relaxed">
                      {r.desc}
@@ -299,37 +325,40 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
+        
         {/* ---------------------------------------------------- */}
-        {/* ✨ 4. ESTRATEGIA AVALANCHA (Orden de Pago de Deudas) */}
+        {/* SECCIÓN 4: ESTRATEGIA AVALANCHA (DEUDAS)             */}
         {/* ---------------------------------------------------- */}
-        <Card className="border-t-4 border-t-rose-500 p-5 flex flex-col">
+        <Card className="border-t-4 border-t-rose-500 flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-white">
-              Estrategia Avalancha: Orden de Pago
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+               <ShieldAlert className="text-rose-400 w-5 h-5"/>
+               Estrategia Avalancha: Orden de Pago
             </h2>
-            <div className="px-2 py-1 bg-rose-500/10 text-rose-400 rounded text-[10px] font-bold uppercase tracking-wide">
-              Prioridad: Interés
+            <div className="hidden md:block px-2 py-1 bg-rose-500/10 text-rose-400 rounded text-[10px] font-bold uppercase tracking-wide border border-rose-500/20">
+              Prioridad: Tasa de Interés
             </div>
           </div>
 
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+          <div className="space-y-3 flex-1 overflow-y-auto pr-1 max-h-[350px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
              {deudasOrdenadas.map((d, i) => (
-               <div key={d.id} className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm ${i === 0 ? 'bg-rose-600 text-white shadow-[0_0_15px_rgba(225,29,72,0.3)]' : 'bg-slate-800 text-slate-400'}`}>
+               <div key={d.id} className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${i === 0 ? 'bg-rose-950/30 border-rose-500/50' : 'bg-slate-950 border-slate-800'}`}>
+                  <div className="flex items-center gap-3 md:gap-4">
+                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-black text-xs md:text-sm shrink-0 ${i === 0 ? 'bg-rose-600 text-white shadow-[0_0_15px_rgba(225,29,72,0.4)]' : 'bg-slate-800 text-slate-400'}`}>
                       #{i+1}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-200">{d.name}</p>
-                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">
-                        Tasa: <span className="text-rose-400">{d.tasaEA}% EA</span>
+                      <p className="text-xs md:text-sm font-bold text-slate-200 line-clamp-1">{d.name}</p>
+                      <p className="text-[10px] md:text-[11px] font-medium text-slate-500 mt-0.5">
+                        Tasa EA: <span className="text-rose-400 font-bold">{d.tasaEA}%</span>
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-base font-black text-white">{formatCOP(d.currentDebt)}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Saldo Pendiente</p>
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm md:text-base font-black ${i === 0 ? 'text-rose-400' : 'text-white'}`}>
+                      {formatCOP(d.currentDebt)}
+                    </p>
+                    <p className="text-[9px] md:text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">Saldo</p>
                   </div>
                </div>
              ))}
@@ -337,82 +366,97 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
              {deudasOrdenadas.length === 0 && (
                <div className="flex flex-col items-center justify-center h-full py-10">
                  <p className="text-4xl mb-3">🎉</p>
-                 <p className="text-slate-400 font-bold text-sm">¡No tienes deudas activas!</p>
-                 <p className="text-slate-500 text-xs mt-1">Eres libre de intereses.</p>
+                 <p className="text-slate-300 font-bold text-sm">¡Cero Deudas Activas!</p>
+                 <p className="text-slate-500 text-xs mt-1">Eres libre de intereses bancarios.</p>
                </div>
              )}
           </div>
-
-          <div className="mt-5 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-[11px] text-indigo-300 font-medium flex items-start gap-3">
-             <span className="text-lg">💡</span>
-             <p>
-               Paga la <strong className="text-indigo-400">Cuota Mínima</strong> de todas las deudas,
-               y todo el dinero extra (superávit) inyéctalo directo a capital a la deuda <strong className="text-rose-400">#{1}</strong>.
-               Esto te ahorrará miles en intereses bancarios.
-             </p>
-          </div>
         </Card>
 
         {/* ---------------------------------------------------- */}
-        {/* ✨ 5. ESTRUCTURA DEL GASTO ANUAL                     */}
+        {/* SECCIÓN 5: FUGAS, EXTREMOS Y ESTRUCTURA DE GASTO     */}
         {/* ---------------------------------------------------- */}
-        <Card className="border-t-4 border-t-slate-500 p-5 flex flex-col justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-white mb-2">
-              Estructura del Gasto Anual
-            </h2>
-            <p className="text-[11px] text-slate-400 mb-8">
-              Distribución de tu estilo de vida en los últimos 12 meses.
-            </p>
-          </div>
+        <div className="space-y-6 flex flex-col">
+           
+           {/* Top 5 Fugas y Extremos */}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Extremos */}
+              <Card className="flex flex-col justify-center border-t-4 border-t-emerald-500 gap-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2">Extremos del Año</h3>
+                
+                <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 flex items-center justify-center rounded-full shrink-0">
+                    <TrendingUp size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-emerald-500 font-bold uppercase">Mejor Mes ({mejorMes?.label})</p>
+                    <p className="text-lg font-black text-emerald-400">{formatCOP(mejorMes?.neto)}</p>
+                  </div>
+                </div>
 
-          <div className="space-y-8 flex-1 flex flex-col justify-center mb-6">
+                <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-500/20 text-rose-400 flex items-center justify-center rounded-full shrink-0">
+                    <TrendingDown size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-rose-500 font-bold uppercase">Peor Mes ({peorMes?.label})</p>
+                    <p className="text-lg font-black text-rose-400">{formatCOP(peorMes?.neto)}</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Top Fugas */}
+              <Card className="border-t-4 border-t-orange-500">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Top 5 Fugas</h3>
+                <div className="space-y-3">
+                  {topCategoriasAnual.map(([cat, amount], i) => {
+                    const width = Math.max((amount / maxValCat) * 100, 5);
+                    return (
+                      <div key={cat}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-slate-300 font-medium truncate pr-2"><span className="text-orange-500/50 font-bold">#{i+1}</span> {cat}</span>
+                          <span className="font-bold text-orange-400">{formatCOP(amount)}</span>
+                        </div>
+                        <div className="w-full bg-slate-950 rounded-full h-1.5 border border-slate-800"><div className="h-full bg-orange-500 rounded-full" style={{ width: `${width}%` }}></div></div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+           </div>
+
+           {/* Estructura de Gasto */}
+           <Card className="border-t-4 border-t-slate-500 flex-1">
+             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Estructura de Gasto (Fijo vs Variable)</h3>
              
-             {/* Gasto Fijo */}
-             <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-300 font-bold">Gastos Fijos (Compromisos)</span>
-                  <span className="text-orange-400 font-black text-lg">{pctFijos.toFixed(1)}%</span>
+             <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-300 font-bold">Gastos Fijos (Compromisos)</span>
+                    <span className="text-orange-400 font-black text-lg">{pctFijos.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950 h-3 rounded-full border border-slate-800 overflow-hidden shadow-inner">
+                    <div className="bg-orange-500 h-full rounded-full transition-all duration-1000" style={{ width: `${pctFijos}%` }}></div>
+                  </div>
                 </div>
-                <div className="w-full bg-slate-950 h-4 rounded-full border border-slate-800 overflow-hidden shadow-inner">
-                  <div
-                    className="bg-orange-500 h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${pctFijos}%` }}
-                  ></div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-slate-300 font-bold">Gastos Variables (Estilo de vida)</span>
+                    <span className="text-blue-400 font-black text-lg">{pctVariables.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950 h-3 rounded-full border border-slate-800 overflow-hidden shadow-inner">
+                    <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${pctVariables}%` }}></div>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 text-right mt-1.5 font-medium">
-                  {formatCOP(totalFijosAnual)} gastados
-                </p>
              </div>
 
-             {/* Gasto Variable */}
-             <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-300 font-bold">Gastos Variables (Estilo de vida)</span>
-                  <span className="text-blue-400 font-black text-lg">{pctVariables.toFixed(1)}%</span>
-                </div>
-                <div className="w-full bg-slate-950 h-4 rounded-full border border-slate-800 overflow-hidden shadow-inner">
-                  <div
-                    className="bg-blue-500 h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${pctVariables}%` }}
-                  ></div>
-                </div>
-                <p className="text-xs text-slate-500 text-right mt-1.5 font-medium">
-                  {formatCOP(totalVariablesAnual)} gastados
-                </p>
+             <div className="mt-5 p-3 bg-slate-950 border border-slate-800 rounded-lg text-center shadow-inner">
+                <p className="text-xs text-slate-400">Tu relación de costo de vida es <strong className="text-white text-sm">{(totalVariablesAnual > 0 ? (totalFijosAnual/totalVariablesAnual).toFixed(1) : 0)} a 1</strong> (Fijos por cada Variable).</p>
              </div>
-          </div>
-
-          <div className="mt-2 p-4 bg-slate-950 border border-slate-800 rounded-xl text-center shadow-inner">
-             <p className="text-xs text-slate-400">
-               Tu relación de gasto es <strong className="text-white text-sm">{relacionGasto} a 1</strong> (Fijo vs Variable).
-               <br/>
-               <span className="text-[10px] mt-1 block opacity-70">
-                 Entre más alto sea el porcentaje fijo, menos flexibilidad de maniobra tienes mes a mes.
-               </span>
-             </p>
-          </div>
-        </Card>
+           </Card>
+        </div>
 
       </div>
     </div>
