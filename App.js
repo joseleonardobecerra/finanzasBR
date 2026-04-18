@@ -13,17 +13,18 @@ function App() {
   const [filtroPersona, setFiltroPersona] = useState('Total');
   const [scoreHistory, setScoreHistory] = useState({});
 
-  // ✨ ESTADOS PARA EL REGISTRO RÁPIDO (Cero Fricción)
+  // ✨ ESTADOS PARA EL WIZARD DE REGISTRO RÁPIDO PASO A PASO
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
-  const [qeType, setQeType] = useState('egreso'); // 'egreso' | 'ingreso'
+  const [qeStep, setQeStep] = useState(1); // Pasos del 1 al 4
+  const [qeType, setQeType] = useState(''); // 'egreso' | 'ingreso'
   const [qeMonto, setQeMonto] = useState('');
+  const [qeDescripcion, setQeDescripcion] = useState(''); // Nuevo campo
   const [qeCategoria, setQeCategoria] = useState('');
   const [qeCuenta, setQeCuenta] = useState('');
 
-  // Ícono de cerrar para el modal
-  const XIcon = ({ size=24 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-  );
+  // Íconos
+  const XIcon = ({ size=24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+  const ArrowLeftIcon = ({ size=24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
 
   useEffect(() => {
     const on = () => setIsOffline(false);
@@ -165,7 +166,6 @@ function App() {
   const activeIngresosFijos = useMemo(() => { const currentMonthNum = selectedMonth.split('-')[1]; return ingresosFijos.filter(inf => { const passFilter = belongsToFilter(inf.ownerId || getOwnerFallback(inf.descripcion + ' ' + inf.persona)); const descLower = inf.descripcion.toLowerCase(); let passMonth = true; if (descLower.includes('prima 1')) passMonth = currentMonthNum === '07'; else if (descLower.includes('prima 2')) passMonth = currentMonthNum === '12'; return passFilter && passMonth; }); }, [ingresosFijos, filtroPersona, selectedMonth]);
   const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(p.ownerId || getOwnerFallback(p.categoria))), [presupuestos, filtroPersona]);
   
-  // ✨ VARIABLES RESTAURADAS: Compras a Cuotas y Transferencias
   const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => { const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (c.ownerId || getOwnerFallback(c.descripcion))); }), [comprasCuotas, cuentas, filtroPersona]);
   const activeTransferencias = useMemo(() => transferencias.filter(t => { const ownerFrom = cuentas.find(c => c.id === t.fromId); const ownerTo = cuentas.find(c => c.id === t.toId); return belongsToFilter(ownerFrom ? (ownerFrom.ownerId || getOwnerFallback(ownerFrom.name)) : 'Shared') || belongsToFilter(ownerTo ? (ownerTo.ownerId || getOwnerFallback(ownerTo.name)) : 'Shared'); }), [transferencias, cuentas, filtroPersona]);
 
@@ -192,21 +192,25 @@ function App() {
 
   useEffect(() => { const cM = new Date().toISOString().slice(0, 7); if (selectedMonth === cM && !appCargando) { setScoreHistory(prev => { if (prev[selectedMonth] !== scoreData.score) { const next = { ...prev, [selectedMonth]: scoreData.score }; db.collection('sistema').doc('scoreHistory').set(next, {merge: true}); return next; } return prev; }); } }, [scoreData.score, selectedMonth, appCargando]);
 
-  // ✨ LÓGICA PARA GUARDAR DESDE EL PANEL DE CARGA RÁPIDA
+
+  // ✨ FUNCIONES DEL WIZARD PASO A PASO
+  const handleOpenWizard = () => {
+    setQeStep(1); setQeType(''); setQeMonto(''); setQeDescripcion(''); setQeCategoria(''); setQeCuenta('');
+    setQuickEntryOpen(true);
+  };
+
   const handleQuickSave = () => {
-    if (!qeMonto || !qeCategoria || !qeCuenta) {
-      showToast("Faltan datos por seleccionar", "error");
-      return;
-    }
+    if (!qeMonto || !qeCategoria || !qeCuenta) return;
     
     const today = getLocalToday();
     const montoNum = Number(qeMonto);
+    const descFinal = qeDescripcion.trim() !== '' ? qeDescripcion : (qeType === 'egreso' ? `Gasto rápido (${qeCategoria})` : `Ingreso rápido (${qeCategoria})`);
 
     if (qeType === 'egreso') {
       addEgreso({
         id: generateId(),
         fecha: today,
-        descripcion: `Gasto rápido (${qeCategoria})`,
+        descripcion: descFinal,
         categoria: qeCategoria,
         monto: montoNum,
         interesesOtros: 0,
@@ -219,7 +223,7 @@ function App() {
       addIngreso({
         id: generateId(),
         fecha: today,
-        descripcion: `Ingreso rápido (${qeCategoria})`,
+        descripcion: descFinal,
         categoria: qeCategoria,
         monto: montoNum,
         cuentaId: qeCuenta,
@@ -229,11 +233,7 @@ function App() {
       showToast("Ingreso registrado al instante.");
     }
     
-    // Limpiar y cerrar modal
     setQuickEntryOpen(false);
-    setQeMonto('');
-    setQeCategoria('');
-    setQeCuenta('');
   };
 
   if (authChecking) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Validando seguridad...</p></div>;
@@ -305,86 +305,126 @@ function App() {
 
       {/* ✨ BOTÓN FLOTANTE (FAB) PARA REGISTRO RÁPIDO */}
       <button 
-        onClick={() => setQuickEntryOpen(true)}
+        onClick={handleOpenWizard}
         className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center justify-center z-40 transition-transform hover:scale-105 border-4 border-[#0f0f11]"
       >
         <Plus size={28} />
       </button>
 
-      {/* ✨ MINI-MODAL DE CARGA RÁPIDA */}
+      {/* ✨ MODAL TIPO WIZARD (Paso a Paso) */}
       {quickEntryOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center animate-in fade-in duration-200">
-          <div className="bg-[#17171a] w-full md:w-[450px] rounded-t-3xl md:rounded-3xl p-5 md:p-7 border border-slate-800 shadow-2xl animate-in slide-in-from-bottom-10 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-end md:items-center justify-center animate-in fade-in duration-200">
+          <div className="bg-[#17171a] w-full md:w-[400px] md:rounded-3xl rounded-t-3xl p-6 border border-slate-800 shadow-2xl animate-in slide-in-from-bottom-10 min-h-[400px] flex flex-col relative">
             
-            <div className="flex justify-between items-center mb-5 shrink-0">
-               <h3 className="text-xl font-black text-white tracking-tight">Registro Rápido</h3>
-               <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-slate-300 bg-slate-900 p-2 rounded-full transition-colors">
+            {/* Header del Wizard */}
+            <div className="flex justify-between items-center mb-6 shrink-0">
+               <div className="flex items-center gap-3">
+                 {qeStep > 1 && (
+                   <button onClick={() => setQeStep(qeStep - 1)} className="text-slate-400 hover:text-white p-1 bg-slate-800 rounded-full transition-colors">
+                     <ArrowLeftIcon size={18}/>
+                   </button>
+                 )}
+                 <div>
+                   <h3 className="text-lg font-black text-white tracking-tight">Registro Rápido</h3>
+                   <div className="flex gap-1 mt-1.5">
+                      {[1,2,3,4].map(s => (
+                        <div key={s} className={`h-1 w-6 rounded-full transition-all duration-500 ${s <= qeStep ? 'bg-indigo-500' : 'bg-slate-800'}`}></div>
+                      ))}
+                   </div>
+                 </div>
+               </div>
+               <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-rose-400 bg-slate-900 p-2 rounded-full transition-colors">
                  <XIcon size={18}/>
                </button>
             </div>
 
-            <div className="flex bg-slate-900 rounded-lg p-1 mb-5 shrink-0">
-              <button onClick={()=>setQeType('egreso')} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${qeType==='egreso'?'bg-rose-600 text-white shadow-md':'text-slate-500 hover:text-slate-300'}`}>Gasto</button>
-              <button onClick={()=>setQeType('ingreso')} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${qeType==='ingreso'?'bg-emerald-600 text-white shadow-md':'text-slate-500 hover:text-slate-300'}`}>Ingreso</button>
-            </div>
+            {/* Cuerpos de cada paso */}
+            <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-right-4 duration-300">
+              
+              {/* PASO 1: TIPO DE MOVIMIENTO */}
+              {qeStep === 1 && (
+                <div className="space-y-4">
+                  <h4 className="text-center text-slate-400 font-bold mb-6">¿Qué vas a registrar?</h4>
+                  <button onClick={() => { setQeType('egreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-6 bg-rose-500/10 border-2 border-rose-500/30 hover:border-rose-500 rounded-2xl text-rose-400 font-black text-xl transition-all hover:scale-[1.02] shadow-lg shadow-rose-500/5">
+                    📉 Es un Gasto
+                  </button>
+                  <button onClick={() => { setQeType('ingreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-6 bg-emerald-500/10 border-2 border-emerald-500/30 hover:border-emerald-500 rounded-2xl text-emerald-400 font-black text-xl transition-all hover:scale-[1.02] shadow-lg shadow-emerald-500/5">
+                    📈 Es un Ingreso
+                  </button>
+                </div>
+              )}
 
-            <div className="overflow-y-auto pr-1 space-y-5 flex-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full pb-4">
-                
-                {/* 1. MONTO (Gigante) */}
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">1. ¿Cuánto fue?</label>
-                  <div className="relative">
-                    <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>$</span>
-                    <input 
-                      type="number" 
-                      value={qeMonto} 
-                      onChange={(e)=>setQeMonto(e.target.value)} 
-                      className={`w-full bg-slate-950 border-2 ${qeType === 'egreso' ? 'border-rose-500/30 focus:border-rose-500' : 'border-emerald-500/30 focus:border-emerald-500'} text-white rounded-xl pl-10 pr-4 py-4 text-2xl font-black outline-none transition-colors shadow-inner`}
-                      placeholder="0"
-                      autoFocus
-                    />
+              {/* PASO 2: MONTO Y DESCRIPCIÓN */}
+              {qeStep === 2 && (
+                <div className="space-y-6">
+                  <div>
+                    <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>Monto exacto</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-500">$</span>
+                      <input type="number" value={qeMonto} onChange={(e)=>setQeMonto(e.target.value)} className="w-full bg-slate-950 border-2 border-slate-800 focus:border-indigo-500 text-white rounded-2xl pl-10 pr-4 py-4 text-3xl font-black outline-none transition-colors shadow-inner" placeholder="0" autoFocus />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Descripción corta (Opcional)</label>
+                    <input type="text" value={qeDescripcion} onChange={(e)=>setQeDescripcion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-white rounded-xl px-4 py-3 text-sm font-medium outline-none transition-colors" placeholder="Ej. Almuerzo KFC" />
+                  </div>
+                  <button disabled={!qeMonto} onClick={() => setQeStep(3)} className="w-full py-4 rounded-xl font-black text-white text-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:bg-slate-800 transition-all shadow-lg mt-2">
+                    Siguiente
+                  </button>
+                </div>
+              )}
+
+              {/* PASO 3: CATEGORÍA */}
+              {qeStep === 3 && (
+                <div className="h-full flex flex-col">
+                  <h4 className="text-center text-slate-400 font-bold mb-4">Selecciona la categoría</h4>
+                  <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="grid grid-cols-2 gap-2">
+                      {(qeType === 'egreso' ? categoriasMaestras : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
+                        <button 
+                          key={cat} 
+                          onClick={() => { setQeCategoria(cat); setQeStep(4); }}
+                          className={`p-3 rounded-xl text-xs font-bold text-left transition-all border bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10 active:scale-95`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* 2. CATEGORÍA (Chips Visuales) */}
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">2. ¿Qué fue?</label>
-                  <div className="flex flex-wrap gap-2">
-                    {(qeType === 'egreso' ? categoriasMaestras : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
-                      <button 
-                        key={cat} 
-                        onClick={() => setQeCategoria(cat)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${qeCategoria === cat ? (qeType === 'egreso' ? 'bg-rose-500/20 text-rose-400 border-rose-500' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500') : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3. CUENTA (Chips Visuales) */}
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">3. ¿De dónde salió?</label>
-                  <div className="flex flex-wrap gap-2">
+              {/* PASO 4: CUENTA Y GUARDAR */}
+              {qeStep === 4 && (
+                <div className="space-y-6">
+                  <h4 className="text-center text-slate-400 font-bold mb-2">¿Con qué cuenta fue?</h4>
+                  <div className="grid grid-cols-1 gap-2">
                     {activeCalculatedAccounts.filter(c => ['bank', 'cash', 'credit'].includes(c.type)).map(acc => (
                       <button 
                         key={acc.id} 
                         onClick={() => setQeCuenta(acc.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 ${qeCuenta === acc.id ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600'}`}
+                        className={`p-4 rounded-xl text-sm font-bold text-left transition-all border flex justify-between items-center ${qeCuenta === acc.id ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}
                       >
-                        {acc.type === 'cash' ? '💵' : acc.type === 'credit' ? '💳' : '🏦'} {acc.name}
+                        <span className="flex items-center gap-2">
+                          {acc.type === 'cash' ? '💵' : acc.type === 'credit' ? '💳' : '🏦'} {acc.name}
+                        </span>
+                        {qeCuenta === acc.id && <div className="w-2 h-2 bg-white rounded-full"></div>}
                       </button>
                     ))}
                   </div>
+                  
+                  {qeCuenta && (
+                    <button 
+                      onClick={handleQuickSave} 
+                      className={`w-full py-4 rounded-xl font-black text-white text-lg transition-transform hover:scale-[1.02] animate-in fade-in slide-in-from-bottom-4 shadow-xl ${qeType === 'egreso' ? 'bg-rose-600 shadow-rose-500/20' : 'bg-emerald-600 shadow-emerald-500/20'}`}
+                    >
+                      ¡Guardar Definitivo!
+                    </button>
+                  )}
                 </div>
-            </div>
+              )}
 
-            <button 
-              onClick={handleQuickSave} 
-              className={`w-full py-4 rounded-xl font-black text-white text-lg mt-2 shrink-0 shadow-lg transition-transform hover:scale-[1.02] ${qeType === 'egreso' ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'}`}
-            >
-              ¡Guardar Movimiento!
-            </button>
+            </div>
           </div>
         </div>
       )}
