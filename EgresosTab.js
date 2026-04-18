@@ -1,545 +1,634 @@
-const EgresosTab = ({ egresos, addEgreso, updateEgreso, removeEgreso,
-                       pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
-                       comprasCuotas, addComprasCuotas, removeComprasCuotas,
-                       cuentas, selectedMonth, presupuestos, categoriasMaestras, showToast }) => {
-      const { useState, useRef, useMemo } = React;
-      const todayStr = getLocalToday();
+const EgresosTab = ({ 
+  egresos, 
+  addEgreso, 
+  updateEgreso, 
+  removeEgreso, 
+  pagosFijos, 
+  addPagoFijo, 
+  updatePagoFijo, 
+  removePagoFijo, 
+  comprasCuotas, 
+  addComprasCuotas, 
+  removeComprasCuotas, 
+  cuentas, 
+  selectedMonth, 
+  presupuestos, 
+  categoriasMaestras, 
+  showToast 
+}) => {
+  const { useState, useMemo } = React;
+
+  const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
+    style: 'currency', 
+    currency: 'COP', 
+    maximumFractionDigits: 0 
+  }).format(val);
+
+  const getLocalToday = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  };
+
+  // ============================================================================
+  // 1. ESTADOS DEL FORMULARIO PRINCIPAL (Gasto Individual)
+  // ============================================================================
+  const [fecha, setFecha] = useState(getLocalToday());
+  const [descripcion, setDescripcion] = useState('');
+  const [monto, setMonto] = useState('');
+  const [categoria, setCategoria] = useState('');
+  const [cuentaId, setCuentaId] = useState('');
+  const [tipo, setTipo] = useState('Variable');
+
+  // ============================================================================
+  // 2. ESTADOS DE EDICIÓN EN LÍNEA
+  // ============================================================================
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({});
+
+  // ============================================================================
+  // 3. ESTADOS DE FILTROS PARA EL HISTORIAL
+  // ============================================================================
+  const [filters, setFilters] = useState({
+    descripcion: '',
+    tipo: 'Ambos',
+    categoria: '',
+    cuenta: ''
+  });
+
+  // ============================================================================
+  // 4. ESTADOS PARA COMPRAS A CUOTAS
+  // ============================================================================
+  const [showModalCuotas, setShowModalCuotas] = useState(false);
+  const [cuotaData, setCuotaData] = useState({
+    fecha: getLocalToday(),
+    descripcion: '',
+    categoria: '',
+    montoTotal: '',
+    numeroCuotas: '',
+    tarjetaId: '',
+    tasaMensual: ''
+  });
+
+  // Filtros de cuentas útiles para pagos
+  const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
+  const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
+
+  // ============================================================================
+  // CÁLCULOS PRINCIPALES DEL MES
+  // ============================================================================
+  const egresosMes = useMemo(() => {
+    return egresos
+      .filter(e => e.fecha.startsWith(selectedMonth))
+      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  }, [egresos, selectedMonth]);
+
+  const totalMes = egresosMes.reduce((s, e) => s + Number(e.monto), 0);
+  const totalFijos = egresosMes.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+  const totalVariables = egresosMes.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+
+  // ============================================================================
+  // FILTRADO DEL HISTORIAL COMPLETO
+  // ============================================================================
+  const egresosFiltrados = useMemo(() => {
+    return egresosMes.filter(egreso => {
+      const matchDesc = egreso.descripcion.toLowerCase().includes(filters.descripcion.toLowerCase());
+      const matchTipo = filters.tipo === 'Ambos' || egreso.tipo === filters.tipo;
+      const matchCat = filters.categoria === '' || egreso.categoria === filters.categoria;
+      const matchCuenta = filters.cuenta === '' || egreso.cuentaId === filters.cuenta;
+      return matchDesc && matchTipo && matchCat && matchCuenta;
+    });
+  }, [egresosMes, filters]);
+
+  // ============================================================================
+  // FUNCIONES DE REGISTRO INDIVIDUAL
+  // ============================================================================
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!descripcion || !monto || !categoria || !cuentaId) {
+      showToast('Por favor completa todos los campos.', 'error');
+      return;
+    }
+    
+    addEgreso({
+      id: generateId(),
+      fecha,
+      descripcion,
+      categoria,
+      monto: Number(monto),
+      cuentaId,
+      tipo,
+      deudaId: null
+    });
+    
+    setDescripcion('');
+    setMonto('');
+    showToast('Gasto registrado correctamente.');
+  };
+
+  const startEditing = (egreso) => {
+    setEditingId(egreso.id);
+    setEditData({ ...egreso });
+  };
+
+  const saveEdit = async () => {
+    if (!editData.descripcion || !editData.monto || !editData.cuentaId || !editData.categoria) {
+      showToast('Faltan datos en la edición', 'error');
+      return;
+    }
+    await updateEgreso(editingId, { ...editData, monto: Number(editData.monto) });
+    setEditingId(null);
+    showToast('Gasto actualizado.');
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm('¿Estás seguro de eliminar este gasto?')) {
+      removeEgreso(id);
+      showToast('Gasto eliminado.', 'error');
+    }
+  };
+
+  const limpiarFiltros = () => {
+    setFilters({ descripcion: '', tipo: 'Ambos', categoria: '', cuenta: '' });
+  };
+
+  // ============================================================================
+  // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
+  // ============================================================================
+  const registrarPagoFijo = (pf) => {
+    const defaultCuenta = cuentasActivas.length > 0 ? cuentasActivas[0].id : '';
+    
+    addEgreso({
+      id: generateId(),
+      fecha: getLocalToday(),
+      descripcion: pf.descripcion,
+      categoria: pf.categoria || 'Otros',
+      monto: Number(pf.montoEstimado),
+      cuentaId: defaultCuenta,
+      tipo: 'Fijo',
+      deudaId: null
+    });
+    showToast(`Pago de ${pf.descripcion} registrado.`);
+  };
+
+  const checkPagoRealizado = (pfDesc) => {
+    return egresosMes.some(e => e.tipo === 'Fijo' && e.descripcion.toLowerCase().includes(pfDesc.toLowerCase()));
+  };
+
+  // ============================================================================
+  // FUNCIONES PARA COMPRAS A CUOTAS
+  // ============================================================================
+  const handleAddCuotas = (e) => {
+    e.preventDefault();
+    if (!cuotaData.descripcion || !cuotaData.montoTotal || !cuotaData.numeroCuotas || !cuotaData.tarjetaId || !cuotaData.categoria) {
+      showToast('Faltan datos de la compra a cuotas', 'error');
+      return;
+    }
+
+    addComprasCuotas({
+      id: generateId(),
+      fecha: cuotaData.fecha,
+      descripcion: cuotaData.descripcion,
+      categoria: cuotaData.categoria,
+      montoTotal: Number(cuotaData.montoTotal),
+      numeroCuotas: Number(cuotaData.numeroCuotas),
+      tarjetaId: cuotaData.tarjetaId,
+      tasaMensual: Number(cuotaData.tasaMensual) || 0,
+      cuotasPagadas: 0,
+      estado: 'Activa'
+    });
+
+    // Registrar la deuda en el saldo de la tarjeta
+    addEgreso({
+      id: generateId(),
+      fecha: cuotaData.fecha,
+      descripcion: `Compra a cuotas: ${cuotaData.descripcion}`,
+      categoria: cuotaData.categoria,
+      monto: Number(cuotaData.montoTotal),
+      cuentaId: cuotaData.tarjetaId,
+      tipo: 'Variable',
+      esCuota: true
+    });
+
+    setShowModalCuotas(false);
+    setCuotaData({ fecha: getLocalToday(), descripcion: '', categoria: '', montoTotal: '', numeroCuotas: '', tarjetaId: '', tasaMensual: '' });
+    showToast('Compra a cuotas registrada exitosamente.');
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
-      const [gastoForm, setGastoForm] = useState({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', interesesOtros: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
-      const [errorsVar, setErrorsVar] = useState({});
-      
-      const [expanded, setExpanded] = useState({ form: true, cuotas: false, fijos: false, historial: true });
+      {/* ENCABEZADO */}
+      <header className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+          <Receipt className="text-rose-400 w-8 h-8"/> 
+          Gestión de Egresos
+        </h1>
+        <p className="text-sm text-slate-400 mt-1">
+          Registra tus gastos diarios, pagos fijos y compras a cuotas.
+        </p>
+      </header>
 
-      const [sortConfig, setSortConfig] = useState({ key: 'fecha', direction: 'desc' });
-      const [filtros, setFiltros] = useState({ descripcion: '', tipo: 'Todos', categoria: 'Todas', cuenta: 'Todas' });
+      {/* TARJETAS RESUMEN */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4 border-t-4 border-t-rose-500">
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Total Gastado (Mes)</p>
+          <p className="text-xl md:text-2xl font-black text-rose-400">{formatCOP(totalMes)}</p>
+        </Card>
+        <Card className="p-4 border-t-4 border-t-orange-500">
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Gastos Fijos</p>
+          <p className="text-xl md:text-2xl font-black text-orange-400">{formatCOP(totalFijos)}</p>
+        </Card>
+        <Card className="p-4 border-t-4 border-t-blue-500">
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Gastos Variables</p>
+          <p className="text-xl md:text-2xl font-black text-blue-400">{formatCOP(totalVariables)}</p>
+        </Card>
+      </div>
 
-      const varRef = useRef(null);
-      const fileInputRef = useRef(null);
+      {/* ============================================================================ */}
+      {/* 1. FORMULARIO REGISTRO NORMAL */}
+      {/* ============================================================================ */}
+      <Card className="border-t-4 border-t-rose-500">
+        <h2 className="text-lg font-bold text-white mb-4">1. Registrar Gasto Individual</h2>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          
+          <div className="md:col-span-1">
+            <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
+            <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"/>
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+            <input type="text" required value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej. Almuerzo, Recibo luz..." className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"/>
+          </div>
+          
+          <div className="md:col-span-1">
+            <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
+            <select required value={categoria} onChange={(e) => setCategoria(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none">
+              <option value="">Seleccione...</option>
+              {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
 
-      const toggleSection = (section) => setExpanded(prev => ({ ...prev, [section]: !prev[section] }));
+          <div className="md:col-span-1">
+            <label className="text-xs font-bold text-slate-500 uppercase">Cuenta de Pago</label>
+            <select required value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none">
+              <option value="">Seleccione...</option>
+              {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.type === 'cash' ? '💵' : c.type === 'credit' ? '💳' : '🏦'} {c.name}</option>)}
+            </select>
+          </div>
+          
+          <div className="md:col-span-1">
+            <label className="text-xs font-bold text-slate-500 uppercase">Monto</label>
+            <input type="number" required value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="$ 0" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"/>
+          </div>
 
-      const isCreditCard = gastoForm.metodoPago === 'credit';
+          <div className="md:col-span-6 flex justify-between items-center mt-2">
+             <div className="flex bg-slate-950 rounded-lg border border-slate-800 p-1">
+                <button type="button" onClick={() => setTipo('Variable')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}>Variable</button>
+                <button type="button" onClick={() => setTipo('Fijo')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}>Fijo</button>
+             </div>
+             
+            <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-6 rounded-xl flex items-center gap-2 transition-colors shadow-lg shadow-rose-500/20">
+              <Plus size={18} /> Agregar Gasto
+            </button>
+          </div>
+        </form>
+      </Card>
 
-      const cuotaMensual = useMemo(() => {
-        if (!isCreditCard) return 0;
-        const p = Number(gastoForm.monto) || 0;
-        const n = Number(gastoForm.cuotas) || 1;
-        const ea = Number(gastoForm.tasaEA) || 0;
-        const tm = Math.pow(1 + ea/100, 1/12) - 1;
-        if (p <= 0 || n <= 0) return 0;
-        if (tm === 0) return p / n;
-        return (p * tm) / (1 - Math.pow(1 + tm, -n));
-      }, [isCreditCard, gastoForm.monto, gastoForm.cuotas, gastoForm.tasaEA]);
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ============================================================================ */}
+        {/* 2. COMPRAS A CUOTAS (TARJETAS DE CRÉDITO) */}
+        {/* ============================================================================ */}
+        <Card className="border-t-4 border-t-indigo-500 flex flex-col max-h-[400px]">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+               <CreditCard size={20} className="text-indigo-400"/>
+               2. Compras a Cuotas
+            </h2>
+            <button onClick={() => setShowModalCuotas(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-colors">
+              <Plus size={14}/> Nueva
+            </button>
+          </div>
 
-      const handleMetodoChange = (e) => {
-        setGastoForm(prev => ({...prev, metodoPago: e.target.value, cuentaId: '', cuotas: '', tasaEA: ''}));
-      };
+          <div className="flex-1 overflow-y-auto pr-1 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+            {comprasCuotas.filter(c => c.estado === 'Activa').length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-10">No tienes compras a cuotas activas.</p>
+            ) : (
+              comprasCuotas.filter(c => c.estado === 'Activa').map(cuota => {
+                const tarjetaAsociada = tarjetasCredito.find(t => t.id === cuota.tarjetaId);
+                const valorCuotaAprox = cuota.montoTotal / cuota.numeroCuotas;
 
-      const handleCuentaChange = (e) => {
-        const cId = e.target.value;
-        const card = cuentas.find(c => c.id === cId);
-        setGastoForm(prev => ({ ...prev, cuentaId: cId, tasaEA: card?.type === 'credit' ? (card.tasaEA || 0) : '', cuotas: card?.type === 'credit' ? (prev.cuotas || '1') : '' }));
-      };
+                return (
+                  <div key={cuota.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between items-center relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 bottom-0 w-1 bg-indigo-500"></div>
+                    <div className="pl-3">
+                       <p className="text-sm font-bold text-white">{cuota.descripcion}</p>
+                       <p className="text-[10px] text-slate-400 mt-0.5">
+                         {tarjetaAsociada?.name || 'Tarjeta'} • {cuota.cuotasPagadas}/{cuota.numeroCuotas} Cuotas
+                       </p>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-sm font-black text-indigo-400">{formatCOP(valorCuotaAprox)} <span className="text-[9px] text-slate-500 font-normal">/mes</span></p>
+                       <p className="text-[10px] text-slate-500 mt-0.5">Total: {formatCOP(cuota.montoTotal)}</p>
+                    </div>
+                    <button onClick={() => removeComprasCuotas(cuota.id)} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-2 rounded-lg shadow-lg transition-all hover:bg-rose-400">
+                      <Trash2 size={14}/>
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </Card>
 
-      const guardarGasto = (e) => {
-        e.preventDefault();
-        let errs = {};
-        if(!gastoForm.descripcion) errs.descripcion = "Obligatorio";
-        if(!gastoForm.monto) errs.monto = "Obligatorio";
-        if(!gastoForm.metodoPago) errs.metodoPago = "Obligatorio";
-        if(!gastoForm.cuentaId) errs.cuentaId = "Obligatorio";
-        if(gastoForm.editSource !== 'cuotas' && !gastoForm.fecha) errs.fecha = "Obligatorio";
-        if(isCreditCard && !gastoForm.cuotas) errs.cuotas = "Obligatorio";
-        if(gastoForm.esPagoDeuda && !gastoForm.deudaDestinoId) errs.deudaDestinoId = "Obligatorio";
-        
-        const interesVal = Number(gastoForm.interesesOtros) || 0;
-        if(interesVal > Number(gastoForm.monto)) errs.interesesOtros = "No puede ser mayor al monto total";
-        
-        if(Object.keys(errs).length > 0) { setErrorsVar(errs); return; }
+        {/* ============================================================================ */}
+        {/* 3. PAGOS FIJOS (CHECKLIST DEL MES) */}
+        {/* ============================================================================ */}
+        <Card className="border-t-4 border-t-orange-500 flex flex-col max-h-[400px]">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+               <CheckSquare size={20} className="text-orange-400"/>
+               3. Pagos Fijos (Checklist)
+            </h2>
+            <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+               {pagosFijos.filter(pf => checkPagoRealizado(pf.descripcion)).length} / {pagosFijos.length} Pagados
+            </span>
+          </div>
 
-        if (gastoForm.editSource === 'cuotas') {
-            const cc = comprasCuotas.find(c => c.id === gastoForm.id);
-            if (cc) {
-              const updated = { ...cc, tarjetaId: gastoForm.cuentaId, descripcion: gastoForm.descripcion, montoTotal: Number(gastoForm.monto), cuotasTotales: Number(gastoForm.cuotas), valorMensual: Math.round(cuotaMensual) };
-              removeComprasCuotas(cc.id);
-              addComprasCuotas(updated);
-            }
-            showToast("Compra a cuotas actualizada");
-        } else if (gastoForm.editSource === 'historial') {
-            const eg = egresos.find(e => e.id === gastoForm.id);
-            if (eg) updateEgreso(gastoForm.id, {
-                ...eg,
-                fecha: gastoForm.fecha,
-                descripcion: gastoForm.descripcion,
-                categoria: gastoForm.categoria,
-                monto: Number(gastoForm.monto),
-                interesesOtros: interesVal,
-                cuentaId: gastoForm.cuentaId,
-                deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : (eg.deudaId || null)
-            });
-            showToast("Gasto actualizado.");
-        } else {
-            const nuevoEgreso = {
-                id: generateId(),
-                fecha: gastoForm.fecha || todayStr,
-                descripcion: gastoForm.descripcion,
-                categoria: gastoForm.categoria,
-                monto: Number(gastoForm.monto),
-                interesesOtros: interesVal,
-                cuentaId: gastoForm.cuentaId,
-                tipo: 'Variable',
-                deudaId: gastoForm.esPagoDeuda ? gastoForm.deudaDestinoId : null
-            };
-            addEgreso(nuevoEgreso);
-
-            if (isCreditCard) {
-                addComprasCuotas({ id: generateId(), tarjetaId: gastoForm.cuentaId, descripcion: gastoForm.descripcion, montoTotal: Number(gastoForm.monto), cuotasTotales: Number(gastoForm.cuotas), valorMensual: Math.round(cuotaMensual), cuotasPagadas: 0 });
-                showToast('Gasto y Compra a cuotas registrados.');
-            } else {
-                showToast("Gasto registrado exitosamente.");
-            }
-        }
-        cancelarEdicion();
-      };
-
-      const cargarParaEditarVariable = (egreso) => {
-        const cuenta = cuentas.find(c => c.id === egreso.cuentaId);
-        const metodo = cuenta ? (cuenta.type === 'credit' ? 'credit' : cuenta.type === 'cash' ? 'cash' : 'bank') : '';
-        setGastoForm({ 
-            id: egreso.id, editSource: 'historial', fecha: egreso.fecha, descripcion: egreso.descripcion, 
-            categoria: egreso.categoria, metodoPago: metodo, cuentaId: egreso.cuentaId, 
-            monto: egreso.monto.toString(), 
-            interesesOtros: (egreso.interesesOtros || 0).toString(), 
-            cuotas: '', tasaEA: '', esPagoDeuda: !!egreso.deudaId, deudaDestinoId: egreso.deudaId || '' 
-        });
-        setErrorsVar({});
-        setExpanded(prev => ({ ...prev, form: true })); 
-        varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      const cargarParaEditarCuota = (c) => {
-        const card = cuentas.find(acc => acc.id === c.tarjetaId);
-        setGastoForm({ id: c.id, editSource: 'cuotas', fecha: todayStr, descripcion: c.descripcion, categoria: categoriasMaestras[0] || 'Otros', metodoPago: 'credit', cuentaId: c.tarjetaId, monto: c.montoTotal.toString(), interesesOtros: '', cuotas: c.cuotasTotales.toString(), tasaEA: card ? card.tasaEA : 0, esPagoDeuda: false, deudaDestinoId: '' });
-        setErrorsVar({});
-        setExpanded(prev => ({ ...prev, form: true })); 
-        varRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      };
-
-      const cancelarEdicion = () => {
-        setGastoForm({ id: null, editSource: null, fecha: todayStr, descripcion: '', categoria: categoriasMaestras[0] || 'Otros', metodoPago: '', cuentaId: '', monto: '', interesesOtros: '', cuotas: '', tasaEA: '', esPagoDeuda: false, deudaDestinoId: '' });
-        setErrorsVar({});
-      }
-
-      const procesarPagoFijo = (pagoFijoId, cuentaId, montoFinal) => {
-        if(!cuentaId) { showToast("Selecciona de dónde vas a pagar.", "error"); return; }
-        const pf = pagosFijos.find(p => p.id === pagoFijoId);
-        const fechaActual = new Date();
-        const isCurrentMonth = selectedMonth === fechaActual.toISOString().slice(0, 7);
-        const diaStr = isCurrentMonth ? fechaActual.getDate().toString().padStart(2, '0') : '01';
-        const fechaPago = `${selectedMonth}-${diaStr}`; 
-        
-        let deudaIdDetectada = null;
-        const posiblesDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
-        for (const pd of posiblesDeudas) {
-            if (pf.descripcion.toLowerCase().includes(pd.name.toLowerCase()) || pf.categoria.toLowerCase().includes(pd.name.toLowerCase())) {
-                deudaIdDetectada = pd.id; break;
-            }
-        }
-
-        const nuevoEgreso = { 
-          id: generateId(), fecha: fechaPago, descripcion: pf.descripcion, 
-          categoria: pf.categoria, monto: Number(montoFinal) || pf.monto, interesesOtros: 0,
-          cuentaId: cuentaId, pagoFijoId: pf.id, tipo: 'Fijo',
-          deudaId: deudaIdDetectada
-        };
-        addEgreso(nuevoEgreso);
-        showToast(`Pago de ${pf.descripcion} registrado.`);
-      };
-
-      const avanzarCuota = (c) => {
-        removeComprasCuotas(c.id);
-        addComprasCuotas({ ...c, cuotasPagadas: c.cuotasPagadas + 1 });
-        addEgreso({
-            id: generateId(), fecha: getLocalToday(), descripcion: `Cuota ${c.cuotasPagadas + 1}/${c.cuotasTotales}: ${c.descripcion}`,
-            categoria: 'Tarjeta de crédito', monto: c.valorMensual, interesesOtros: 0,
-            cuentaId: c.tarjetaId, tipo: 'Variable', deudaId: c.tarjetaId
-        });
-        showToast("Cuota sumada y gasto registrado en el historial.");
-      };
-
-      const egresosMesBase = egresos.filter(d => d.fecha.startsWith(selectedMonth));
-      
-      const pagosPendientes = pagosFijos.map(pf => {
-        const egresoEsteMes = egresosMesBase.find(e => e.pagoFijoId === pf.id);
-        return { ...pf, pagado: !!egresoEsteMes, egresoInfo: egresoEsteMes };
-      }).sort((a, b) => a.pagado - b.pagado);
-
-      const totalCompromisoCuotas = comprasCuotas.filter(c => c.cuotasPagadas < c.cuotasTotales).reduce((s, c) => s + c.valorMensual, 0);
-      const cuentasPermitidasPago = cuentas.filter(c => ['bank', 'cash', 'credit'].includes(c.type)).map(c => ({value: c.id, label: c.name}));
-
-      const cuentasFiltradas = useMemo(() => {
-        if(gastoForm.metodoPago === 'cash') return cuentas.filter(c => c.type === 'cash');
-        if(gastoForm.metodoPago === 'bank') return cuentas.filter(c => c.type === 'bank');
-        if(gastoForm.metodoPago === 'credit') return cuentas.filter(c => c.type === 'credit');
-        return [];
-      }, [cuentas, gastoForm.metodoPago]);
-
-      const { egresosProcesados, categoriasPresentes, cuentasPresentes } = useMemo(() => {
-        const categoriasSet = new Set();
-        const cuentasSet = new Set();
-        let lista = [...egresosMesBase];
-
-        lista.forEach(e => {
-            categoriasSet.add(e.categoria);
-            if (e.cuentaId) cuentasSet.add(e.cuentaId);
-        });
-
-        if (filtros.tipo !== 'Todos') lista = lista.filter(e => e.tipo === filtros.tipo);
-        if (filtros.categoria !== 'Todas') lista = lista.filter(e => e.categoria === filtros.categoria);
-        if (filtros.cuenta !== 'Todas') lista = lista.filter(e => e.cuentaId === filtros.cuenta);
-        if (filtros.descripcion.trim() !== '') {
-            const search = filtros.descripcion.toLowerCase();
-            lista = lista.filter(e => e.descripcion.toLowerCase().includes(search));
-        }
-
-        lista.sort((a, b) => {
-            let aVal = a[sortConfig.key];
-            let bVal = b[sortConfig.key];
-
-            if (sortConfig.key === 'fecha') {
-                aVal = new Date(a.fecha).getTime();
-                bVal = new Date(b.fecha).getTime();
-            } else if (sortConfig.key === 'descripcion' || sortConfig.key === 'tipo' || sortConfig.key === 'categoria') {
-                aVal = (aVal || '').toString().toLowerCase();
-                bVal = (bVal || '').toString().toLowerCase();
-            } else if (sortConfig.key === 'monto') {
-                aVal = Number(a.monto) || 0;
-                bVal = Number(b.monto) || 0;
-            }
-
-            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        return { 
-            egresosProcesados: lista, 
-            categoriasPresentes: Array.from(categoriasSet).sort(),
-            cuentasPresentes: Array.from(cuentasSet)
-        };
-      }, [egresosMesBase, filtros, sortConfig]);
-
-      const handleSort = (key) => {
-        setSortConfig(prev => ({
-            key,
-            direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
-        }));
-      };
-
-      const SortIcon = ({ column }) => {
-          if (sortConfig.key !== column) return <span className="text-[10px] opacity-30 px-1 font-sans">↕</span>;
-          return sortConfig.direction === 'asc' ? <span className="text-[10px] text-indigo-400 px-1 font-bold font-sans">↑</span> : <span className="text-[10px] text-indigo-400 px-1 font-bold font-sans">↓</span>;
-      };
-
-      const handleExport = async () => {
-        try {
-          const xlsx = await loadSheetJS();
-          const wb = xlsx.utils.book_new();
-          const headers = ["ID", "Fecha", "Descripcion", "Categoria", "Tipo", "Cuenta", "Monto", "DeudaPagada"];
-          const data = egresos.map(e => ({ ID: e.id, Fecha: e.fecha, Descripcion: e.descripcion, Categoria: e.categoria, Tipo: e.tipo, Cuenta: cuentas.find(c=>c.id===e.cuentaId)?.name || e.cuentaId, Monto: e.monto, DeudaPagada: e.deudaId ? cuentas.find(c=>c.id===e.deudaId)?.name : '' }));
-          const ws = xlsx.utils.json_to_sheet(data.length > 0 ? data : [{}], { header: headers });
-          xlsx.utils.book_append_sheet(wb, ws, "Egresos");
-          xlsx.writeFile(wb, `Egresos_Historial_${new Date().toISOString().split('T')[0]}.xlsx`);
-          showToast("Historial de Egresos exportado con éxito.");
-        } catch(e) { showToast("Error al exportar a Excel.", "error"); }
-      };
-
-      const handleImport = async (e) => {
-        const file = e.target.files[0]; if(!file) return;
-        try {
-          const xlsx = await loadSheetJS();
-          const reader = new FileReader();
-          reader.onload = (evt) => {
-            try {
-              const wb = xlsx.read(evt.target.result, { type: 'binary' });
-              const sheetName = wb.Sheets["Egresos"] ? "Egresos" : wb.SheetNames[0];
-              const importedData = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
-              let importados = 0;
-
-              importedData.filter(i=>i.Monto).forEach(i => {
-                  const fecha = i.Fecha || new Date().toISOString().split('T')[0];
-                  const desc  = i.Descripcion || 'Egreso Importado';
-                  const monto = Number(i.Monto) || 0;
-                  const exists = egresos.some(ex => ex.fecha === fecha && ex.descripcion === desc && ex.monto === monto);
-                  if (!exists) {
-                      addEgreso({ id: i.ID || generateId(), fecha, descripcion: desc, categoria: i.Categoria || 'Otros', tipo: i.Tipo || 'Variable', monto, interesesOtros: 0, cuentaId: cuentas.find(c=>c.name===i.Cuenta)?.id || cuentas[0]?.id, deudaId: cuentas.find(c=>c.name===i.DeudaPagada)?.id || null });
-                      importados++;
-                  }
-              });
-              showToast(importados > 0 ? `Se importaron ${importados} egresos nuevos.` : "No hay egresos nuevos.");
-            } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
-          };
-          reader.readAsBinaryString(file);
-        } catch(err) { showToast("Error al abrir herramienta de Excel.", "error"); }
-        e.target.value = '';
-      };
-
-      return (
-        <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-          <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-2">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Receipt className="text-rose-500 w-6 h-6 md:w-8 md:h-8" /> Egresos</h1>
-              <p className="text-sm md:text-base text-slate-400 mt-1">Tus gastos fijos y variables unificados.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> Importar Egresos</button>
-              <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> Exportar Egresos</button>
-            </div>
-          </header>
-
-          <Card className={`border-t-4 ${gastoForm.id ? 'border-t-amber-500 bg-amber-950/10' : 'border-t-rose-500 bg-slate-900/80'}`}>
-            <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('form')} ref={varRef}>
-              <h2 className="text-base md:text-lg font-semibold text-white">
-                {gastoForm.id ? (gastoForm.editSource === 'cuotas' ? '✏️ Editar Compra a Cuotas' : '✏️ Editar Gasto Variable') : '1. Registrar Gasto o Compra a Cuotas'}
-              </h2>
-              <div className="flex items-center gap-3">
-                {gastoForm.id && <button onClick={(e) => { e.stopPropagation(); cancelarEdicion(); }} className="text-xs text-amber-400 hover:underline bg-slate-900 px-2 py-1 rounded">Cancelar Edición</button>}
-                <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.form ? 'rotate-90' : ''}`} />
-              </div>
-            </div>
-
-            {expanded.form && (
-              <form onSubmit={guardarGasto} className="grid grid-cols-2 md:grid-cols-12 gap-3 items-end mt-5 animate-in slide-in-from-top-2">
-                {gastoForm.editSource !== 'cuotas' && (
-                  <React.Fragment>
-                    <Input type="date" label="Fecha" value={gastoForm.fecha} onChange={e=>setGastoForm({...gastoForm, fecha: e.target.value})} error={errorsVar.fecha} className="col-span-1 md:col-span-2"/>
-                    <Select label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={gastoForm.categoria} onChange={e=>setGastoForm({...gastoForm, categoria: e.target.value})} required className="col-span-1 md:col-span-2" />
-                  </React.Fragment>
-                )}
-                
-                <Input label="Descripción del Gasto / Compra" placeholder="Ej: Supermercado o Televisor" value={gastoForm.descripcion} onChange={e=>setGastoForm({...gastoForm, descripcion: e.target.value})} error={errorsVar.descripcion} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-4' : 'md:col-span-3'}`} />
-                <Select label="Método de pago" options={[{value: 'cash', label: 'Efectivo'}, {value: 'bank', label: 'Débito'}, {value: 'credit', label: 'Crédito'}]} value={gastoForm.metodoPago} onChange={handleMetodoChange} error={errorsVar.metodoPago} required className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
-                <Select label={gastoForm.metodoPago === 'credit' ? 'Tarjeta' : 'Cuenta / Bolsillo'} options={cuentasFiltradas.map(c=>({value:c.id, label:c.name}))} value={gastoForm.cuentaId} onChange={handleCuentaChange} error={errorsVar.cuentaId} disabled={!gastoForm.metodoPago} className={`col-span-1 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-2'}`} />
-                
-                <Input type="number" label="Monto Total ($)" value={gastoForm.monto} onChange={e=>setGastoForm({...gastoForm, monto: e.target.value})} error={errorsVar.monto} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'md:col-span-3' : 'md:col-span-1'}`} />
-                <Input type="number" label="Intereses/Otros (Opcional)" title="Si este pago incluye intereses o cargos bancarios, anota el valor aquí." value={gastoForm.interesesOtros} onChange={e=>setGastoForm({...gastoForm, interesesOtros: e.target.value})} error={errorsVar.interesesOtros} className={`col-span-2 ${gastoForm.editSource === 'cuotas' ? 'hidden' : 'md:col-span-2 bg-amber-950/20'}`} />
-
-                {!isCreditCard && gastoForm.editSource !== 'cuotas' && (
-                   <div className="col-span-2 md:col-span-12 flex items-center gap-4 bg-slate-950 p-3 rounded-lg border border-slate-800">
-                      <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-300">
-                        <input type="checkbox" checked={gastoForm.esPagoDeuda} onChange={(e) => setGastoForm({...gastoForm, esPagoDeuda: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
-                        ¿Este gasto es el pago de un préstamo/tarjeta?
-                      </label>
-                      {gastoForm.esPagoDeuda && (
-                          <Select label="¿Qué deuda estás pagando?" options={cuentas.filter(c=>['credit','loan'].includes(c.type)).map(c=>({value:c.id, label:c.name}))} value={gastoForm.deudaDestinoId} onChange={e=>setGastoForm({...gastoForm, deudaDestinoId: e.target.value})} error={errorsVar.deudaDestinoId} className="flex-1" />
-                      )}
-                   </div>
-                )}
-
-                {isCreditCard && (
-                  <div className="col-span-2 md:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3 mt-2 p-3 bg-indigo-950/20 border border-indigo-500/20 rounded-lg">
-                    <Input type="number" label="Nº Cuotas" value={gastoForm.cuotas} onChange={e=>setGastoForm({...gastoForm, cuotas: e.target.value})} error={errorsVar.cuotas} className="col-span-1" />
-                    <Input type="number" label="Tasa E.A. (%)" value={gastoForm.tasaEA} onChange={e=>setGastoForm({...gastoForm, tasaEA: e.target.value})} step="0.01" className="col-span-1 bg-slate-900" />
-                    <div className="flex flex-col gap-1.5 col-span-2 md:col-span-2">
-                      <label className="text-xs font-medium text-slate-400">Valor Mensual</label>
-                      <div className="bg-slate-950 border border-indigo-500 rounded-lg px-3 py-2.5 md:py-2 text-sm text-indigo-400 font-bold h-full flex items-center">
-                        {formatCOP(Math.round(cuotaMensual))}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+            {pagosFijos.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-10">No has configurado pagos fijos en la pestaña Presupuestos.</p>
+            ) : (
+              pagosFijos.sort((a,b) => a.diaPago - b.diaPago).map(pf => {
+                const isPaid = checkPagoRealizado(pf.descripcion);
+                return (
+                  <div key={pf.id} className={`p-3 rounded-xl border flex items-center justify-between transition-all ${isPaid ? 'bg-emerald-900/10 border-emerald-500/20 opacity-60' : 'bg-slate-950 border-slate-800 hover:border-orange-500/30'}`}>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => !isPaid && registrarPagoFijo(pf)} disabled={isPaid} className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${isPaid ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-slate-900 border-slate-600 text-transparent hover:border-orange-500'}`}>
+                        <Check size={14} />
+                      </button>
+                      <div>
+                        <p className={`text-sm font-bold ${isPaid ? 'text-emerald-400 line-through' : 'text-slate-200'}`}>{pf.descripcion}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Día sugerido: {pf.diaPago}</p>
                       </div>
                     </div>
+                    <p className={`text-sm font-black ${isPaid ? 'text-emerald-500/50' : 'text-orange-400'}`}>
+                      {formatCOP(pf.montoEstimado)}
+                    </p>
                   </div>
-                )}
+                );
+              })
+            )}
+          </div>
+        </Card>
+      </div>
 
-                <div className="col-span-2 md:col-span-12 mt-2 flex gap-2">
-                  <button type="submit" className={`flex-1 ${gastoForm.id ? 'bg-amber-600 hover:bg-amber-700' : (isCreditCard ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-rose-600 hover:bg-rose-700')} text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors`}>
-                    {gastoForm.id ? 'Actualizar Registro' : <><Plus size={18} /> Registrar {isCreditCard ? 'Compra a Cuotas' : 'Gasto'}</>}
+      {/* ============================================================================ */}
+      {/* 4. TABLA HISTORIAL COMPLETA (COLUMNAS CATEGORÍA Y CUENTA SEPARADAS) */}
+      {/* ============================================================================ */}
+      <Card className="flex flex-col border-t-4 border-t-slate-600 mt-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <List size={18} className="text-slate-400"/>
+            4. Historial Completo de Egresos
+          </h2>
+          <span className="bg-slate-900 border border-slate-700 text-slate-300 text-xs px-3 py-1 rounded-full font-bold">
+            {egresosFiltrados.length} registros
+          </span>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/50">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead>
+              {/* ENCABEZADOS PRINCIPALES */}
+              <tr className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900">
+                <th className="p-4 font-bold w-[10%]">Fecha</th>
+                <th className="p-4 font-bold w-[25%]">Descripción</th>
+                <th className="p-4 font-bold w-[12%] text-center">Fijo/Var</th>
+                <th className="p-4 font-bold w-[15%]">Categoría</th>
+                <th className="p-4 font-bold w-[15%]">Cuenta</th>
+                <th className="p-4 font-bold w-[15%] text-right">Monto / Intereses</th>
+                <th className="p-4 font-bold text-center w-[8%]">Acciones</th>
+              </tr>
+              
+              {/* FILA DE FILTROS INTELIGENTES DIVIDIDOS */}
+              <tr className="border-b-2 border-slate-700 bg-slate-900/50">
+                <th className="p-2"></th>
+                <th className="p-2">
+                  <input 
+                    type="text" 
+                    placeholder="Buscar en descripción..." 
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[11px] text-white focus:border-rose-500 outline-none placeholder:text-slate-600"
+                    value={filters.descripcion} 
+                    onChange={e => setFilters({...filters, descripcion: e.target.value})}
+                  />
+                </th>
+                <th className="p-2">
+                  <select 
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[11px] text-white focus:border-rose-500 outline-none"
+                    value={filters.tipo} 
+                    onChange={e => setFilters({...filters, tipo: e.target.value})}
+                  >
+                    <option value="Ambos">Ambos</option>
+                    <option value="Fijo">Fijo</option>
+                    <option value="Variable">Variable</option>
+                  </select>
+                </th>
+                <th className="p-2">
+                  <select 
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[11px] text-white focus:border-rose-500 outline-none"
+                    value={filters.categoria} 
+                    onChange={e => setFilters({...filters, categoria: e.target.value})}
+                  >
+                    <option value="">Categorías (Todas)</option>
+                    {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </th>
+                <th className="p-2">
+                  <select 
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[11px] text-white focus:border-rose-500 outline-none"
+                    value={filters.cuenta} 
+                    onChange={e => setFilters({...filters, cuenta: e.target.value})}
+                  >
+                    <option value="">Cuentas (Todas)</option>
+                    {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </th>
+                <th className="p-2"></th>
+                <th className="p-2 text-center">
+                  <button 
+                    onClick={limpiarFiltros} 
+                    className="text-[10px] uppercase font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 px-2 py-1 rounded w-full transition-colors"
+                  >
+                    Limpiar
                   </button>
-                  {gastoForm.id && <button type="button" onClick={cancelarEdicion} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition-colors">Cancelar</button>}
-                </div>
-              </form>
-            )}
-          </Card>
+                </th>
+              </tr>
+            </thead>
 
-          <Card className="border-t-4 border-t-indigo-500 bg-slate-900/80">
-            <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('cuotas')}>
-              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><ShoppingCart size={20} className="text-indigo-400"/> 2. Compras a Cuotas Activas</h2>
-              <div className="flex gap-4 items-center">
-                <p className="hidden md:block text-[10px] md:text-xs font-bold text-indigo-400 bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-500/20">Compromiso Mensual: {formatCOP(totalCompromisoCuotas)}</p>
-                <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.cuotas ? 'rotate-90' : ''}`} />
-              </div>
-            </div>
-            {expanded.cuotas && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5 animate-in slide-in-from-top-2">
-                {comprasCuotas.filter(c => c.cuotasPagadas < c.cuotasTotales).map(c => {
-                  const progreso = (c.cuotasPagadas / c.cuotasTotales) * 100;
+            <tbody className="text-sm">
+              {egresosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="p-8 text-center text-slate-500 font-medium">
+                    No se encontraron gastos con esos filtros.
+                  </td>
+                </tr>
+              ) : (
+                egresosFiltrados.map(egreso => {
+                  const isEditing = editingId === egreso.id;
+                  const cuentaObj = cuentas.find(c => c.id === egreso.cuentaId);
+                  const cuentaName = cuentaObj?.name || 'Cuenta eliminada';
+                  
                   return (
-                    <div key={c.id} className={`bg-slate-950 border rounded-lg p-4 relative group transition-colors ${gastoForm.id === c.id && gastoForm.editSource === 'cuotas' ? 'border-amber-500/50 bg-amber-950/20' : 'border-slate-800'}`}>
-                      <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => { e.stopPropagation(); cargarParaEditarCuota(c); }} className="text-slate-600 hover:text-indigo-400 p-1"><Edit3 size={14}/></button>
-                        <button onClick={(e) => { e.stopPropagation(); removeComprasCuotas(c.id); showToast("Compra a cuotas eliminada"); }} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
-                      </div>
-                      <p className="font-bold text-slate-200">{c.descripcion}</p>
-                      <p className="text-[10px] text-indigo-400 mb-2">{cuentas.find(acc=>acc.id===c.tarjetaId)?.name}</p>
-                      <div className="flex justify-between text-xs text-slate-400 mb-1"><span>Pagadas: {c.cuotasPagadas}</span><span>Faltan: {c.cuotasTotales - c.cuotasPagadas}</span></div>
-                      <div className="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div className="bg-indigo-500 h-1.5 rounded-full transition-all" style={{width: `${progreso}%`}}></div></div>
-                      <div className="flex justify-between items-center"><span className="text-sm font-bold text-slate-300">{formatCOP(c.valorMensual)}/mes</span><button onClick={(e) => { e.stopPropagation(); avanzarCuota(c); }} className="text-[10px] bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 px-2 py-1 rounded font-bold">+1 Pagada</button></div>
-                    </div>
-                  )
-                })}
-                {comprasCuotas.filter(c => c.cuotasPagadas < c.cuotasTotales).length === 0 && <p className="text-slate-500 text-sm">No hay compras a cuotas activas.</p>}
-              </div>
-            )}
-          </Card>
+                    <tr key={egreso.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                      
+                      {/* FECHA */}
+                      <td className="p-4 text-slate-400 text-xs font-medium">
+                        {isEditing ? (
+                          <input type="date" value={editData.fecha} onChange={e => setEditData({...editData, fecha: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none"/>
+                        ) : egreso.fecha}
+                      </td>
 
-          <Card className="border-t-4 border-t-amber-500 bg-slate-900/80">
-            <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('fijos')}>
-              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><CheckSquare size={20} className="text-amber-400"/> 3. Pagos Fijos (Checklist de {selectedMonth})</h2>
-              <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.fijos ? 'rotate-90' : ''}`} />
-            </div>
-            {expanded.fijos && (
-              <div className="mt-5 animate-in slide-in-from-top-2">
-                {pagosFijos.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {pagosPendientes.map(pf => {
-                      if (pf.pagado) {
-                        return (
-                          <div key={pf.id} className="bg-emerald-950/20 border border-emerald-500/20 rounded-lg p-2.5 flex justify-between items-center opacity-60 hover:opacity-100 transition-opacity">
-                            <div className="overflow-hidden pr-2">
-                              <p className="font-bold text-emerald-500 text-sm truncate line-through leading-tight">{pf.descripcion}</p>
-                              <p className="text-[9px] text-emerald-500/70 truncate mt-0.5 uppercase tracking-wider">Pagado con {cuentas.find(c=>c.id===pf.egresoInfo.cuentaId)?.name}</p>
-                            </div>
-                            <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                      {/* DESCRIPCIÓN */}
+                      <td className="p-4 text-slate-200 font-bold text-[13px]">
+                        {isEditing ? (
+                          <input type="text" value={editData.descripcion} onChange={e => setEditData({...editData, descripcion: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none"/>
+                        ) : egreso.descripcion}
+                      </td>
+
+                      {/* TIPO (FIJO/VAR) */}
+                      <td className="p-4 text-center">
+                        {isEditing ? (
+                          <select value={editData.tipo} onChange={e => setEditData({...editData, tipo: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none">
+                            <option value="Fijo">Fijo</option>
+                            <option value="Variable">Variable</option>
+                          </select>
+                        ) : (
+                          <span className={`px-2 py-1 text-[9px] font-bold rounded border uppercase tracking-wider ${
+                            egreso.tipo === 'Fijo' 
+                              ? 'bg-[#431407]/40 text-orange-400 border-orange-500/20' 
+                              : 'bg-blue-900/20 text-blue-400 border-blue-500/20'
+                          }`}>
+                            {egreso.tipo || 'VARIABLE'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* CATEGORÍA SEPARADA */}
+                      <td className="p-4">
+                        {isEditing ? (
+                          <select value={editData.categoria} onChange={e => setEditData({...editData, categoria: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none">
+                            {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        ) : (
+                          <span className="px-2 py-1 bg-slate-800 text-slate-300 text-[11px] rounded-md font-medium">
+                            {egreso.categoria}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* CUENTA SEPARADA */}
+                      <td className="p-4">
+                        {isEditing ? (
+                          <select value={editData.cuentaId} onChange={e => setEditData({...editData, cuentaId: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none">
+                            {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        ) : (
+                          <p className="text-[10px] text-blue-400 font-medium">
+                            Pagado con: {cuentaName}
+                          </p>
+                        )}
+                      </td>
+
+                      {/* MONTO */}
+                      <td className="p-4 text-right">
+                        {isEditing ? (
+                          <input type="number" value={editData.monto} onChange={e => setEditData({...editData, monto: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-right"/>
+                        ) : (
+                          <span className="font-black text-rose-400 text-sm">{formatCOP(egreso.monto)}</span>
+                        )}
+                      </td>
+
+                      {/* ACCIONES */}
+                      <td className="p-4">
+                        {isEditing ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <button onClick={saveEdit} className="text-emerald-400 hover:text-emerald-300 p-1 bg-emerald-400/10 rounded"><Check size={16}/></button>
+                            <button onClick={() => setEditingId(null)} className="text-slate-400 hover:text-slate-300 p-1 bg-slate-800 rounded"><X size={16}/></button>
                           </div>
-                        );
-                      }
-                      return <PagoFijoCard key={pf.id} pf={pf} cuentasPermitidas={cuentasPermitidasPago} onPay={(cuentaId, monto) => procesarPagoFijo(pf.id, cuentaId, monto)} />;
-                    })}
-                  </div>
-                ) : <p className="text-sm text-slate-500 py-4">No has configurado pagos fijos. Abre "Editar Plantillas Fijas" en la pestaña Presupuestos.</p>}
-              </div>
-            )}
-          </Card>
+                        ) : (
+                          <div className="flex items-center justify-center gap-3">
+                            <button onClick={() => startEditing(egreso)} className="text-slate-500 hover:text-indigo-400 transition-colors" title="Editar"><Edit3 size={14}/></button>
+                            <button onClick={() => handleDelete(egreso.id)} className="text-slate-500 hover:text-rose-500 transition-colors" title="Eliminar"><Trash2 size={14}/></button>
+                          </div>
+                        )}
+                      </td>
 
-          <Card className="border-t-4 border-t-slate-500 bg-slate-900/80">
-            <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('historial')}>
-              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2"><FileSpreadsheet size={20} className="text-slate-400"/> 4. Historial Completo de Egresos</h2>
-              <ChevronRight size={20} className={`text-slate-400 transition-transform duration-300 ${expanded.historial ? 'rotate-90' : ''}`} />
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* ============================================================================ */}
+      {/* MODAL PARA AGREGAR NUEVA COMPRA A CUOTAS */}
+      {/* ============================================================================ */}
+      {showModalCuotas && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200 p-4">
+          <div className="bg-[#17171a] w-full max-w-md rounded-2xl border border-slate-800 shadow-2xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-white">Nueva Compra a Cuotas</h3>
+              <button onClick={() => setShowModalCuotas(false)} className="text-slate-500 hover:text-rose-400 transition-colors">
+                <X size={24}/>
+              </button>
             </div>
             
-            {expanded.historial && (
-              <div className="mt-5 animate-in slide-in-from-top-2">
-                <div className="overflow-x-auto bg-slate-950 rounded-xl border border-slate-800">
-                  <table className="w-full text-sm text-left min-w-[850px]">
-                    <thead className="text-[10px] text-slate-400 uppercase bg-slate-900 border-b border-slate-800">
-                      <tr>
-                        {/* FECHA */}
-                        <th className="px-4 py-3 align-top w-28">
-                          <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort('fecha')}>
-                            Fecha <SortIcon column="fecha" />
-                          </div>
-                        </th>
-                        
-                        {/* DESCRIPCIÓN Y BÚSQUEDA */}
-                        <th className="px-4 py-3 align-top min-w-[200px]">
-                          <div className="flex items-center gap-1 cursor-pointer hover:text-white mb-2" onClick={() => handleSort('descripcion')}>
-                            Descripción <SortIcon column="descripcion" />
-                          </div>
-                          <input 
-                            type="text" 
-                            placeholder="Buscar en descripción..." 
-                            value={filtros.descripcion} 
-                            onChange={e => setFiltros({...filtros, descripcion: e.target.value})} 
-                            className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case placeholder-slate-600 shadow-inner" 
-                          />
-                        </th>
-
-                        {/* TIPO */}
-                        <th className="px-4 py-3 align-top text-center w-32">
-                          <div className="flex items-center justify-center gap-1 cursor-pointer hover:text-white mb-2" onClick={() => handleSort('tipo')}>
-                            Fijo/Var <SortIcon column="tipo" />
-                          </div>
-                          <select 
-                            value={filtros.tipo} 
-                            onChange={e => setFiltros({...filtros, tipo: e.target.value})} 
-                            className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-1.5 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case text-center shadow-inner cursor-pointer"
-                          >
-                            <option value="Todos">Ambos</option>
-                            <option value="Fijo">Solo Fijos</option>
-                            <option value="Variable">Solo Variables</option>
-                          </select>
-                        </th>
-
-                        {/* CATEGORÍA Y CUENTA */}
-                        <th className="px-4 py-3 align-top min-w-[180px]">
-                          <div className="flex items-center gap-1 cursor-pointer hover:text-white mb-2" onClick={() => handleSort('categoria')}>
-                            Categoría / Cuenta <SortIcon column="categoria" />
-                          </div>
-                          <div className="flex flex-col gap-1.5">
-                            <select 
-                              value={filtros.categoria} 
-                              onChange={e => setFiltros({...filtros, categoria: e.target.value})} 
-                              className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case shadow-inner cursor-pointer"
-                            >
-                              <option value="Todas">Categorías (Todas)</option>
-                              {categoriasPresentes.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <select 
-                              value={filtros.cuenta} 
-                              onChange={e => setFiltros({...filtros, cuenta: e.target.value})} 
-                              className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-300 outline-none focus:border-indigo-500 font-normal normal-case shadow-inner cursor-pointer"
-                            >
-                              <option value="Todas">Cuentas (Todas)</option>
-                              {cuentasPresentes.map(cId => {
-                                  const acc = cuentas.find(a => a.id === cId);
-                                  return <option key={cId} value={cId}>{acc ? acc.name : cId}</option>
-                              })}
-                            </select>
-                          </div>
-                        </th>
-
-                        {/* MONTO */}
-                        <th className="px-4 py-3 align-top text-right w-40">
-                          <div className="flex items-center justify-end gap-1 cursor-pointer hover:text-white" onClick={() => handleSort('monto')}>
-                             Monto / Intereses <SortIcon column="monto" />
-                          </div>
-                        </th>
-                        
-                        <th className="px-4 py-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/50">
-                      {egresosProcesados.map(g => (
-                        <tr key={g.id} className={`transition-colors ${gastoForm.id === g.id && gastoForm.editSource === 'historial' ? 'bg-amber-900/20' : 'hover:bg-slate-800/20'}`}>
-                          <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{g.fecha}</td>
-                          <td className="px-4 py-3 text-slate-300 font-medium">{g.descripcion}</td>
-                          
-                          <td className="px-4 py-3 text-center">
-                            {g.tipo === 'Fijo' && <span className="text-[9px] bg-orange-500/20 text-orange-400 border border-orange-500/20 px-2 py-1 rounded uppercase tracking-wider">Fijo</span>}
-                            {g.tipo === 'Variable' && <span className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/20 px-2 py-1 rounded uppercase tracking-wider">Variable</span>}
-                          </td>
-
-                          <td className="px-4 py-3 text-slate-400">
-                            <span className="bg-slate-800 px-2 py-1 rounded-md text-xs block w-max mb-1">{g.categoria}</span>
-                            <span className="text-[10px] text-indigo-400/80">Pagado con: {cuentas.find(c => c.id === g.cuentaId)?.name || '?'}</span>
-                          </td>
-                          
-                          <td className="px-4 py-3 text-right">
-                             <span className="font-bold text-rose-400 block">{formatCOP(g.monto)}</span>
-                             {g.interesesOtros > 0 && <span className="text-[10px] text-amber-500 font-medium block leading-none mt-1">Int: {formatCOP(g.interesesOtros)}</span>}
-                          </td>
-                          <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
-                            <button onClick={(e) => { e.stopPropagation(); cargarParaEditarVariable(g); }} className="text-slate-500 hover:text-indigo-400 p-1.5" title="Editar Gasto"><Edit3 size={16} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); removeEgreso(g.id); showToast("Gasto eliminado"); }} className="text-slate-500 hover:text-rose-400 p-1.5" title="Eliminar"><Trash2 size={16} /></button>
-                          </td>
-                        </tr>
-                      ))}
-                      {egresosProcesados.length === 0 && <tr><td colSpan="6" className="text-center py-8 text-slate-500">No hay egresos que coincidan con los filtros.</td></tr>}
-                    </tbody>
-                  </table>
+            <form onSubmit={handleAddCuotas} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Fecha de compra</label>
+                <input type="date" required value={cuotaData.fecha} onChange={e => setCuotaData({...cuotaData, fecha: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+                <input type="text" required value={cuotaData.descripcion} onChange={e => setCuotaData({...cuotaData, descripcion: e.target.value})} placeholder="Ej. Computador, Viaje..." className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
+                  <select required value={cuotaData.categoria} onChange={e => setCuotaData({...cuotaData, categoria: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none">
+                    <option value="">Seleccione...</option>
+                    {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Tarjeta de Crédito</label>
+                  <select required value={cuotaData.tarjetaId} onChange={e => setCuotaData({...cuotaData, tarjetaId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none">
+                    <option value="">Seleccione...</option>
+                    {tarjetasCredito.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
                 </div>
               </div>
-            )}
-          </Card>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Monto Total</label>
+                  <input type="number" required value={cuotaData.montoTotal} onChange={e => setCuotaData({...cuotaData, montoTotal: e.target.value})} placeholder="$ 0" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">Número de Cuotas</label>
+                  <input type="number" required min="1" max="72" value={cuotaData.numeroCuotas} onChange={e => setCuotaData({...cuotaData, numeroCuotas: e.target.value})} placeholder="Ej. 12" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-indigo-500 outline-none"/>
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl mt-6 transition-colors shadow-lg shadow-indigo-500/20">
+                Guardar Compra a Cuotas
+              </button>
+            </form>
+          </div>
         </div>
-      );
-    };
+      )}
+    </div>
+  );
+};
