@@ -43,14 +43,12 @@ const IngresosTab = ({
   const [editData, setEditData] = useState({});
 
   // ============================================================================
-  // ESTADOS DE LOS FILTROS DE LA TABLA
+  // ✨ ESTADOS DE LOS FILTROS DE LA TABLA (IGUAL QUE EGRESOS)
   // ============================================================================
   const [filters, setFilters] = useState({
-    fecha: '',
     descripcion: '',
     tipo: '',
-    destino: '',
-    monto: ''
+    cuenta: ''
   });
 
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
@@ -74,19 +72,13 @@ const IngresosTab = ({
   // ============================================================================
   const ingresosFiltrados = useMemo(() => {
     return ingresosMes.filter(ingreso => {
-      // Buscar el nombre de la cuenta para el filtro de destino
-      const cuenta = cuentas.find(c => c.id === ingreso.cuentaId);
-      const nombreCuenta = cuenta ? cuenta.name.toLowerCase() : '?';
-
-      const matchFecha = ingreso.fecha.includes(filters.fecha);
       const matchDesc = ingreso.descripcion.toLowerCase().includes(filters.descripcion.toLowerCase());
       const matchTipo = filters.tipo === '' || ingreso.tipo === filters.tipo;
-      const matchDestino = filters.destino === '' || nombreCuenta.includes(filters.destino.toLowerCase());
-      const matchMonto = ingreso.monto.toString().includes(filters.monto);
+      const matchCuenta = filters.cuenta === '' || ingreso.cuentaId === filters.cuenta;
 
-      return matchFecha && matchDesc && matchTipo && matchDestino && matchMonto;
+      return matchDesc && matchTipo && matchCuenta;
     });
-  }, [ingresosMes, filters, cuentas]);
+  }, [ingresosMes, filters]);
 
   // ============================================================================
   // FUNCIONES DE ACCIÓN (Guardar, Editar, Eliminar)
@@ -136,7 +128,7 @@ const IngresosTab = ({
   };
 
   const limpiarFiltros = () => {
-    setFilters({ fecha: '', descripcion: '', tipo: '', destino: '', monto: '' });
+    setFilters({ descripcion: '', tipo: '', cuenta: '' });
   };
 
   return (
@@ -222,7 +214,7 @@ const IngresosTab = ({
         </form>
       </Card>
 
-      {/* TABLA HISTORIAL COMPLETA CON FILTROS */}
+      {/* TABLA HISTORIAL COMPLETA CON FILTROS UNIFICADOS */}
       <Card className="flex flex-col border-t-4 border-t-slate-600">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -250,64 +242,49 @@ const IngresosTab = ({
                 <th className="p-4 font-bold w-[30%]">Descripción</th>
                 <th className="p-4 font-bold w-[15%]">Tipo</th>
                 <th className="p-4 font-bold w-[20%]">Destino (Cuenta)</th>
-                <th className="p-4 font-bold w-[15%]">Monto</th>
+                <th className="p-4 font-bold w-[15%] text-right">Monto</th>
                 <th className="p-4 font-bold text-center w-[8%]">Acciones</th>
               </tr>
               
-              {/* FILA DE FILTROS INTELIGENTES */}
+              {/* ✨ FILA DE FILTROS INTELIGENTES (COMO EN EGRESOS) */}
               <tr className="border-b-2 border-slate-700 bg-slate-900/50">
+                <th className="p-2"></th>
                 <th className="p-2">
                   <input 
                     type="text" 
-                    placeholder="Buscar fecha..." 
-                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-white focus:border-indigo-500 outline-none placeholder:text-slate-600"
-                    value={filters.fecha} 
-                    onChange={e => setFilters({...filters, fecha: e.target.value})}
-                  />
-                </th>
-                <th className="p-2">
-                  <input 
-                    type="text" 
-                    placeholder="Buscar descripción..." 
-                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-white focus:border-indigo-500 outline-none placeholder:text-slate-600"
+                    placeholder="Buscar en descripción..." 
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[11px] text-white focus:border-emerald-500 outline-none placeholder:text-slate-600"
                     value={filters.descripcion} 
                     onChange={e => setFilters({...filters, descripcion: e.target.value})}
                   />
                 </th>
                 <th className="p-2">
                   <select 
-                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-white focus:border-indigo-500 outline-none"
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[11px] text-white focus:border-emerald-500 outline-none"
                     value={filters.tipo} 
                     onChange={e => setFilters({...filters, tipo: e.target.value})}
                   >
-                    <option value="">Todos los tipos</option>
+                    <option value="">Tipos (Todos)</option>
                     <option value="Fijo">Fijo</option>
                     <option value="Variable">Variable</option>
                     <option value="Rendimiento">Rendimiento</option>
                   </select>
                 </th>
                 <th className="p-2">
-                  <input 
-                    type="text" 
-                    placeholder="Buscar cuenta..." 
-                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-white focus:border-indigo-500 outline-none placeholder:text-slate-600"
-                    value={filters.destino} 
-                    onChange={e => setFilters({...filters, destino: e.target.value})}
-                  />
+                  <select 
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-[11px] text-white focus:border-emerald-500 outline-none"
+                    value={filters.cuenta} 
+                    onChange={e => setFilters({...filters, cuenta: e.target.value})}
+                  >
+                    <option value="">Cuentas (Todas)</option>
+                    {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
                 </th>
-                <th className="p-2">
-                  <input 
-                    type="text" 
-                    placeholder="Buscar monto..." 
-                    className="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-white focus:border-indigo-500 outline-none placeholder:text-slate-600"
-                    value={filters.monto} 
-                    onChange={e => setFilters({...filters, monto: e.target.value})}
-                  />
-                </th>
+                <th className="p-2"></th>
                 <th className="p-2 text-center">
                   <button 
                     onClick={limpiarFiltros} 
-                    className="text-[10px] uppercase font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-2 py-1 rounded w-full transition-colors"
+                    className="text-[10px] uppercase font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded w-full transition-colors"
                   >
                     Limpiar
                   </button>
@@ -333,14 +310,14 @@ const IngresosTab = ({
                     <tr key={ingreso.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
                       
                       {/* FECHA */}
-                      <td className="p-4 text-slate-300 font-medium">
+                      <td className="p-4 text-slate-400 text-xs font-medium">
                         {isEditing ? (
                           <input type="date" value={editData.fecha} onChange={e => setEditData({...editData, fecha: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none"/>
                         ) : ingreso.fecha}
                       </td>
 
                       {/* DESCRIPCIÓN */}
-                      <td className="p-4 text-white font-bold">
+                      <td className="p-4 text-slate-200 font-bold text-[13px]">
                         {isEditing ? (
                           <input type="text" value={editData.descripcion} onChange={e => setEditData({...editData, descripcion: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none"/>
                         ) : ingreso.descripcion}
@@ -355,12 +332,12 @@ const IngresosTab = ({
                             <option value="Rendimiento">Rendimiento</option>
                           </select>
                         ) : (
-                          <span className={`px-2.5 py-1 text-[10px] font-bold rounded-md border ${
+                          <span className={`px-2 py-1 text-[9px] font-bold rounded border uppercase tracking-wider ${
                             ingreso.tipo === 'Fijo' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
                             ingreso.tipo === 'Rendimiento' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
                             'bg-blue-500/20 text-blue-400 border-blue-500/30'
                           }`}>
-                            {ingreso.tipo || 'Variable'}
+                            {ingreso.tipo || 'VARIABLE'}
                           </span>
                         )}
                       </td>
@@ -380,9 +357,9 @@ const IngresosTab = ({
                       </td>
 
                       {/* MONTO */}
-                      <td className="p-4 font-black text-emerald-400">
+                      <td className="p-4 font-black text-emerald-400 text-right">
                         {isEditing ? (
-                          <input type="number" value={editData.monto} onChange={e => setEditData({...editData, monto: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none"/>
+                          <input type="number" value={editData.monto} onChange={e => setEditData({...editData, monto: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-right"/>
                         ) : formatCOP(ingreso.monto)}
                       </td>
 
@@ -395,8 +372,8 @@ const IngresosTab = ({
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-3">
-                            <button onClick={() => startEditing(ingreso)} className="text-slate-500 hover:text-indigo-400 transition-colors" title="Editar"><Edit3 size={16}/></button>
-                            <button onClick={() => handleDelete(ingreso.id)} className="text-slate-500 hover:text-rose-500 transition-colors" title="Eliminar"><Trash2 size={16}/></button>
+                            <button onClick={() => startEditing(ingreso)} className="text-slate-500 hover:text-indigo-400 transition-colors" title="Editar"><Edit3 size={14}/></button>
+                            <button onClick={() => handleDelete(ingreso.id)} className="text-slate-500 hover:text-rose-500 transition-colors" title="Eliminar"><Trash2 size={14}/></button>
                           </div>
                         )}
                       </td>
