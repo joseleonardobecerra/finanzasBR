@@ -1,7 +1,7 @@
 const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, scoreHistory }) => {
   const { useMemo } = React;
 
-  // --- ÍCONOS FALTANTES AÑADIDOS NATIVAMENTE ---
+  // --- ÍCONOS NATIVOS ---
   const Zap = ({ size = 24, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
@@ -22,7 +22,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   }).format(val);
 
   // ============================================================================
-  // 1. MOTOR DE CÁLCULOS: HISTORIAL DE 12 MESES (ANALÍTICA CLÁSICA)
+  // 1. MOTOR DE CÁLCULOS: HISTORIAL DE 12 MESES
   // ============================================================================
   const {
     historialMensual,
@@ -89,7 +89,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   }, [ingresos, egresos, selectedMonth]);
 
   // ============================================================================
-  // 2. MOTOR DE CÁLCULOS: SCORE Y DEUDAS (ESTRATEGIA AVALANCHA)
+  // 2. MOTOR DE CÁLCULOS: SCORE Y DEUDAS
   // ============================================================================
   const deudasOrdenadas = useMemo(() => {
     return cuentas
@@ -105,7 +105,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   const flujoPromedioMes = (totalIngresosAnual - totalEgresosAnual) / 12;
 
   // ============================================================================
-  // 3. MOTOR DE RECOMENDACIONES INTELIGENTES (BASADO EN COMPORTAMIENTO)
+  // 3. MOTOR DE RECOMENDACIONES INTELIGENTES
   // ============================================================================
   const recomendaciones = useMemo(() => {
     const recs = [];
@@ -169,9 +169,8 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     return recs;
   }, [cargaDeuda, tasaAhorroAnual, mesesConSuperavit, scoreData.recs]);
 
-
   // ============================================================================
-  // 4. TOP 5 FUGAS DE CAPITAL
+  // 4. TOP 5 FUGAS Y EXTREMOS
   // ============================================================================
   const topCategoriasAnual = useMemo(() => {
     const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
@@ -220,7 +219,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </header>
 
       {/* ---------------------------------------------------- */}
-      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA (FUSIÓN)     */}
+      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA              */}
       {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         
@@ -264,9 +263,8 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
         {/* ---------------------------------------------------- */}
-        {/* SECCIÓN 2: COMPARATIVO HISTÓRICO (ANALÍTICA ORIGINAL)*/}
+        {/* SECCIÓN 2: COMPARATIVO HISTÓRICO (12 MESES)          */}
         {/* ---------------------------------------------------- */}
         <Card className="xl:col-span-2 border-t-4 border-t-indigo-500">
           <h2 className="text-lg font-bold text-white mb-6">Comparativo Histórico: Ingresos vs Egresos (12 Meses)</h2>
@@ -274,7 +272,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
           <div className="h-64 flex items-end justify-between gap-1 md:gap-4 border-b border-slate-800 pb-2 mt-4">
             {historialMensual.map((m, i) => (
               <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                
                 <div className="flex gap-0.5 md:gap-1 w-full justify-center items-end h-full">
                   <div style={{ height: `${Math.max((m.ingresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-emerald-500/80 rounded-t-sm group-hover:bg-emerald-400 transition-all"></div>
                   <div style={{ height: `${Math.max((m.egresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-rose-500/80 rounded-t-sm group-hover:bg-rose-400 transition-all"></div>
@@ -329,10 +326,13 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </Card>
       </div>
 
+      {/* ---------------------------------------------------- */}
+      {/* GRILLA DE 2 COLUMNAS (Ajuste visual solicitado)        */}
+      {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* ---------------------------------------------------- */}
-        {/* SECCIÓN 4: ESTRATEGIA AVALANCHA (DEUDAS)             */}
+        {/* TARJETA 1: ESTRATEGIA AVALANCHA (DEUDAS)             */}
         {/* ---------------------------------------------------- */}
         <Card className="border-t-4 border-t-rose-500 flex flex-col">
           <div className="flex justify-between items-center mb-6">
@@ -379,89 +379,92 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </Card>
 
         {/* ---------------------------------------------------- */}
-        {/* SECCIÓN 5: FUGAS, EXTREMOS Y ESTRUCTURA DE GASTO     */}
+        {/* TARJETA 2: EXTREMOS DEL AÑO                          */}
         {/* ---------------------------------------------------- */}
-        <div className="space-y-6 flex flex-col">
-           
-           {/* Top 5 Fugas y Extremos */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Extremos */}
-              <Card className="flex flex-col justify-center border-t-4 border-t-emerald-500 gap-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2">Extremos del Año</h3>
-                
-                <div className="bg-emerald-950/20 border border-emerald-500/30 p-3 rounded-xl flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 flex items-center justify-center rounded-full shrink-0">
-                    <TrendingUp size={20} />
+        <Card className="flex flex-col justify-center border-t-4 border-t-emerald-500 gap-4">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2">Extremos del Año</h3>
+          
+          <div className="bg-emerald-950/20 border border-emerald-500/30 p-4 rounded-xl flex items-center gap-4">
+            <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 flex items-center justify-center rounded-full shrink-0">
+              <TrendingUp size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-emerald-500 font-bold uppercase mb-1">Mejor Mes ({mejorMes?.label})</p>
+              <p className="text-2xl font-black text-emerald-400">{formatCOP(mejorMes?.neto)}</p>
+            </div>
+          </div>
+
+          <div className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-xl flex items-center gap-4">
+            <div className="w-12 h-12 bg-rose-500/20 text-rose-400 flex items-center justify-center rounded-full shrink-0">
+              <TrendingDown size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-rose-500 font-bold uppercase mb-1">Peor Mes ({peorMes?.label})</p>
+              <p className="text-2xl font-black text-rose-400">{formatCOP(peorMes?.neto)}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* ---------------------------------------------------- */}
+        {/* TARJETA 3: TOP 5 FUGAS                               */}
+        {/* ---------------------------------------------------- */}
+        <Card className="border-t-4 border-t-orange-500 flex flex-col">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Top 5 Fugas (Últimos 12 meses)</h3>
+          <div className="space-y-4 flex-1 flex flex-col justify-center">
+            {topCategoriasAnual.map(([cat, amount], i) => {
+              const width = Math.max((amount / maxValCat) * 100, 5);
+              return (
+                <div key={cat}>
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-slate-300 font-medium truncate pr-2">
+                      <span className="text-orange-500/50 font-bold mr-1">#{i+1}</span> 
+                      {cat}
+                    </span>
+                    <span className="font-bold text-orange-400">{formatCOP(amount)}</span>
                   </div>
-                  <div>
-                    <p className="text-[9px] text-emerald-500 font-bold uppercase">Mejor Mes ({mejorMes?.label})</p>
-                    <p className="text-lg font-black text-emerald-400">{formatCOP(mejorMes?.neto)}</p>
+                  <div className="w-full bg-slate-950 rounded-full h-2 border border-slate-800">
+                    <div className="h-full bg-orange-500 rounded-full transition-all duration-1000" style={{ width: `${width}%` }}></div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </Card>
 
-                <div className="bg-rose-950/20 border border-rose-500/30 p-3 rounded-xl flex items-center gap-3">
-                  <div className="w-10 h-10 bg-rose-500/20 text-rose-400 flex items-center justify-center rounded-full shrink-0">
-                    <TrendingDown size={20} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] text-rose-500 font-bold uppercase">Peor Mes ({peorMes?.label})</p>
-                    <p className="text-lg font-black text-rose-400">{formatCOP(peorMes?.neto)}</p>
-                  </div>
-                </div>
-              </Card>
+        {/* ---------------------------------------------------- */}
+        {/* TARJETA 4: ESTRUCTURA DE GASTO                       */}
+        {/* ---------------------------------------------------- */}
+        <Card className="border-t-4 border-t-slate-500 flex flex-col justify-center">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">Estructura de Gasto (Fijo vs Variable)</h3>
+          
+          <div className="space-y-8">
+            <div>
+              <div className="flex justify-between text-sm mb-3">
+                <span className="text-slate-300 font-bold">Gastos Fijos (Compromisos)</span>
+                <span className="text-orange-400 font-black text-xl">{pctFijos.toFixed(1)}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-4 rounded-full border border-slate-800 overflow-hidden shadow-inner">
+                <div className="bg-orange-500 h-full rounded-full transition-all duration-1000" style={{ width: `${pctFijos}%` }}></div>
+              </div>
+            </div>
 
-              {/* Top Fugas */}
-              <Card className="border-t-4 border-t-orange-500">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Top 5 Fugas</h3>
-                <div className="space-y-3">
-                  {topCategoriasAnual.map(([cat, amount], i) => {
-                    const width = Math.max((amount / maxValCat) * 100, 5);
-                    return (
-                      <div key={cat}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-slate-300 font-medium truncate pr-2"><span className="text-orange-500/50 font-bold">#{i+1}</span> {cat}</span>
-                          <span className="font-bold text-orange-400">{formatCOP(amount)}</span>
-                        </div>
-                        <div className="w-full bg-slate-950 rounded-full h-1.5 border border-slate-800"><div className="h-full bg-orange-500 rounded-full" style={{ width: `${width}%` }}></div></div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-           </div>
+            <div>
+              <div className="flex justify-between text-sm mb-3">
+                <span className="text-slate-300 font-bold">Gastos Variables (Estilo de vida)</span>
+                <span className="text-blue-400 font-black text-xl">{pctVariables.toFixed(1)}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-4 rounded-full border border-slate-800 overflow-hidden shadow-inner">
+                <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${pctVariables}%` }}></div>
+              </div>
+            </div>
+          </div>
 
-           {/* Estructura de Gasto */}
-           <Card className="border-t-4 border-t-slate-500 flex-1">
-             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5">Estructura de Gasto (Fijo vs Variable)</h3>
-             
-             <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-300 font-bold">Gastos Fijos (Compromisos)</span>
-                    <span className="text-orange-400 font-black text-lg">{pctFijos.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-slate-950 h-3 rounded-full border border-slate-800 overflow-hidden shadow-inner">
-                    <div className="bg-orange-500 h-full rounded-full transition-all duration-1000" style={{ width: `${pctFijos}%` }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-300 font-bold">Gastos Variables (Estilo de vida)</span>
-                    <span className="text-blue-400 font-black text-lg">{pctVariables.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-slate-950 h-3 rounded-full border border-slate-800 overflow-hidden shadow-inner">
-                    <div className="bg-blue-500 h-full rounded-full transition-all duration-1000" style={{ width: `${pctVariables}%` }}></div>
-                  </div>
-                </div>
-             </div>
-
-             <div className="mt-5 p-3 bg-slate-950 border border-slate-800 rounded-lg text-center shadow-inner">
-                <p className="text-xs text-slate-400">Tu relación de costo de vida es <strong className="text-white text-sm">{(totalVariablesAnual > 0 ? (totalFijosAnual/totalVariablesAnual).toFixed(1) : 0)} a 1</strong> (Fijos por cada Variable).</p>
-             </div>
-           </Card>
-        </div>
+          <div className="mt-8 p-4 bg-slate-950 border border-slate-800 rounded-lg text-center shadow-inner">
+            <p className="text-sm text-slate-400">
+              Tu relación de costo de vida es <strong className="text-white text-base">{(totalVariablesAnual > 0 ? (totalFijosAnual/totalVariablesAnual).toFixed(1) : 0)} a 1</strong> (Fijos por cada Variable).
+            </p>
+          </div>
+        </Card>
 
       </div>
     </div>
