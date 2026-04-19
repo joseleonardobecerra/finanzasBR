@@ -1,401 +1,431 @@
-const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, removePresupuesto,
-                        pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
-                        egresos, selectedMonth, showToast, categoriasMaestras }) => {
-  const { useState, useRef, useMemo } = React;
+const PresupuestosTab = ({ 
+  presupuestos, addPresupuesto, updatePresupuesto, removePresupuesto,
+  pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
+  egresos, selectedMonth, showToast, categoriasMaestras 
+}) => {
+  const { useState, useMemo } = React;
+
+  // ============================================================================
+  // UTILIDADES
+  // ============================================================================
+  const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
+    style: 'currency', 
+    currency: 'COP', 
+    maximumFractionDigits: 0 
+  }).format(val);
+
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  // ============================================================================
+  // ÍCONOS SVG NATIVOS (Para evitar errores ReferenceError)
+  // ============================================================================
+  const CheckSquareIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+  );
+  
+  const PieChartIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+  );
+
+  const PlusIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  );
+
+  const TrashIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+  );
+
+  const EditIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+  );
+
+  // ============================================================================
+  // ESTADOS DEL COMPONENTE
+  // ============================================================================
   const [tipoForm, setTipoForm] = useState('variable'); 
   const [nuevoVar, setNuevoVar] = useState({ categoria: '', limite: '' });
   const [nuevoFijo, setNuevoFijo] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
-  const [editId, setEditId] = useState(null);
   
-  const [editOriginalType, setEditOriginalType] = useState(null); 
-  
-  const [errors, setErrors] = useState({});
   const [filtroLista, setFiltroLista] = useState('Todos'); 
-  const [showForm, setShowForm] = useState(false);
-  const formRef = useRef(null);
-  const fileInputRef = useRef(null);
+  
+  const [editId, setEditId] = useState(null);
+  const [editOriginalType, setEditOriginalType] = useState(null);
 
-  const handleExport = async () => {
-    try {
-      const xlsx = await loadSheetJS();
-      const wb = xlsx.utils.book_new();
+  // ============================================================================
+  // MOTOR DE CÁLCULO (Sincronizado con Egresos)
+  // ============================================================================
+  const egresosMes = useMemo(() => {
+    return egresos.filter(e => e.fecha.startsWith(selectedMonth));
+  }, [egresos, selectedMonth]);
+
+  // ✨ FIX: Ahora suma el "Ejecutado" usando la misma regla de texto del Checklist
+  const fijosItems = useMemo(() => {
+    return pagosFijos.map(pf => {
+      const ejecutado = egresosMes
+        .filter(e => e.tipo === 'Fijo' && e.descripcion.toLowerCase().includes(pf.descripcion.toLowerCase()))
+        .reduce((sum, e) => sum + Number(e.monto), 0);
       
-      const headersFijos = ["ID", "Descripcion", "Categoria", "Monto", "DiaPago"];
-      const dataFijos = pagosFijos.map(f => ({ ID: f.id, Descripcion: f.descripcion, Categoria: f.categoria, Monto: f.monto, DiaPago: f.diaPago }));
-      const wsFijos = xlsx.utils.json_to_sheet(dataFijos.length > 0 ? dataFijos : [{}], { header: headersFijos });
-      xlsx.utils.book_append_sheet(wb, wsFijos, "Pagos_Fijos");
+      const limite = Number(pf.monto || pf.montoEstimado || 0);
+      const disponible = limite - ejecutado;
+      const porcentaje = limite > 0 ? (ejecutado / limite) * 100 : 0;
       
-      const headersVar = ["ID", "Categoria", "Limite"];
-      const dataVar = presupuestos.map(p => ({ ID: p.id, Categoria: p.categoria, Limite: p.limite }));
-      const wsVar = xlsx.utils.json_to_sheet(dataVar.length > 0 ? dataVar : [{}], { header: headersVar });
-      xlsx.utils.book_append_sheet(wb, wsVar, "Presupuestos_Variables");
+      return { ...pf, limite, ejecutado, disponible, porcentaje };
+    });
+  }, [pagosFijos, egresosMes]);
+
+  const varItems = useMemo(() => {
+    return presupuestos.map(p => {
+      const ejecutado = egresosMes
+        .filter(e => e.tipo !== 'Fijo' && e.categoria === p.categoria)
+        .reduce((sum, e) => sum + Number(e.monto), 0);
       
-      xlsx.writeFile(wb, `Presupuestos_y_Fijos_${new Date().toISOString().split('T')[0]}.xlsx`);
-      showToast("Presupuestos exportados con éxito.");
-    } catch(e) { showToast("Error al exportar a Excel.", "error"); }
-  };
+      const limite = Number(p.limite || 0);
+      const disponible = limite - ejecutado;
+      const porcentaje = limite > 0 ? (ejecutado / limite) * 100 : 0;
+      
+      return { ...p, limite, ejecutado, disponible, porcentaje };
+    });
+  }, [presupuestos, egresosMes]);
 
-  const handleImport = async (e) => {
-    const file = e.target.files[0]; if(!file) return;
-    try {
-      const xlsx = await loadSheetJS();
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const wb = xlsx.read(evt.target.result, { type: 'binary' });
-          let importadosFijos = 0;
-          let importadosVar = 0;
-
-          if (wb.Sheets["Pagos_Fijos"]) {
-            const dataFijos = xlsx.utils.sheet_to_json(wb.Sheets["Pagos_Fijos"]);
-            dataFijos.filter(i=>i.Monto).forEach(i => {
-                const exists = pagosFijos.some(pf => pf.descripcion === i.Descripcion && pf.categoria === i.Categoria && pf.monto === Number(i.Monto));
-                if (!exists) {
-                    addPagoFijo({ id: i.ID || generateId(), descripcion: i.Descripcion || 'Fijo Importado', categoria: i.Categoria || 'Otros', monto: Number(i.Monto) || 0, diaPago: Number(i.DiaPago) || 1 });
-                    importadosFijos++;
-                }
-            });
-          }
-          if (wb.Sheets["Presupuestos_Variables"]) {
-            const dataVar = xlsx.utils.sheet_to_json(wb.Sheets["Presupuestos_Variables"]);
-            dataVar.filter(i=>i.Limite).forEach(i => {
-                const exists = presupuestos.some(p => p.categoria === i.Categoria);
-                if (!exists) {
-                    addPresupuesto({ id: i.ID || generateId(), categoria: i.Categoria || 'Otros', limite: Number(i.Limite) || 0 });
-                    importadosVar++;
-                }
-            });
-          }
-          showToast(`Se importaron ${importadosFijos} fijos y ${importadosVar} variables.`);
-        } catch(err) { showToast("Error procesando los datos del archivo.", "error"); }
-      };
-      reader.readAsBinaryString(file);
-    } catch(err) { showToast("Error al abrir herramienta de Excel.", "error"); }
-    e.target.value = '';
-  };
-
-  const guardar = (e) => {
+  // ============================================================================
+  // MANEJADORES DE SUBMIT (GUARDAR Y EDITAR)
+  // ============================================================================
+  const handleAddVar = (e) => {
     e.preventDefault();
-    let errs = {};
-    
-    if (tipoForm === 'variable') {
-      if(!nuevoVar.categoria) errs.categoria = "Requerido";
-      if(!nuevoVar.limite) errs.limite = "Requerido";
-      if(Object.keys(errs).length > 0) { setErrors(errs); return; }
-      
-      if (editId) {
-        if (editOriginalType === 'variable') {
-            updatePresupuesto(editId, { categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
-            showToast("Límite Variable actualizado.");
-        } else {
-            removePagoFijo(editId);
-            addPresupuesto({ id: editId, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
-            showToast("Convertido a Límite Variable.");
-        }
-        setEditId(null);
-        setEditOriginalType(null);
-      } else {
-        addPresupuesto({ id: generateId(), categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
-        showToast("Presupuesto agregado.");
-      }
-      setNuevoVar({ categoria: '', limite: '' });
-      
-    } else {
-      if(!nuevoFijo.descripcion) errs.descripcion = "Requerido";
-      if(!nuevoFijo.categoria) errs.categoria = "Requerido";
-      if(!nuevoFijo.monto) errs.monto = "Requerido";
-      if(!nuevoFijo.diaPago) errs.diaPago = "Requerido";
-      if(Object.keys(errs).length > 0) { setErrors(errs); return; }
-
-      if (editId) {
-        if (editOriginalType === 'fijo') {
-            updatePagoFijo(editId, { descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
-            showToast("Gasto Fijo actualizado.");
-        } else {
-            removePresupuesto(editId);
-            addPagoFijo({ id: editId, descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
-            showToast("Convertido a Gasto Fijo.");
-        }
-        setEditId(null);
-        setEditOriginalType(null);
-      } else {
-        addPagoFijo({ id: generateId(), descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
-        showToast("Gasto Fijo agregado.");
-      }
-      setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+    if (!nuevoVar.categoria || !nuevoVar.limite) {
+      showToast('Completa los campos de Gasto Variable', 'error');
+      return;
     }
-    setErrors({});
+
+    if (editId && editOriginalType === 'variable') {
+       updatePresupuesto(editId, { 
+         categoria: nuevoVar.categoria, 
+         limite: Number(nuevoVar.limite) 
+       });
+       setEditId(null); 
+       setEditOriginalType(null);
+       showToast('Presupuesto variable actualizado');
+    } else {
+       addPresupuesto({ 
+         id: generateId(), 
+         categoria: nuevoVar.categoria, 
+         limite: Number(nuevoVar.limite) 
+       });
+       showToast('Presupuesto variable agregado');
+    }
+    setNuevoVar({ categoria: '', limite: '' });
   };
 
-  const cargarParaEditar = (p) => {
+  const handleAddFijo = (e) => {
+    e.preventDefault();
+    if (!nuevoFijo.descripcion || !nuevoFijo.monto || !nuevoFijo.categoria) {
+      showToast('Completa los campos obligatorios del Gasto Fijo', 'error');
+      return;
+    }
+
+    if (editId && editOriginalType === 'fijo') {
+       updatePagoFijo(editId, { 
+         descripcion: nuevoFijo.descripcion, 
+         monto: Number(nuevoFijo.monto), 
+         categoria: nuevoFijo.categoria, 
+         diaPago: Number(nuevoFijo.diaPago) 
+       });
+       setEditId(null); 
+       setEditOriginalType(null);
+       showToast('Pago fijo actualizado');
+    } else {
+       addPagoFijo({ 
+         id: generateId(), 
+         descripcion: nuevoFijo.descripcion, 
+         monto: Number(nuevoFijo.monto), 
+         categoria: nuevoFijo.categoria, 
+         diaPago: Number(nuevoFijo.diaPago) 
+       });
+       showToast('Pago fijo agregado al checklist');
+    }
+    setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+  };
+
+  // ============================================================================
+  // CONTROL DE EDICIÓN
+  // ============================================================================
+  const startEditVar = (p) => {
+    setTipoForm('variable');
     setEditId(p.id);
-    setErrors({});
-    
-    const isFijo = p.tipo === 'Fijo';
-    setEditOriginalType(isFijo ? 'fijo' : 'variable');
-    setTipoForm(isFijo ? 'fijo' : 'variable');
-    
-    setNuevoFijo({ descripcion: isFijo ? p.nombre : (p.categoria + ' Fijo'), monto: p.limite.toString(), categoria: p.categoria, diaPago: (p.diaPago || 1).toString() });
-    setNuevoVar({ categoria: p.categoria, limite: p.limite.toString() });
+    setEditOriginalType('variable');
+    setNuevoVar({ categoria: p.categoria, limite: p.limite });
+  };
 
-    setShowForm(true);
-    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-  }
+  const startEditFijo = (p) => {
+    setTipoForm('fijo');
+    setEditId(p.id);
+    setEditOriginalType('fijo');
+    setNuevoFijo({ 
+      descripcion: p.descripcion, 
+      monto: p.limite, 
+      categoria: p.categoria, 
+      diaPago: p.diaPago || '' 
+    });
+  };
 
-  const cancelarEdicion = () => {
+  const cancelEdit = () => {
     setEditId(null);
     setEditOriginalType(null);
     setNuevoVar({ categoria: '', limite: '' });
     setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
-    setErrors({});
-    setShowForm(false);
-  }
-
-  const egresosMes = egresos.filter(g => g.fecha.startsWith(selectedMonth));
-
-  const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
-  const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
-
-  const { fijosItems, varItems } = useMemo(() => {
-    const fijos = [];
-    const variables = [];
-
-    pagosFijos.forEach(pf => {
-      const gastado = egresosMes.filter(e => e.pagoFijoId === pf.id).reduce((s, e) => s + e.monto, 0);
-      fijos.push({ id: pf.id, tipo: 'Fijo', nombre: pf.descripcion, categoria: pf.categoria, limite: pf.monto, gastado, diaPago: pf.diaPago });
-    });
-
-    presupuestos.forEach(p => {
-      const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
-      variables.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
-    });
-
-    return { 
-      fijosItems: fijos.sort((a, b) => b.limite - a.limite), 
-      varItems: variables.sort((a, b) => b.limite - a.limite) 
-    };
-  }, [pagosFijos, presupuestos, egresosMes]);
-
-  // Cálculos de Totales y Diferencias
-  const totalGastadoFijo = useMemo(() => fijosItems.reduce((s, item) => s + item.gastado, 0), [fijosItems]);
-  const totalGastadoVar = useMemo(() => varItems.reduce((s, item) => s + item.gastado, 0), [varItems]);
-  const totalGastadoAmbos = totalGastadoFijo + totalGastadoVar;
-
-  const difFijo = totalFijo - totalGastadoFijo;
-  const difVar = totalVar - totalGastadoVar;
-  const difTotal = (totalFijo + totalVar) - totalGastadoAmbos;
-
-  // Función para determinar el color de la diferencia
-  const getColorDif = (val) => {
-    if (val > 0) return 'text-emerald-400';
-    if (val < 0) return 'text-rose-500';
-    return 'text-orange-400'; // Exactamente 0
   };
 
-  const RenderCardCompacta = ({ p, themeColor }) => {
-    const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
-    const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
-    const diferencia = p.limite - p.gastado;
-
-    const themeMap = {
-      yellow: { bar: 'bg-yellow-400', text: 'text-yellow-400', border: 'border-yellow-500', bgEdit: 'bg-yellow-950/10' },
-      blue: { bar: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', bgEdit: 'bg-blue-950/10' }
-    };
-
-    let t = themeMap[themeColor];
+  // ============================================================================
+  // SUB-COMPONENTE: TARJETA COMPACTA DE PRESUPUESTO
+  // ============================================================================
+  const RenderCardCompacta = ({ p, themeColor, isFijo }) => {
+    const colorClass = themeColor === 'yellow' ? 'text-amber-400' : 'text-blue-400';
+    const bgBarClass = themeColor === 'yellow' ? 'bg-amber-500' : 'bg-blue-500';
+    
+    const progress = Math.min(p.porcentaje, 100);
+    const overLimit = p.ejecutado > p.limite;
+    const finalBarColor = overLimit ? 'bg-rose-500' : bgBarClass;
 
     return (
-      <div key={p.id} className={`bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-col gap-2.5 hover:border-slate-700 transition-colors ${editId === p.id ? `${t.border} ${t.bgEdit}` : ''}`}>
-        <div className="flex justify-between items-start">
-          <div className="flex flex-col pr-2">
-            <span className="font-bold text-slate-200 text-sm leading-tight truncate">{p.nombre}</span>
-            <span className="text-[10px] text-slate-500 mt-0.5">{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
-          </div>
-          <div className="flex gap-0.5 shrink-0">
-            <button onClick={() => cargarParaEditar(p)} className={`text-slate-600 hover:${t.text} p-1`}><Edit3 size={14}/></button>
-            <button onClick={() => {
-              if (p.tipo === 'Variable') { removePresupuesto(p.id); showToast("Presupuesto eliminado"); } 
-              else { removePagoFijo(p.id); showToast("Gasto Fijo eliminado."); }
-            }} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col relative overflow-hidden group hover:border-slate-600 transition-colors shadow-lg">
+        <div className={`absolute top-0 left-0 right-0 h-1 ${themeColor === 'yellow' ? 'bg-amber-500/30' : 'bg-blue-500/30'}`}></div>
+        
+        <div className="flex justify-between items-start mb-3">
+          <h3 className="font-bold text-slate-200 text-sm pr-6 truncate">
+            {isFijo ? p.descripcion : p.categoria}
+          </h3>
+          <div className="flex gap-2 absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => isFijo ? startEditFijo(p) : startEditVar(p)} 
+              className="text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded transition-colors"
+            >
+              <EditIcon/>
+            </button>
+            <button 
+              onClick={() => isFijo ? removePagoFijo(p.id) : removePresupuesto(p.id)} 
+              className="text-slate-400 hover:text-rose-400 bg-slate-800 p-1.5 rounded transition-colors"
+            >
+              <TrashIcon/>
+            </button>
           </div>
         </div>
 
-        <div className="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800 overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-1000 ${t.bar}`} style={{ width: `${porcentaje}%` }}></div>
+        <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+          <span>Límite Estimado: <span className="font-bold text-slate-300">{formatCOP(p.limite)}</span></span>
         </div>
 
-        <div className="flex justify-between items-end text-[10px]">
-          <div className="flex flex-col">
-             <span className="text-slate-400">Gastado: <span className="text-white font-bold">{formatCOP(p.gastado)}</span></span>
-             <span className={`font-medium ${diferencia >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
-               {diferencia >= 0 ? 'Disponible: ' : 'Excedido: '} {formatCOP(Math.abs(diferencia))}
-             </span>
+        <div className="flex justify-between items-end mb-2 mt-2">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-slate-500">Ejecutado</p>
+            <p className={`font-black text-sm ${overLimit ? 'text-rose-400' : colorClass}`}>
+              {formatCOP(p.ejecutado)}
+            </p>
           </div>
-          <span className={`font-bold ${t.text} text-xs`}>{porcentajeReal.toFixed(1)}%</span>
+          <div className="text-right">
+            <p className="text-[10px] uppercase font-bold text-slate-500">Disponible</p>
+            <p className={`font-bold text-xs ${p.disponible < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {formatCOP(p.disponible)}
+            </p>
+          </div>
         </div>
+
+        <div className="w-full bg-slate-900 rounded-full h-1.5 mt-auto border border-slate-800/50">
+          <div className={`h-1.5 rounded-full ${finalBarColor} transition-all duration-1000`} style={{ width: `${progress}%` }}></div>
+        </div>
+        <p className="text-right text-[9px] text-slate-500 mt-1 font-bold">
+          {p.porcentaje.toFixed(1)}% consumido
+        </p>
       </div>
     );
   };
 
+  // ============================================================================
+  // RENDER PRINCIPAL DE LA PESTAÑA
+  // ============================================================================
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
-      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+    <div className="space-y-6 pb-20 md:pb-0 animate-in fade-in duration-500">
+      
+      {/* ENCABEZADO */}
+      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><PieChart className="text-blue-400 w-8 h-8"/> Presupuestos y Ejecución</h1>
-          <p className="text-sm md:text-base text-slate-400 mt-1">Controla cómo se está gastando el dinero vs lo que tenías planificado.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-            <Plus size={16}/> {showForm ? 'Ocultar' : 'Añadir presupuesto'}
-          </button>
-          <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-          <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
-          <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+          <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <PieChartIcon /> 
+            Presupuestos
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Configura tus límites de gasto variable y tu checklist de pagos fijos.
+          </p>
         </div>
       </header>
 
-      {/* ✨ TARJETAS ACTUALIZADAS CON ANÁLISIS DE DIFERENCIA */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Tarjeta Fijos */}
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <p className="text-[10px] text-yellow-400 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
-            <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-col gap-1 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="text-orange-400 font-bold">Gastado:</span>
-              <span className="font-bold text-white">{formatCOP(totalGastadoFijo)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">{difFijo >= 0 ? 'Restante:' : 'Excedido:'}</span>
-              <span className={`font-bold ${getColorDif(difFijo)}`}>{formatCOP(difFijo)}</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Tarjeta Variables */}
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
-            <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
-            <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-col gap-1 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="text-blue-400 font-bold">Gastado:</span>
-              <span className="font-bold text-white">{formatCOP(totalGastadoVar)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">{difVar >= 0 ? 'Restante:' : 'Excedido:'}</span>
-              <span className={`font-bold ${getColorDif(difVar)}`}>{formatCOP(difVar)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tarjeta Total Consolidado */}
-        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col justify-between">
-          <div>
-            <p className="text-[10px] text-slate-300 uppercase font-bold mb-1">Total Presupuestado</p>
-            <p className="text-lg font-bold text-white">{formatCOP(totalFijo + totalVar)}</p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-600/50 flex flex-col gap-1 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-300 font-bold">Total Gastado:</span>
-              <span className="font-bold text-white">{formatCOP(totalGastadoAmbos)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">{difTotal >= 0 ? 'Restante:' : 'Excedido:'}</span>
-              <span className={`font-bold ${getColorDif(difTotal)}`}>{formatCOP(difTotal)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {showForm && (
-        <Card className={editId ? "border-t-4 border-t-yellow-500 bg-yellow-950/10" : "border-t-4 border-t-slate-500 bg-slate-900/80"}>
-          <div className="flex justify-between items-center mb-4" ref={formRef}>
-            
-            <div className="flex gap-4">
-              <button 
-                onClick={() => setTipoForm('variable')} 
-                type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                {editId ? (editOriginalType === 'variable' ? '✏️ Editando Límite Variable' : '🔄 Convertir a Variable') : 'Añadir Límite Variable'}
-              </button>
-              <span className="text-slate-700">|</span>
-              <button 
-                onClick={() => setTipoForm('fijo')} 
-                type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                {editId ? (editOriginalType === 'fijo' ? '✏️ Editando Gasto Fijo' : '🔄 Convertir a Fijo') : 'Añadir Gasto Fijo'}
-              </button>
-            </div>
-            
-            {editId && <button onClick={cancelarEdicion} className="text-xs text-yellow-400 hover:underline bg-slate-950 px-2 py-1 rounded">Cancelar Edición</button>}
-          </div>
+      {/* TARJETA DE FORMULARIO DUAL */}
+      <Card className={`border-t-4 ${tipoForm === 'variable' ? 'border-t-blue-500' : 'border-t-amber-500'} transition-colors duration-300`}>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            {editId ? 'Editando Presupuesto' : 'Crear Nuevo Límite'}
+          </h2>
           
-          <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end mt-2">
-            {tipoForm === 'variable' ? (
-              <React.Fragment>
-                <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-5" />
-                <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
-                <div className="sm:col-span-3 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? (editOriginalType === 'variable' ? 'Actualizar' : 'Convertir') : 'Añadir Límite'}</button>
-                </div>
-              </React.Fragment>
-            ) : (
-              <React.Fragment>
-                <Input label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} className="sm:col-span-4" />
-                <Select label="Categoría Fija" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-3" />
-                <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
-                <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
-                <div className="sm:col-span-2 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-yellow-500 hover:bg-yellow-600'} text-slate-900 font-bold py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? (editOriginalType === 'fijo' ? 'Actualizar' : 'Convertir') : 'Añadir Fijo'}</button>
-                </div>
-              </React.Fragment>
-            )}
-          </form>
-        </Card>
-      )}
+          <div className="flex bg-slate-950 rounded-lg border border-slate-800 p-1 self-start sm:self-auto">
+            <button 
+              onClick={() => {setTipoForm('variable'); cancelEdit();}} 
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipoForm === 'variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}
+            >
+              Gasto Variable
+            </button>
+            <button 
+              onClick={() => {setTipoForm('fijo'); cancelEdit();}} 
+              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipoForm === 'fijo' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}
+            >
+              Pago Fijo (Checklist)
+            </button>
+          </div>
+        </div>
 
-      <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium w-full md:w-max">
-        <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Todos' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-yellow-500 text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200'}`}>Solo Fijos</button>
-        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Variables</button>
+        {/* MODO: VARIABLE */}
+        {tipoForm === 'variable' ? (
+          <form onSubmit={handleAddVar} className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-in slide-in-from-left-4 duration-300">
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
+              <select 
+                required 
+                value={nuevoVar.categoria} 
+                onChange={(e) => setNuevoVar({...nuevoVar, categoria: e.target.value})} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-blue-500 outline-none"
+              >
+                <option value="">Seleccione categoría...</option>
+                {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Límite Mensual ($)</label>
+              <input 
+                type="number" 
+                required 
+                value={nuevoVar.limite} 
+                onChange={(e) => setNuevoVar({...nuevoVar, limite: e.target.value})} 
+                placeholder="Ej. 500000" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-blue-500 outline-none"
+              />
+            </div>
+            <div className="md:col-span-1 flex items-end">
+              <div className="flex gap-2 w-full">
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95">
+                  {editId ? <CheckSquareIcon/> : <PlusIcon/>}
+                  {editId ? 'Guardar' : 'Agregar'}
+                </button>
+                {editId && (
+                  <button type="button" onClick={cancelEdit} className="bg-slate-800 hover:bg-slate-700 text-white py-2 px-3 rounded-xl transition-colors">
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </div>
+          </form>
+        ) : (
+          /* MODO: FIJO */
+          <form onSubmit={handleAddFijo} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 animate-in slide-in-from-right-4 duration-300">
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Nombre del Pago</label>
+              <input 
+                type="text" 
+                required 
+                value={nuevoFijo.descripcion} 
+                onChange={(e) => setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} 
+                placeholder="Ej. Arriendo, Internet..." 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-amber-500 outline-none"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Valor ($)</label>
+              <input 
+                type="number" 
+                required 
+                value={nuevoFijo.monto} 
+                onChange={(e) => setNuevoFijo({...nuevoFijo, monto: e.target.value})} 
+                placeholder="0" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-amber-500 outline-none"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Día Pago</label>
+              <input 
+                type="number" 
+                min="1" max="31" 
+                value={nuevoFijo.diaPago} 
+                onChange={(e) => setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} 
+                placeholder="Ej. 15" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-amber-500 outline-none"
+              />
+            </div>
+            <div className="md:col-span-1 flex items-end">
+               <div className="flex gap-2 w-full">
+                  <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95">
+                    {editId ? <CheckSquareIcon/> : <PlusIcon/>}
+                    {editId ? 'Guardar' : 'Agregar'}
+                  </button>
+                  {editId && (
+                    <button type="button" onClick={cancelEdit} className="bg-slate-800 hover:bg-slate-700 text-white py-2 px-3 rounded-xl transition-colors">
+                      Cancelar
+                    </button>
+                  )}
+               </div>
+            </div>
+          </form>
+        )}
+      </Card>
+
+      {/* FILTROS VISUALES */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        {['Todos', 'Fijos', 'Variables'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFiltroLista(f)}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${filtroLista === f ? 'bg-slate-200 text-slate-900 border-slate-200' : 'bg-slate-900/50 text-slate-400 border-slate-800 hover:bg-slate-800'}`}
+          >
+            {f}
+          </button>
+        ))}
       </div>
 
-      <div className="space-y-8">
+      {/* LISTADO DE TARJETAS */}
+      <div className="space-y-8 mt-6">
+        
+        {/* BLOQUE: FIJOS */}
         {(filtroLista === 'Todos' || filtroLista === 'Fijos') && (
           <div className="space-y-4 animate-in fade-in">
-            <h2 className="text-sm font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-              <CheckSquare size={16} /> Gastos Fijos Estimados
+            <h2 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
+              <CheckSquareIcon /> Gastos Fijos Estimados
             </h2>
             {fijosItems.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="yellow" />)}
+                {fijosItems.map(p => (
+                  <RenderCardCompacta key={p.id} p={p} themeColor="yellow" isFijo={true} />
+                ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No hay gastos fijos configurados.</p>
+              <p className="text-sm text-slate-500 italic">No hay gastos fijos configurados.</p>
             )}
           </div>
         )}
 
+        {/* BLOQUE: VARIABLES */}
         {(filtroLista === 'Todos' || filtroLista === 'Variables') && (
           <div className="space-y-4 animate-in fade-in">
             <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-              <PieChart size={16} /> Límites de Gasto Variable
+              <PieChartIcon /> Límites de Gasto Variable
             </h2>
             {varItems.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                {varItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="blue" />)}
+                {varItems.map(p => (
+                  <RenderCardCompacta key={p.id} p={p} themeColor="blue" isFijo={false} />
+                ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No hay presupuestos variables configurados.</p>
+              <p className="text-sm text-slate-500 italic">No hay límites variables configurados.</p>
             )}
           </div>
         )}
+
       </div>
     </div>
   );
