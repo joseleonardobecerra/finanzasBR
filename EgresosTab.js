@@ -76,8 +76,13 @@ const EgresosTab = ({
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
   const [categoria, setCategoria] = useState('');
+  
+  // Flujo Inteligente de Cuentas
+  const [metodoPago, setMetodoPago] = useState('');
   const [cuentaId, setCuentaId] = useState('');
+  
   const [deudaId, setDeudaId] = useState('');
+  const [interesesOtros, setInteresesOtros] = useState('');
   const [tipo, setTipo] = useState('Variable');
 
   // ============================================================================
@@ -117,9 +122,28 @@ const EgresosTab = ({
   // ============================================================================
   const [pfState, setPfState] = useState({});
 
-  // Listas de Cuentas Filtradas
+  // ============================================================================
+  // LÓGICA DE FILTRADO DE CUENTAS
+  // ============================================================================
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
+
+  // Añadimos "Intereses y Cargos" dinámicamente a la lista
+  const categoriasConIntereses = Array.from(new Set([...categoriasMaestras, 'Intereses y Cargos'])).sort();
+
+  // Filtrado de cuentas según el método de pago elegido
+  const cuentasFiltradas = cuentasActivas.filter(c => {
+    if (!metodoPago) return false;
+    if (metodoPago === 'cash') return c.type === 'cash';
+    if (metodoPago === 'bank') return c.type === 'bank' || c.type === 'pocket';
+    if (metodoPago === 'credit') return c.type === 'credit';
+    return false;
+  });
+
+  const handleMetodoChange = (e) => {
+    setMetodoPago(e.target.value);
+    setCuentaId(''); // Si cambia el método, reseteamos la cuenta elegida
+  };
 
   // ============================================================================
   // CÁLCULOS PRINCIPALES DEL MES
@@ -171,6 +195,7 @@ const EgresosTab = ({
       descripcion,
       categoria,
       monto: Number(monto),
+      interesesOtros: Number(interesesOtros) || 0, // Guarda el interés opcional
       cuentaId,
       tipo,
       deudaId: deudaId || null
@@ -178,6 +203,7 @@ const EgresosTab = ({
     
     setDescripcion('');
     setMonto('');
+    setInteresesOtros('');
     setDeudaId('');
     showToast('Gasto registrado correctamente.');
   };
@@ -195,7 +221,8 @@ const EgresosTab = ({
     
     await updateEgreso(editingId, { 
       ...editData, 
-      monto: Number(editData.monto) 
+      monto: Number(editData.monto),
+      interesesOtros: Number(editData.interesesOtros) || 0 
     });
     
     setEditingId(null);
@@ -221,8 +248,6 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
   // ============================================================================
-  
-  // ✨ NUEVO: Retorna el Gasto exacto asociado a este pago fijo
   const getEgresoPagoFijo = (pf) => {
     return egresosMes.find(e => {
       if (e.tipo !== 'Fijo') return false;
@@ -282,7 +307,6 @@ const EgresosTab = ({
     showToast(`Pago de ${pf.descripcion} registrado.`);
   };
 
-  // ✨ NUEVO: Función para revertir un pago fijo
   const deshacerPagoFijo = (egreso) => {
     if (window.confirm('¿Deshacer este pago? El dinero volverá a tus cuentas automáticamente.')) {
       removeEgreso(egreso.id);
@@ -340,7 +364,7 @@ const EgresosTab = ({
       </div>
 
       {/* ============================================================================ */}
-      {/* 1. FORMULARIO REGISTRO NORMAL (ACORDEÓN) */}
+      {/* 1. FORMULARIO REGISTRO NORMAL */}
       {/* ============================================================================ */}
       <Card className="border-t-4 border-t-rose-500 transition-all duration-300">
         <div 
@@ -358,99 +382,169 @@ const EgresosTab = ({
         {openSections.form && (
           <form 
             onSubmit={handleSubmit} 
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-4 fade-in duration-300"
+            className="mt-5 animate-in slide-in-from-top-4 fade-in duration-300"
           >
-            {/* Fila 1 */}
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
-              <input 
-                type="date" 
-                required 
-                value={fecha} 
-                onChange={(e) => setFecha(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Descripción</label>
-              <input 
-                type="text" 
-                required 
-                value={descripcion} 
-                onChange={(e) => setDescripcion(e.target.value)} 
-                placeholder="Ej. Almuerzo, Pago de tarjeta..." 
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
-              <select 
-                required 
-                value={categoria} 
-                onChange={(e) => setCategoria(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
-              >
-                <option value="">Seleccione...</option>
-                {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+            {/* FILA 1: DATOS BÁSICOS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fecha</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={fecha} 
+                  onClick={(e) => e.target.showPicker && e.target.showPicker()} 
+                  onChange={(e) => setFecha(e.target.value)} 
+                  className="w-full bg-[#0f0f11]/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-inner cursor-pointer"
+                />
+              </div>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Descripción</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={descripcion} 
+                  onChange={(e) => setDescripcion(e.target.value)} 
+                  placeholder="Ej. Almuerzo, Pago de tarjeta..." 
+                  className="w-full bg-[#0f0f11]/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-inner placeholder:text-slate-700" 
+                />
+              </div>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoría</label>
+                <div className="relative">
+                  <select 
+                    required 
+                    value={categoria} 
+                    onChange={(e) => setCategoria(e.target.value)} 
+                    className="w-full bg-[#0f0f11]/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-inner appearance-none cursor-pointer"
+                  >
+                    <option value="" className="bg-[#17171a] text-slate-400">Seleccione...</option>
+                    {categoriasConIntereses.map(c => <option key={c} value={c} className="bg-[#17171a] text-slate-200">{c}</option>)}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500"><ChevronDownIcon size={16} /></div>
+                </div>
+              </div>
+
             </div>
 
-            {/* Fila 2 */}
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">De dónde sale la plata</label>
-              <select 
-                required 
-                value={cuentaId} 
-                onChange={(e) => setCuentaId(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
-              >
-                <option value="">Seleccione cuenta...</option>
-                {cuentasActivas.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.type === 'cash' ? '💵' : c.type === 'credit' ? '💳' : '🏦'} {c.name}
-                  </option>
-                ))}
-              </select>
+            {/* FILA 2: LÓGICA INTELIGENTE DE CÓMO SE PAGÓ */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Método de Pago</label>
+                <div className="relative">
+                  <select 
+                    required 
+                    value={metodoPago} 
+                    onChange={handleMetodoChange} 
+                    className="w-full bg-[#0f0f11]/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-inner appearance-none cursor-pointer"
+                  >
+                    <option value="" className="bg-[#17171a] text-slate-400">Seleccione...</option>
+                    <option value="cash" className="bg-[#17171a] text-slate-200">💵 Efectivo</option>
+                    <option value="bank" className="bg-[#17171a] text-slate-200">🏦 Débito / Ahorros</option>
+                    <option value="credit" className="bg-[#17171a] text-slate-200">💳 Tarjeta de Crédito</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500"><ChevronDownIcon size={16} /></div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">¿De cuál cuenta exacta?</label>
+                <div className="relative">
+                  <select 
+                    required 
+                    disabled={!metodoPago} 
+                    value={cuentaId} 
+                    onChange={(e) => setCuentaId(e.target.value)} 
+                    className="w-full bg-[#0f0f11]/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-inner appearance-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <option value="" className="bg-[#17171a] text-slate-400">
+                      {metodoPago ? 'Seleccione cuenta...' : 'Elija método primero'}
+                    </option>
+                    {cuentasFiltradas.map(c => <option key={c.id} value={c.id} className="bg-[#17171a] text-slate-200">{c.name}</option>)}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500"><ChevronDownIcon size={16} /></div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monto Total</label>
+                <input 
+                  type="number" 
+                  required 
+                  value={monto} 
+                  onChange={(e) => setMonto(e.target.value)} 
+                  placeholder="$ 0" 
+                  className="w-full bg-[#0f0f11]/60 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-rose-500/50 focus:ring-4 focus:ring-rose-500/20 transition-all duration-300 shadow-inner placeholder:text-slate-700" 
+                />
+              </div>
+
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-1">
-                <ShieldAlert size={12}/> Abonar a Deuda (Opcional)
-              </label>
-              <select 
-                value={deudaId} 
-                onChange={(e) => setDeudaId(e.target.value)} 
-                className="w-full bg-indigo-950/20 border border-indigo-500/30 rounded-lg px-3 py-2 mt-1 text-sm text-indigo-300 focus:border-indigo-500 outline-none"
-              >
-                <option value="">No es pago a deuda (Gasto normal)</option>
-                {todasLasDeudas.map(d => <option key={d.id} value={d.id}>Pagar: {d.name}</option>)}
-              </select>
-            </div>
-            
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Monto Total</label>
-              <input 
-                type="number" 
-                required 
-                value={monto} 
-                onChange={(e) => setMonto(e.target.value)} 
-                placeholder="$ 0" 
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none font-bold"
-              />
+            {/* FILA 3: ABONO A DEUDA E INTERESES (MÓDULO AZUL) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 p-4 md:p-5 border border-indigo-500/20 bg-indigo-500/5 rounded-2xl">
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-1.5">
+                  <ShieldAlert size={14}/> Abonar a Deuda (Opcional)
+                </label>
+                <div className="relative">
+                  <select 
+                    value={deudaId} 
+                    onChange={(e) => setDeudaId(e.target.value)} 
+                    className="w-full bg-[#0f0f11]/80 border border-indigo-500/30 rounded-xl px-4 py-3 text-sm text-indigo-200 focus:outline-none focus:border-indigo-500/80 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-inner appearance-none cursor-pointer"
+                  >
+                    <option value="" className="bg-[#17171a] text-slate-400">No es pago a deuda (Gasto normal)</option>
+                    {todasLasDeudas.map(d => <option key={d.id} value={d.id} className="bg-[#17171a] text-slate-200">Pagar: {d.name}</option>)}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-indigo-500/50"><ChevronDownIcon size={16} /></div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-1.5">
+                  Intereses pagados (Opcional)
+                </label>
+                <input 
+                  type="number" 
+                  value={interesesOtros} 
+                  onChange={(e) => setInteresesOtros(e.target.value)} 
+                  placeholder="Ej: $ 15.000" 
+                  className="w-full bg-[#0f0f11]/80 border border-indigo-500/30 rounded-xl px-4 py-3 text-sm font-bold text-indigo-200 focus:outline-none focus:border-indigo-500/80 focus:ring-4 focus:ring-indigo-500/20 transition-all duration-300 shadow-inner placeholder:text-indigo-900/50" 
+                />
+              </div>
+
             </div>
 
-            {/* Fila 3: Controles */}
-            <div className="md:col-span-3 flex justify-between items-center mt-2 pt-4 border-t border-slate-800/50">
-               <div className="flex bg-slate-950 rounded-lg border border-slate-800 p-1">
-                  <button type="button" onClick={() => setTipo('Variable')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}>Variable</button>
-                  <button type="button" onClick={() => setTipo('Fijo')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}>Fijo</button>
+            {/* FILA 4: CONTROLES */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-5 border-t border-white/[0.05]">
+               
+               <div className="flex bg-[#0f0f11] rounded-xl border border-white/10 p-1 w-full md:w-auto">
+                  <button 
+                    type="button" 
+                    onClick={() => setTipo('Variable')} 
+                    className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all ${tipo === 'Variable' ? 'bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.4)] text-white' : 'text-slate-400 hover:text-slate-300'}`}
+                  >
+                    Variable
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setTipo('Fijo')} 
+                    className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all ${tipo === 'Fijo' ? 'bg-orange-600 shadow-[0_0_15px_rgba(234,88,12,0.4)] text-white' : 'text-slate-400 hover:text-slate-300'}`}
+                  >
+                    Fijo
+                  </button>
                </div>
                
-              <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95">
+              <button 
+                type="submit" 
+                className="w-full md:w-auto bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(225,29,72,0.3)] active:scale-95"
+              >
                 <Plus size={18} /> Registrar Movimiento
               </button>
+
             </div>
           </form>
         )}
@@ -458,19 +552,18 @@ const EgresosTab = ({
 
 
       {/* ============================================================================ */}
-      {/* 2. PAGOS FIJOS (CHECKLIST EN MODO TABLA / FILAS) */}
+      {/* 2. PAGOS FIJOS (CHECKLIST EN 1 SOLA COLUMNA) */}
       {/* ============================================================================ */}
-      <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300">
+      <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300 lg:col-span-2">
         <div 
-          className="flex justify-between items-center cursor-pointer select-none"
+          className="flex justify-between items-center cursor-pointer select-none" 
           onClick={() => toggleSection('fijos')}
         >
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-             <CheckSquare size={20} className="text-orange-400"/>
-             2. Pagos Fijos (Checklist)
+            <CheckSquare size={20} className="text-orange-400"/> 2. Pagos Fijos (Checklist)
           </h2>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+            <span className="text-xs font-bold text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 shadow-inner">
                {pagosRealizados} / {pagosFijos.length} Pagados
             </span>
             <button className="text-slate-400 hover:text-white transition-colors">
@@ -480,12 +573,12 @@ const EgresosTab = ({
         </div>
 
         {openSections.fijos && (
-          <div className="mt-4 flex-1 overflow-y-auto max-h-[450px] pr-1 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="mt-6 flex-1 overflow-y-auto max-h-[450px] pr-2 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full animate-in slide-in-from-top-4 fade-in duration-300">
             
             {pagosFijosOrdenados.length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-10">No has configurado pagos fijos en Presupuestos.</p>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
               {pagosFijosOrdenados.map(pf => {
                 const egresoAsociado = getEgresoPagoFijo(pf);
                 const isPaid = !!egresoAsociado;
@@ -493,21 +586,22 @@ const EgresosTab = ({
                 return (
                   <div 
                     key={pf.id} 
-                    className={`p-3 md:p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                    className={`p-4 md:p-5 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-300 ${
                       isPaid 
-                        ? 'bg-emerald-900/10 border-emerald-500/20' 
-                        : 'bg-slate-950 border-slate-800 hover:border-orange-500/30'
+                        ? 'bg-emerald-500/5 border-emerald-500/20 opacity-80' 
+                        : 'bg-white/[0.02] border-white/10 hover:border-orange-500/30 shadow-lg'
                     }`}
                   >
+                    
                     {/* Sección Izquierda: Botón, Nombre y Fecha */}
-                    <div className="flex items-center gap-3 w-full md:w-1/3 shrink-0">
+                    <div className="flex items-center gap-4 w-full md:w-1/3 shrink-0">
                       <button 
                         onClick={() => isPaid ? deshacerPagoFijo(egresoAsociado) : registrarPagoFijo(pf)} 
-                        className={`w-6 h-6 rounded flex items-center justify-center border transition-colors shrink-0 group ${
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center border-2 transition-all duration-300 shrink-0 group ${
                           isPaid 
-                            ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-rose-500 hover:border-rose-500' 
-                            : 'bg-slate-900 border-slate-600 text-transparent hover:border-orange-500'
-                        }`}
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-rose-500 hover:border-rose-500 hover:shadow-[0_0_15px_rgba(244,63,94,0.4)]' 
+                            : 'bg-[#0f0f11] border-white/20 text-transparent hover:border-orange-500 hover:shadow-[0_0_10px_rgba(249,115,22,0.3)]'
+                        }`} 
                         title={isPaid ? "Deshacer este pago" : "Marcar como pagado"}
                       >
                          {isPaid ? (
@@ -521,60 +615,65 @@ const EgresosTab = ({
                       </button>
                       
                       <div className="overflow-hidden">
-                        <p className={`text-sm font-bold truncate ${isPaid ? 'text-emerald-400 line-through opacity-70' : 'text-slate-200'}`}>
+                        <p className={`text-sm md:text-base font-bold truncate ${isPaid ? 'text-emerald-400 line-through opacity-70' : 'text-slate-200'}`}>
                           {pf.descripcion}
                         </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5 uppercase">
+                        <p className="text-[10px] font-bold tracking-widest text-slate-500 mt-1 uppercase">
                           Día sugerido: {pf.diaPago || 1} • {pf.categoria}
                         </p>
                       </div>
                     </div>
                     
-                    {/* Sección Central y Derecha: Controles si no está pago, Resumen si está pago */}
+                    {/* Sección Central y Derecha */}
                     {!isPaid ? (
-                      <div className="flex-1 flex flex-col md:flex-row items-center gap-2 w-full">
+                      <div className="flex-1 flex flex-col md:flex-row items-center gap-3 w-full">
                         
-                        <select 
-                          value={getPfCuenta(pf)} 
-                          onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)}
-                          title="Cuenta desde la que pagas"
-                          className="bg-slate-900 border border-slate-700 text-slate-300 rounded p-2 text-[11px] outline-none focus:border-orange-500 flex-1 w-full transition-colors"
-                        >
-                          <option value="">De dónde sale...</option>
-                          {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                        <div className="relative w-full flex-1">
+                          <select 
+                            value={getPfCuenta(pf)} 
+                            onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)} 
+                            title="Cuenta desde la que pagas"
+                            className="w-full bg-[#0f0f11]/60 border border-white/10 text-slate-300 rounded-xl p-3 text-[11px] outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all shadow-inner appearance-none cursor-pointer"
+                          >
+                            <option value="" className="bg-[#17171a]">De dónde sale...</option>
+                            {cuentasActivas.map(c => <option key={c.id} value={c.id} className="bg-[#17171a]">{c.name}</option>)}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><ChevronDownIcon size={14} /></div>
+                        </div>
 
-                        <select 
-                          value={getPfDeuda(pf)} 
-                          onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)}
-                          title="Deuda a la que vas a abonar (Opcional)"
-                          className="bg-slate-900 border border-slate-700 text-slate-300 rounded p-2 text-[11px] outline-none focus:border-orange-500 flex-1 w-full transition-colors"
-                        >
-                          <option value="">No es pago a deuda</option>
-                          {todasLasDeudas.map(d => <option key={d.id} value={d.id}>Pagar: {d.name}</option>)}
-                        </select>
+                        <div className="relative w-full flex-1">
+                          <select 
+                            value={getPfDeuda(pf)} 
+                            onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)} 
+                            title="Abonar a Deuda (Opcional)"
+                            className="w-full bg-[#0f0f11]/60 border border-white/10 text-slate-300 rounded-xl p-3 text-[11px] outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all shadow-inner appearance-none cursor-pointer"
+                          >
+                            <option value="" className="bg-[#17171a]">No es pago a deuda</option>
+                            {todasLasDeudas.map(d => <option key={d.id} value={d.id} className="bg-[#17171a]">Pagar: {d.name}</option>)}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><ChevronDownIcon size={14} /></div>
+                        </div>
                         
                         <div className="w-full md:w-32 shrink-0">
                            <input 
                              type="number" 
                              value={getPfMonto(pf)} 
-                             onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)}
+                             onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)} 
                              title="Monto exacto a pagar"
-                             className="bg-slate-900 border border-slate-700 text-[13px] font-bold text-orange-400 rounded p-2 outline-none focus:border-orange-500 w-full text-right transition-colors"
+                             className="w-full bg-[#0f0f11]/60 border border-white/10 text-[13px] font-black text-orange-400 rounded-xl p-3 outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 text-right transition-all shadow-inner placeholder:text-orange-900" 
                            />
                         </div>
+
                       </div>
                     ) : (
-                      <div className="flex-1 flex justify-end items-center gap-4 w-full">
-                        <div className="text-right">
-                          <p className="text-[10px] text-emerald-500/70 uppercase font-bold mb-0.5">Monto Pagado</p>
-                          <p className="text-sm font-black text-emerald-500 opacity-80">
-                            {formatCOP(egresoAsociado.monto)}
-                          </p>
+                      <div className="flex-1 flex justify-end items-center gap-5 w-full">
+                        <div className="text-right border-r border-emerald-500/20 pr-5">
+                          <p className="text-[10px] text-emerald-500/70 uppercase tracking-widest font-black mb-1">Monto Pagado</p>
+                          <p className="text-base font-black text-emerald-400">{formatCOP(egresoAsociado.monto)}</p>
                         </div>
                         <button 
                           onClick={() => deshacerPagoFijo(egresoAsociado)}
-                          className="text-[11px] font-bold text-rose-500/70 hover:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded transition-colors border border-rose-500/20"
+                          className="text-[11px] font-black text-rose-400 hover:text-white hover:bg-rose-500 bg-rose-500/10 px-4 py-2 rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(244,63,94,0.1)] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)] border border-rose-500/20 uppercase tracking-wider"
                         >
                           Deshacer
                         </button>
@@ -593,17 +692,16 @@ const EgresosTab = ({
       {/* ============================================================================ */}
       {/* 3. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
       {/* ============================================================================ */}
-      <Card className="flex flex-col border-t-4 border-t-slate-600 mt-6 bg-slate-900/10 transition-all duration-300">
+      <Card className="flex flex-col border-t-4 border-t-slate-600 mt-6 transition-all duration-300">
         <div 
-          className="flex justify-between items-center cursor-pointer select-none mb-2"
+          className="flex justify-between items-center cursor-pointer select-none mb-2" 
           onClick={() => toggleSection('historial')}
         >
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <ListIcon className="text-slate-400" />
-            3. Historial Completo de Egresos
+            <ListIcon className="text-slate-400" /> 3. Historial Completo de Egresos
           </h2>
           <div className="flex items-center gap-3">
-            <span className="bg-slate-900 border border-slate-700 text-slate-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+            <span className="bg-[#0f0f11] border border-white/10 text-slate-400 text-[10px] px-3 py-1.5 rounded-lg font-bold uppercase tracking-widest shadow-inner">
               {egresosFiltrados.length} Movimientos
             </span>
             <button className="text-slate-400 hover:text-white transition-colors">
@@ -613,75 +711,48 @@ const EgresosTab = ({
         </div>
 
         {openSections.historial && (
-          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/50 mt-4 animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0f0f11]/40 mt-5 animate-in slide-in-from-top-4 fade-in duration-300 shadow-inner">
             <table className="w-full text-left border-collapse min-w-[900px]">
               
               <thead>
-                <tr className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/80">
-                  <th className="p-4 font-bold w-[10%]">Fecha</th>
-                  <th className="p-4 font-bold w-[25%]">Descripción</th>
-                  <th className="p-4 font-bold w-[12%] text-center">Fijo/Var</th>
-                  <th className="p-4 font-bold w-[15%]">Categoría</th>
-                  <th className="p-4 font-bold w-[15%]">Cuenta</th>
-                  <th className="p-4 font-bold w-[15%] text-right">Monto</th>
-                  <th className="p-4 font-bold text-center w-[8%]">Acciones</th>
+                <tr className="border-b border-white/5 text-[10px] uppercase tracking-widest text-slate-400 bg-white/[0.02]">
+                  <th className="p-5 font-black w-[10%]">Fecha</th>
+                  <th className="p-5 font-black w-[25%]">Descripción</th>
+                  <th className="p-5 font-black w-[12%] text-center">Fijo/Var</th>
+                  <th className="p-5 font-black w-[15%]">Categoría</th>
+                  <th className="p-5 font-black w-[15%]">Cuenta</th>
+                  <th className="p-5 font-black w-[15%] text-right">Monto</th>
+                  <th className="p-5 font-black text-center w-[8%]">Acciones</th>
                 </tr>
                 
                 {/* Fila de Filtros */}
-                <tr className="border-b-2 border-slate-800 bg-slate-900/40">
+                <tr className="border-b-2 border-white/10 bg-white/[0.01]">
                   <th className="p-2"></th>
                   <th className="p-2">
-                    <input 
-                      type="text" 
-                      placeholder="Buscar descripción..." 
-                      className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-rose-500 outline-none placeholder:text-slate-600" 
-                      value={filters.descripcion} 
-                      onChange={e => setFilters({...filters, descripcion: e.target.value})}
-                    />
+                    <input type="text" placeholder="Buscar descripción..." className="w-full bg-[#0f0f11] border border-white/10 rounded-lg p-2.5 text-[11px] text-white focus:outline-none focus:border-rose-500/50 shadow-inner placeholder:text-slate-600" value={filters.descripcion} onChange={e => setFilters({...filters, descripcion: e.target.value})}/>
                   </th>
                   <th className="p-2">
-                    <select 
-                      className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-rose-500 outline-none" 
-                      value={filters.tipo} 
-                      onChange={e => setFilters({...filters, tipo: e.target.value})}
-                    >
+                    <select className="w-full bg-[#0f0f11] border border-white/10 rounded-lg p-2.5 text-[11px] text-white focus:outline-none focus:border-rose-500/50 shadow-inner appearance-none cursor-pointer" value={filters.tipo} onChange={e => setFilters({...filters, tipo: e.target.value})}>
                       <option value="Ambos">Ambos</option>
                       <option value="Fijo">Fijo</option>
                       <option value="Variable">Variable</option>
                     </select>
                   </th>
                   <th className="p-2">
-                    <select 
-                      className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-rose-500 outline-none" 
-                      value={filters.categoria} 
-                      onChange={e => setFilters({...filters, categoria: e.target.value})}
-                    >
-                      <option value="">Categorías (Todas)</option>
-                      {categoriasMaestras.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
+                    <select className="w-full bg-[#0f0f11] border border-white/10 rounded-lg p-2.5 text-[11px] text-white focus:outline-none focus:border-rose-500/50 shadow-inner appearance-none cursor-pointer" value={filters.categoria} onChange={e => setFilters({...filters, categoria: e.target.value})}>
+                      <option value="">Todas</option>
+                      {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </th>
                   <th className="p-2">
-                    <select 
-                      className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-rose-500 outline-none" 
-                      value={filters.cuenta} 
-                      onChange={e => setFilters({...filters, cuenta: e.target.value})}
-                    >
-                      <option value="">Cuentas (Todas)</option>
-                      {cuentasActivas.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
+                    <select className="w-full bg-[#0f0f11] border border-white/10 rounded-lg p-2.5 text-[11px] text-white focus:outline-none focus:border-rose-500/50 shadow-inner appearance-none cursor-pointer" value={filters.cuenta} onChange={e => setFilters({...filters, cuenta: e.target.value})}>
+                      <option value="">Todas</option>
+                      {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </th>
                   <th className="p-2"></th>
                   <th className="p-2 text-center">
-                    <button 
-                      onClick={limpiarFiltros} 
-                      className="text-[10px] uppercase font-black text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-500 px-3 py-1.5 rounded-lg w-full transition-all"
-                    >
-                      Limpiar
-                    </button>
+                    <button onClick={limpiarFiltros} className="text-[10px] uppercase font-black text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-500 px-3 py-2 rounded-lg w-full transition-all border border-rose-500/20">Limpiar</button>
                   </th>
                 </tr>
               </thead>
@@ -689,9 +760,7 @@ const EgresosTab = ({
               <tbody className="text-sm">
                 {egresosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="p-12 text-center text-slate-500 font-medium italic">
-                      No se encontraron gastos con esos filtros.
-                    </td>
+                    <td colSpan="7" className="p-12 text-center text-slate-500 font-medium italic">No se encontraron gastos con esos filtros.</td>
                   </tr>
                 ) : (
                   egresosFiltrados.map(egreso => {
@@ -700,144 +769,76 @@ const EgresosTab = ({
                     const cuentaName = cuentaObj?.name || 'Cuenta eliminada';
                     
                     return (
-                      <tr 
-                        key={egreso.id} 
-                        className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
-                      >
+                      <tr key={egreso.id} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
                         
-                        <td className="p-4 text-slate-400 text-xs font-medium">
+                        <td className="p-5 text-slate-400 text-[11px] font-bold tracking-wider">
                           {isEditing ? (
-                            <input 
-                              type="date" 
-                              value={editData.fecha} 
-                              onChange={e => setEditData({...editData, fecha: e.target.value})} 
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-white"
-                            />
+                            <input type="date" value={editData.fecha} onChange={e => setEditData({...editData, fecha: e.target.value})} className="w-full bg-[#0f0f11] border border-white/10 rounded p-1.5 text-xs text-white outline-none" />
                           ) : egreso.fecha}
                         </td>
 
-                        <td className="p-4 text-slate-200 font-bold text-[13px]">
+                        <td className="p-5 text-slate-200 font-bold text-[13px]">
                           {isEditing ? (
-                            <input 
-                              type="text" 
-                              value={editData.descripcion} 
-                              onChange={e => setEditData({...editData, descripcion: e.target.value})} 
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-white"
-                            />
+                            <input type="text" value={editData.descripcion} onChange={e => setEditData({...editData, descripcion: e.target.value})} className="w-full bg-[#0f0f11] border border-white/10 rounded p-1.5 text-xs text-white outline-none" />
                           ) : egreso.descripcion}
                         </td>
 
-                        <td className="p-4 text-center">
+                        <td className="p-5 text-center">
                           {isEditing ? (
-                            <select 
-                              value={editData.tipo} 
-                              onChange={e => setEditData({...editData, tipo: e.target.value})} 
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-white"
-                            >
-                              <option value="Fijo">Fijo</option>
-                              <option value="Variable">Variable</option>
+                            <select value={editData.tipo} onChange={e => setEditData({...editData, tipo: e.target.value})} className="w-full bg-[#0f0f11] border border-white/10 rounded p-1.5 text-xs text-white outline-none">
+                              <option value="Fijo">Fijo</option><option value="Variable">Variable</option>
                             </select>
                           ) : (
-                            <span 
-                              className={`px-2 py-1 text-[9px] font-bold rounded border uppercase tracking-wider ${
-                                egreso.tipo === 'Fijo' 
-                                  ? 'bg-[#431407]/40 text-orange-400 border-orange-500/20' 
-                                  : 'bg-blue-900/20 text-blue-400 border-blue-500/20'
-                              }`}
-                            >
+                            <span className={`px-2.5 py-1.5 text-[9px] font-black rounded-lg border uppercase tracking-widest ${egreso.tipo === 'Fijo' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
                               {egreso.tipo || 'VARIABLE'}
                             </span>
                           )}
                         </td>
 
-                        <td className="p-4">
+                        <td className="p-5">
                           {isEditing ? (
-                            <select 
-                              value={editData.categoria} 
-                              onChange={e => setEditData({...editData, categoria: e.target.value})} 
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-white"
-                            >
-                              {categoriasMaestras.map(c => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
+                            <select value={editData.categoria} onChange={e => setEditData({...editData, categoria: e.target.value})} className="w-full bg-[#0f0f11] border border-white/10 rounded p-1.5 text-xs text-white outline-none">
+                              {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                          ) : (
-                            <span className="px-2.5 py-1 bg-slate-800 text-slate-300 text-[11px] rounded-md font-medium">
-                              {egreso.categoria}
-                            </span>
-                          )}
+                          ) : (<span className="px-3 py-1.5 bg-[#0f0f11] border border-white/5 text-slate-300 text-[11px] font-bold rounded-lg tracking-wide shadow-inner">{egreso.categoria}</span>)}
                         </td>
 
-                        <td className="p-4">
+                        <td className="p-5">
                           {isEditing ? (
-                            <select 
-                              value={editData.cuentaId} 
-                              onChange={e => setEditData({...editData, cuentaId: e.target.value})} 
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-white"
-                            >
-                              {cuentasActivas.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
+                            <select value={editData.cuentaId} onChange={e => setEditData({...editData, cuentaId: e.target.value})} className="w-full bg-[#0f0f11] border border-white/10 rounded p-1.5 text-xs text-white outline-none">
+                              {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
-                          ) : (
-                            <p className="text-[10px] text-blue-400 font-medium">
-                              Pagado con: {cuentaName}
-                            </p>
-                          )}
+                          ) : (<p className="text-[11px] text-blue-400 font-bold tracking-wide">Pagado con: {cuentaName}</p>)}
                         </td>
 
-                        <td className="p-4 text-right">
+                        <td className="p-5 text-right flex flex-col items-end">
                           {isEditing ? (
-                            <input 
-                              type="number" 
-                              value={editData.monto} 
-                              onChange={e => setEditData({...editData, monto: e.target.value})} 
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-right text-white"
-                            />
+                            <React.Fragment>
+                              <input type="number" value={editData.monto} onChange={e => setEditData({...editData, monto: e.target.value})} className="w-full bg-[#0f0f11] border border-white/10 rounded p-1.5 text-xs text-right text-white outline-none font-bold mb-1" placeholder="Monto total"/>
+                              <input type="number" value={editData.interesesOtros || ''} onChange={e => setEditData({...editData, interesesOtros: e.target.value})} className="w-full bg-[#0f0f11]/50 border border-indigo-500/30 rounded p-1.5 text-[10px] text-right text-indigo-300 outline-none placeholder:text-indigo-900/50" placeholder="Intereses incluidos"/>
+                            </React.Fragment>
                           ) : (
-                            <span className="font-black text-rose-400 text-[14px]">
-                              {formatCOP(egreso.monto)}
-                            </span>
+                            <React.Fragment>
+                              <span className="font-black text-rose-400 text-sm tabular-nums">{formatCOP(egreso.monto)}</span>
+                              {egreso.interesesOtros > 0 && <span className="text-[9px] text-indigo-400 font-bold mt-1 tracking-widest uppercase">Incluye Int: {formatCOP(egreso.interesesOtros)}</span>}
+                            </React.Fragment>
                           )}
                         </td>
 
-                        <td className="p-4">
+                        <td className="p-5">
                           {isEditing ? (
                             <div className="flex items-center justify-center gap-2">
-                              <button 
-                                onClick={saveEdit} 
-                                className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors" 
-                                title="Confirmar"
-                              >
-                                <CheckIcon size={16} />
-                              </button>
-                              <button 
-                                onClick={() => setEditingId(null)} 
-                                className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors" 
-                                title="Cancelar"
-                              >
-                                <XIcon size={16} />
-                              </button>
+                              <button onClick={saveEdit} className="text-emerald-400 hover:text-white hover:bg-emerald-500 p-2 bg-emerald-500/10 rounded-lg transition-all border border-emerald-500/20" title="Confirmar"><CheckIcon size={14} /></button>
+                              <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-white hover:bg-rose-500 p-2 bg-rose-500/10 rounded-lg transition-all border border-rose-500/20" title="Cancelar"><XIcon size={14} /></button>
                             </div>
                           ) : (
                             <div className="flex items-center justify-center gap-3">
-                              <button 
-                                onClick={() => startEditing(egreso)} 
-                                className="text-slate-500 hover:text-indigo-400 transition-colors" 
-                                title="Editar"
-                              >
-                                <Edit3 size={14}/>
-                              </button>
-                              <button 
-                                onClick={() => handleDelete(egreso.id)} 
-                                className="text-slate-500 hover:text-rose-500 transition-colors" 
-                                title="Eliminar"
-                              >
-                                <Trash2 size={14}/>
-                              </button>
+                              <button onClick={() => startEditing(egreso)} className="text-slate-500 hover:text-indigo-400 transition-colors bg-white/5 hover:bg-indigo-500/10 p-2 rounded-lg" title="Editar"><Edit3 size={14}/></button>
+                              <button onClick={() => handleDelete(egreso.id)} className="text-slate-500 hover:text-rose-500 transition-colors bg-white/5 hover:bg-rose-500/10 p-2 rounded-lg" title="Eliminar"><Trash2 size={14}/></button>
                             </div>
                           )}
                         </td>
+
                       </tr>
                     );
                   })
@@ -847,7 +848,6 @@ const EgresosTab = ({
           </div>
         )}
       </Card>
-
     </div>
   );
 };
