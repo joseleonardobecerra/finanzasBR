@@ -1,7 +1,7 @@
 const { useState, useMemo, useEffect, useRef } = React;
 
 // ============================================================================
-// ☁️ CONFIGURACIÓN DE FIREBASE
+// ☁️ CONFIGURACIÓN DE FIREBASE (Intacta)
 // ============================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyDRreZW3bVZG7h7frWeOy0jqrgqLpTw6cw",
@@ -38,6 +38,7 @@ const Receipt = (p) => <SvgWrapper {...p}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2
 const ShieldAlert = (p) => <SvgWrapper {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></SvgWrapper>;
 const Target = (p) => <SvgWrapper {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgWrapper>;
 const TrendingUp = (p) => <SvgWrapper {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></SvgWrapper>;
+const TrendingDown = (p) => <SvgWrapper {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></SvgWrapper>;
 const Calculator = (p) => <SvgWrapper {...p}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></SvgWrapper>;
 const Plus = (p) => <SvgWrapper {...p}><path d="M5 12h14"/><path d="M12 5v14"/></SvgWrapper>;
 const Trash2 = (p) => <SvgWrapper {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></SvgWrapper>;
@@ -67,6 +68,7 @@ const ArrowUpRight = (p) => <SvgWrapper {...p}><path d="M7 7h10v10"/><path d="M7
 const ArrowDownRight = (p) => <SvgWrapper {...p}><path d="M7 17h10V7"/><path d="M7 7l10 10"/></SvgWrapper>;
 const Minus = (p) => <SvgWrapper {...p}><path d="M5 12h14"/></SvgWrapper>;
 const BarChart = (p) => <SvgWrapper {...p}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></SvgWrapper>;
+const XIconGlobal = (p) => <SvgWrapper {...p}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></SvgWrapper>;
 
 // ============================================================================
 // --- Sistema Anticaídas de React ---
@@ -81,10 +83,10 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-6 bg-rose-950/30 border border-rose-500 rounded-xl m-4 md:m-8 text-rose-400">
+        <div className="p-6 bg-rose-950/30 border border-rose-500/50 rounded-2xl m-4 md:m-8 text-rose-400 backdrop-blur-md">
           <h2 className="font-bold text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error en esta sección</h2>
           <p className="text-sm opacity-80">{this.state.error.toString()}</p>
-          <button onClick={() => this.setState({hasError: false})} className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded text-sm font-bold">Intentar cargar de nuevo</button>
+          <button onClick={() => this.setState({hasError: false})} className="mt-4 px-5 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-bold transition-all">Intentar cargar de nuevo</button>
         </div>
       );
     }
@@ -122,78 +124,99 @@ const loadSheetJS = async () => {
 };
 
 // ============================================================================
-// --- Componentes UI Base ---
+// --- Componentes UI Base (NUEVO DISEÑO GLASSMORPHISM) ---
 // ============================================================================
+
+// ✨ 1. TARJETA BASE (Card)
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-slate-900 border border-slate-800 rounded-xl shadow-lg p-4 md:p-5 ${className}`}>{children}</div>
-);
-
-const Input = ({ label, type = "text", value, onChange, placeholder, className="", min, max, step, disabled, error, title }) => (
-  <div className={`flex flex-col gap-1.5 ${className}`}>
-    {label && <label className={`text-xs font-medium ${error ? 'text-rose-400' : 'text-slate-400'}`}>{label}</label>}
-    <input type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} max={max} step={step} disabled={disabled} title={title}
-      className={`bg-slate-950 border ${error ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-800 focus:ring-indigo-500'} rounded-lg px-3 py-2.5 md:py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 transition-colors disabled:opacity-50`} />
-    {error && <span className="text-[10px] text-rose-400 mt-0.5">{error}</span>}
+  <div className={`bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-white/[0.08] transition-all duration-500 p-4 md:p-6 relative overflow-hidden group ${className}`}>
+    {/* Brillo volumétrico superior */}
+    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+    {/* Resplandor radial de fondo */}
+    <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+    <div className="relative z-10">
+      {children}
+    </div>
   </div>
 );
 
-const Select = ({ label, value, onChange, options, className="", required, error, disabled }) => (
+// ✨ 2. ENTRADA DE TEXTO (Input)
+const Input = ({ label, type = "text", value, onChange, placeholder, className="", min, max, step, disabled, error, title, required, autoFocus }) => (
   <div className={`flex flex-col gap-1.5 ${className}`}>
-    <label className={`text-xs font-medium ${error ? 'text-rose-400' : 'text-slate-400'}`}>{label}</label>
-    <select value={value} onChange={onChange} required={required} disabled={disabled}
-      className={`bg-slate-950 border ${error ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-800 focus:ring-indigo-500'} rounded-lg px-3 py-2.5 md:py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 transition-colors disabled:opacity-50`}>
-      <option value="">Seleccione...</option>
-      {options.map((opt, i) => {
-        const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
-        const lbl = typeof opt === 'object' && opt !== null ? opt.label : opt;
-        return <option key={i} value={val}>{lbl}</option>;
-      })}
-    </select>
-    {error && <span className="text-[10px] text-rose-400 mt-0.5">{error}</span>}
+    {label && <label className={`text-[10px] font-black uppercase tracking-widest ${error ? 'text-rose-400' : 'text-slate-500'}`}>{label}</label>}
+    <input type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} max={max} step={step} disabled={disabled} title={title} required={required} autoFocus={autoFocus}
+      className={`bg-[#0f0f11]/60 border ${error ? 'border-rose-500/50 focus:ring-rose-500/30' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20'} rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-4 transition-all duration-300 disabled:opacity-50 backdrop-blur-sm shadow-inner placeholder:text-slate-700`} />
+    {error && <span className="text-[10px] font-bold text-rose-400 mt-0.5">{error}</span>}
   </div>
 );
 
+// ✨ 3. MENÚ DESPLEGABLE (Select)
+const Select = ({ label, value, onChange, options, className="", required, error, disabled, title }) => (
+  <div className={`flex flex-col gap-1.5 ${className}`}>
+    {label && <label className={`text-[10px] font-black uppercase tracking-widest ${error ? 'text-rose-400' : 'text-slate-500'}`}>{label}</label>}
+    <div className="relative">
+      <select value={value} onChange={onChange} required={required} disabled={disabled} title={title}
+        className={`w-full bg-[#0f0f11]/60 border ${error ? 'border-rose-500/50 focus:ring-rose-500/30' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20'} rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-4 transition-all duration-300 disabled:opacity-50 backdrop-blur-sm shadow-inner appearance-none cursor-pointer`}>
+        <option value="" className="bg-[#17171a] text-slate-400">Seleccione...</option>
+        {options.map((opt, i) => {
+          const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
+          const lbl = typeof opt === 'object' && opt !== null ? opt.label : opt;
+          return <option key={i} value={val} className="bg-[#17171a] text-slate-200">{lbl}</option>;
+        })}
+      </select>
+      {/* Flechita personalizada para el select */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+        <ChevronDownIcon size={16} />
+      </div>
+    </div>
+    {error && <span className="text-[10px] font-bold text-rose-400 mt-0.5">{error}</span>}
+  </div>
+);
+
+// ✨ 4. ALERTAS FLOTANTES (Toast Neón)
 const Toast = ({ toast, onClose }) => {
   if (!toast) return null;
   return (
-    <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'} text-white`}>
-      {toast.type === 'success' ? <CheckCircle2 size={18}/> : <AlertCircle size={18}/>}
-      <span className="text-sm font-medium">{toast.msg}</span>
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><Trash2 size={14} className="hidden"/></button>
+    <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-5 py-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 backdrop-blur-2xl border ${toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.15)]'}`}>
+      {toast.type === 'success' ? <CheckCircle2 size={20}/> : <AlertCircle size={20}/>}
+      <span className="text-sm font-bold tracking-wide">{toast.msg}</span>
+      <button onClick={onClose} className="ml-4 p-1 bg-white/5 rounded-full hover:bg-white/10 transition-colors"><XIconGlobal size={14}/></button>
     </div>
   );
 };
 
-// ✨ TARJETA COMPACTA (Checklist de Egresos)
+// ============================================================================
+// --- Componentes Extras Adaptados ---
+// ============================================================================
 const PagoFijoCard = ({ pf, cuentasPermitidas, onPay }) => {
   const [cuentaId, setCuentaId] = useState('');
   const [montoCustom, setMontoCustom] = useState(pf.monto);
   const [editMonto, setEditMonto] = useState(false);
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 shadow-md flex flex-col gap-2 relative overflow-hidden transition-colors hover:border-amber-500/30">
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 shadow-lg flex flex-col gap-3 relative overflow-hidden transition-colors hover:border-amber-500/30 backdrop-blur-md">
       <div className="flex justify-between items-start">
         <div className="overflow-hidden pr-2 flex-1">
           <p className="font-bold text-slate-200 text-sm truncate leading-tight">{pf.descripcion}</p>
-          <p className="text-[9px] text-slate-500 truncate uppercase mt-0.5">{pf.categoria}</p>
+          <p className="text-[10px] font-bold tracking-widest text-slate-500 truncate uppercase mt-1">{pf.categoria}</p>
         </div>
         <div className="shrink-0 text-right">
           {!editMonto ? (
-            <p className="font-bold text-amber-400 text-sm cursor-pointer flex items-center justify-end gap-1 hover:text-amber-300" onClick={() => setEditMonto(true)} title="Modificar monto">
-              {formatCOP(montoCustom)} <Edit3 size={10} className="opacity-50"/>
+            <p className="font-black text-amber-400 text-sm cursor-pointer flex items-center justify-end gap-1.5 hover:text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20" onClick={() => setEditMonto(true)} title="Modificar monto">
+              {formatCOP(montoCustom)} <Edit3 size={12} className="opacity-70"/>
             </p>
           ) : (
-            <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-20 text-xs bg-slate-900 text-white border border-amber-500 rounded p-1 text-right outline-none" autoFocus />
+            <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-24 text-sm font-bold bg-[#0f0f11] text-amber-400 border border-amber-500 rounded-lg p-1.5 text-right outline-none shadow-inner" autoFocus />
           )}
         </div>
       </div>
-      <div className="flex gap-1.5 items-center mt-1 border-t border-slate-800/50 pt-2">
-        <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-300 outline-none focus:border-amber-500 cursor-pointer h-7">
+      <div className="flex gap-2 items-center mt-2 border-t border-white/[0.05] pt-3">
+        <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-[#0f0f11]/60 border border-white/10 rounded-xl px-2 py-2 text-[11px] text-slate-300 outline-none focus:border-amber-500/50 cursor-pointer h-9 shadow-inner appearance-none">
           <option value="">Medio de pago...</option>
           {cuentasPermitidas.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
-        <button onClick={() => onPay(cuentaId, montoCustom)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 rounded font-bold flex items-center justify-center transition-colors h-7 text-xs shadow-sm">
-          OK
+        <button onClick={() => onPay(cuentaId, montoCustom)} className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 px-4 rounded-xl font-bold flex items-center justify-center transition-all h-9 text-xs shadow-sm">
+          PAGAR
         </button>
       </div>
     </div>
@@ -207,32 +230,32 @@ const IngresoFijoCard = ({ inc, cuentasPermitidas, onReceive, cuentas }) => {
   const [editMonto, setEditMonto] = useState(false);
 
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg flex flex-col justify-between">
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 shadow-lg flex flex-col justify-between backdrop-blur-md hover:border-emerald-500/30 transition-colors">
       <div>
-        <div className="flex justify-between items-start mb-3">
+        <div className="flex justify-between items-start mb-4">
           <div>
             <p className="font-bold text-white text-base">{inc.descripcion}</p>
-            <p className="text-xs text-slate-400">{inc.persona ? `Persona: ${inc.persona} • ` : ''}{inc.tipo}</p>
+            <p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-1">{inc.persona ? `${inc.persona} • ` : ''}{inc.tipo}</p>
           </div>
           <div className="text-right">
             {!editMonto ? (
-              <p className="font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded border border-slate-800 hover:border-emerald-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto">
-                {formatCOP(montoCustom)} <Edit3 size={12}/>
+              <p className="font-black text-emerald-400 cursor-pointer flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto">
+                {formatCOP(montoCustom)} <Edit3 size={14}/>
               </p>
             ) : (
-              <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-24 text-sm bg-slate-950 text-white border border-emerald-500 rounded p-1.5 text-right outline-none shadow-inner" autoFocus />
+              <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-28 text-sm font-bold bg-[#0f0f11] text-emerald-400 border border-emerald-500 rounded-lg p-2 text-right outline-none shadow-inner" autoFocus />
             )}
           </div>
         </div>
       </div>
-      <div className="flex flex-col gap-2 mt-2 pt-3 border-t border-slate-800">
-        <label className="text-[10px] text-slate-500 font-bold uppercase">Destino de los fondos</label>
+      <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-white/[0.05]">
+        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Destino de los fondos</label>
         <div className="flex gap-2">
-          <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500">
+          <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-[#0f0f11]/60 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 outline-none focus:border-emerald-500/50 shadow-inner appearance-none cursor-pointer">
             <option value="">Selecciona...</option>
             {cuentasPermitidas.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
-          <button onClick={() => onReceive(cuentaId, montoCustom)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 rounded-lg font-bold flex items-center justify-center transition-colors shadow-md">
+          <button onClick={() => onReceive(cuentaId, montoCustom)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 rounded-xl font-bold flex items-center justify-center transition-all shadow-lg shadow-emerald-500/20">
             OK
           </button>
         </div>
