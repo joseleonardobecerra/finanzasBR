@@ -22,7 +22,7 @@ function App() {
   const [qeCategoria, setQeCategoria] = useState('');
   const [qeMethod, setQeMethod] = useState('');
   const [qeCuenta, setQeCuenta] = useState('');
-  const [qeDeuda, setQeDeuda] = useState(''); // Conexión a deudas en móvil
+  const [qeDeuda, setQeDeuda] = useState(''); // ✨ Conexión a deudas en móvil
 
   // BASES DE DATOS GLOBALES
   const [cuentas, setCuentas] = useState([]);
@@ -49,7 +49,7 @@ function App() {
   );
 
   // ============================================================================
-  // CONEXIÓN A FIREBASE Y SINCRONIZACIÓN
+  // CONEXIÓN A FIREBASE
   // ============================================================================
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -63,7 +63,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateStateChanged(user => {
+    const unsubscribeAuth = auth.onAuthStateChanged(user => {
       setAuthUser(user);
       setAuthChecking(false);
     });
@@ -118,6 +118,11 @@ function App() {
   };
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
+  const getLocalToday = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  };
 
   // ============================================================================
   // EL CEREBRO MATEMÁTICO (PARTIDA DOBLE)
@@ -228,7 +233,7 @@ function App() {
     };
 
     if (qeType === 'egreso') {
-      txData.deudaId = qeDeuda || null;
+      txData.deudaId = qeDeuda || null; // ✨ Conexión a deudas desde el móvil
       const newEgresos = [...egresos, txData];
       setEgresos(newEgresos); syncToCloud({ egresos: newEgresos });
       showToast("Gasto guardado rápido");
@@ -319,24 +324,24 @@ function App() {
           </div>
           <nav className="space-y-2">
             {[
-              { id: 'dashboard', icon: PieChartIcon, label: 'Dashboard' },
-              { id: 'analitica', icon: TrendingUpIcon, label: 'Analítica' },
-              { id: 'score', icon: ActivityIcon, label: 'Score & Avalancha' },
-              { id: 'cuentas', icon: GridIcon, label: 'Cuentas' },
-              { id: 'inversiones', icon: TargetIcon, label: 'Inversiones' },
-              { id: 'ingresos', icon: WalletIcon, label: 'Ingresos' },
-              { id: 'egresos', icon: ReceiptIcon, label: 'Egresos' },
-              { id: 'presupuestos', icon: FilterIcon, label: 'Presupuestos' },
-              { id: 'deudas', icon: CreditCardIcon, label: 'Deudas & Tarjetas' },
-              { id: 'simulador', icon: ZapIcon, label: 'Simulador Pagos' },
-              { id: 'settings', icon: SettingsIcon, label: 'Ajustes & Backup' }
+              { id: 'dashboard', label: 'Dashboard' },
+              { id: 'analitica', label: 'Analítica' },
+              { id: 'score', label: 'Score & Avalancha' },
+              { id: 'cuentas', label: 'Cuentas' },
+              { id: 'inversiones', label: 'Inversiones' },
+              { id: 'ingresos', label: 'Ingresos' },
+              { id: 'egresos', label: 'Egresos' },
+              { id: 'presupuestos', label: 'Presupuestos' },
+              { id: 'deudas', label: 'Deudas & Tarjetas' },
+              { id: 'simulador', label: 'Simulador Pagos' },
+              { id: 'settings', label: 'Ajustes & Backup' }
             ].map(item => (
               <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}>
-                <item.icon /> {item.label}
+                 {item.label}
               </button>
             ))}
             <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm text-rose-500 hover:bg-rose-500/10 mt-8">
-              <LogOutIcon /> Cerrar Sesión
+               Cerrar Sesión
             </button>
           </nav>
         </div>
@@ -354,7 +359,7 @@ function App() {
                  </button>
                ))}
              </div>
-             {isOffline && <span className="bg-rose-500/20 text-rose-400 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"><WifiOffIcon/> Offline</span>}
+             {isOffline && <span className="bg-rose-500/20 text-rose-400 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"> Offline</span>}
           </div>
           
           <div className="flex items-center gap-3">
@@ -363,16 +368,16 @@ function App() {
           </div>
         </div>
 
-        {/* PESTAÑAS */}
+        {/* PESTAÑAS - Salvavidas comprasCuotas={[]} para evitar crashes en otras pestañas */}
         <div className="animate-in fade-in duration-300">
-          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
-          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} />}
-          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} />}
+          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} cuotasMesRestantes={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} ingresosFijos={ingresosFijos} comprasCuotas={[]} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
+          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} comprasCuotas={[]} />}
+          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} comprasCuotas={[]} />}
           {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={transferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} showToast={showToast} filtroPersona={filtroPersona} />}
           {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} />}
           {activeTab === 'ingresos' && <IngresosTab ingresos={ingresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
           
-          {/* EGRESOS: Ya no pasa compras a cuotas */}
+          {/* EGRESOS: Completamente purgado de Cuotas */}
           {activeTab === 'egresos' && <EgresosTab egresos={egresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={presupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
           
           {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={presupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={egresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
@@ -380,20 +385,20 @@ function App() {
           {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={egresos} />}
           {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} showToast={showToast} />}
           
-          {/* SETTINGS: Ya no guarda/importa cuotas */}
-          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+          {/* SETTINGS: SalvavidasComprasCuotas para exportar sin error */}
+          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, ingresosFijos, comprasCuotas: [], categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
         </div>
       </main>
 
       {/* MENÚ INFERIOR MÓVIL */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a]/95 backdrop-blur-xl border-t border-slate-800/50 pb-safe z-40 px-2 py-2 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         {[
-          { id: 'dashboard', icon: PieChartIcon, label: 'Dash' },
-          { id: 'cuentas', icon: GridIcon, label: 'Cuentas' },
+          { id: 'dashboard', label: 'Dash' },
+          { id: 'cuentas', label: 'Cuentas' },
           { id: 'add_button' }, 
-          { id: 'egresos', icon: ReceiptIcon, label: 'Gastos' },
-          { id: 'settings', icon: SettingsIcon, label: 'Ajustes' }
-        ].map((item, idx) => {
+          { id: 'egresos', label: 'Gastos' },
+          { id: 'settings', label: 'Ajustes' }
+        ].map((item) => {
           if (item.id === 'add_button') {
             return (
               <button key="add" onClick={() => {setQeType('egreso'); setQuickEntryOpen(true);}} className="relative -top-6 w-14 h-14 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] border-4 border-[#0f0f11] active:scale-90 transition-transform">
@@ -404,8 +409,7 @@ function App() {
           const isActive = activeTab === item.id;
           return (
             <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center w-16 p-1 transition-all ${isActive ? 'text-indigo-400 scale-110' : 'text-slate-500 hover:text-slate-300'}`}>
-              <item.icon size={22} className={isActive ? 'drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]' : ''}/>
-              <span className="text-[9px] font-bold mt-1 tracking-wide">{item.label}</span>
+              <span className="text-[10px] font-bold tracking-wide">{item.label}</span>
             </button>
           );
         })}
@@ -416,7 +420,7 @@ function App() {
         <div className="fixed inset-0 bg-[#0f0f11]/95 backdrop-blur-md z-50 flex flex-col animate-in slide-in-from-bottom-full duration-300">
           <div className="p-6 flex justify-between items-center border-b border-slate-800">
             <h3 className="text-xl font-black text-white tracking-wide flex items-center gap-2">
-              <ZapIcon className="text-amber-400"/> Movimiento Rápido
+               Movimiento Rápido
             </h3>
             <button onClick={() => {setQuickEntryOpen(false); setQeStep(1);}} className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full transition-colors"><XIcon/></button>
           </div>
@@ -434,11 +438,9 @@ function App() {
                 <div className="space-y-4 animate-in slide-in-from-right-4">
                   <h4 className="text-2xl font-black text-white text-center mb-8">¿Qué quieres registrar?</h4>
                   <button onClick={() => {setQeType('egreso'); setQeStep(2);}} className="w-full bg-rose-500/10 hover:bg-rose-500/20 border-2 border-rose-500/30 text-rose-400 py-6 rounded-2xl flex flex-col items-center gap-3 transition-colors">
-                    <ReceiptIcon size={32}/>
                     <span className="font-black text-lg tracking-widest uppercase">Un Gasto</span>
                   </button>
                   <button onClick={() => {setQeType('ingreso'); setQeStep(2);}} className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 border-2 border-emerald-500/30 text-emerald-400 py-6 rounded-2xl flex flex-col items-center gap-3 transition-colors">
-                    <WalletIcon size={32}/>
                     <span className="font-black text-lg tracking-widest uppercase">Un Ingreso</span>
                   </button>
                 </div>
