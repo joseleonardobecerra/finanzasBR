@@ -22,7 +22,7 @@ function App() {
   const [qeCategoria, setQeCategoria] = useState('');
   const [qeMethod, setQeMethod] = useState('');
   const [qeCuenta, setQeCuenta] = useState('');
-  const [qeDeuda, setQeDeuda] = useState('');
+  const [qeDeuda, setQeDeuda] = useState(''); // Conexión a deudas en móvil
 
   // BASES DE DATOS GLOBALES
   const [cuentas, setCuentas] = useState([]);
@@ -32,14 +32,14 @@ function App() {
   const [presupuestos, setPresupuestos] = useState([]);
   const [pagosFijos, setPagosFijos] = useState([]);
   const [ingresosFijos, setIngresosFijos] = useState([]);
+  const [comprasCuotas, setComprasCuotas] = useState([]); // LO RESTAURAMOS PARA QUE NADA FALLE
   
-  // Categorías por defecto
   const [categoriasMaestras, setCategoriasMaestras] = useState([
     'Vivienda', 'Transporte', 'Alimentación', 'Servicios', 'Educación', 'Salud', 'Entretenimiento', 'Ropa', 'Otros', 'Intereses y Cargos'
   ]);
 
   // ============================================================================
-  // ÍCONOS SVG
+  // ÍCONOS SVG (Restaurados y probados)
   // ============================================================================
   const IconPieChart = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
   const IconTrendingUp = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
@@ -87,6 +87,7 @@ function App() {
       return;
     }
 
+    // LECTURA DE FIREBASE INTACTA PARA NO PERDER DATOS
     const unsubscribeDB = cloudDocRef.onSnapshot((doc) => {
       if (doc.exists) {
         const data = doc.data();
@@ -97,12 +98,13 @@ function App() {
         if (data.presupuestos) setPresupuestos(data.presupuestos);
         if (data.pagosFijos) setPagosFijos(data.pagosFijos);
         if (data.ingresosFijos) setIngresosFijos(data.ingresosFijos);
+        if (data.comprasCuotas) setComprasCuotas(data.comprasCuotas);
         if (data.categoriasMaestras) setCategoriasMaestras(data.categoriasMaestras);
         if (data.scoreHistory) setScoreHistory(data.scoreHistory);
       } else {
         cloudDocRef.set({
           cuentas: [], ingresos: [], egresos: [], transferencias: [], presupuestos: [],
-          pagosFijos: [], ingresosFijos: [], categoriasMaestras, scoreHistory: {}
+          pagosFijos: [], ingresosFijos: [], comprasCuotas: [], categoriasMaestras, scoreHistory: {}
         });
       }
       setAppCargando(false);
@@ -156,10 +158,12 @@ function App() {
       });
 
       egresos.forEach(egr => {
+        // Gasto desde la cuenta
         if (egr.cuentaId === acc.id) {
            if (acc.type === 'credit') currentDebt += Number(egr.monto);
            else currentBalance -= Number(egr.monto);
         }
+        // Abono a la deuda
         if (egr.deudaId === acc.id) {
            currentDebt -= Number(egr.monto);
            if (currentDebt < 0) currentDebt = 0; 
@@ -194,12 +198,14 @@ function App() {
   const ingresosMes = ingresos.filter(i => i.fecha.startsWith(selectedMonth));
   
   const ingresosMesTotal = ingresosMes.reduce((sum, i) => sum + Number(i.monto), 0);
-  const egresosMesTotal = egresosMes.reduce((sum, e) => sum + Number(e.monto), 0);
+  const egresosMesTotal = egresosMes.filter(e => !e.esCuota).reduce((sum, e) => sum + Number(e.monto), 0);
+  const cuotasMesTotal = egresosMes.filter(e => e.esCuota).reduce((sum, e) => sum + Number(e.monto), 0);
   
   const liquidezTotal = activeCalculatedAccounts.filter(c => ['bank', 'cash', 'pocket'].includes(c.type)).reduce((sum, c) => sum + c.currentBalance, 0);
   const deudaTotal = activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type)).reduce((sum, c) => sum + c.currentDebt, 0);
-  const flujoNetoMes = ingresosMesTotal - egresosMesTotal;
+  const flujoNetoMes = ingresosMesTotal - egresosMesTotal - cuotasMesTotal;
 
+  // Calculadora de Score
   const scoreData = useMemo(() => {
     let score = 100;
     const desglose = [];
@@ -226,10 +232,15 @@ function App() {
       score -= 10; desglose.push({label:'Deuda > Liquidez', val: -10});
     }
 
+    const activeCuotas = comprasCuotas.filter(c => c.estado === 'Activa').length;
+    if (activeCuotas > 3) {
+      score -= 10; desglose.push({label:'Exceso de Compras a Cuotas', val: -10}); recs.push('Tienes más de 3 compras a cuotas activas. Trata de unificarlas o liquidarlas.');
+    }
+
     if (score === 100) { desglose.push({label:'¡Salud Óptima!', val: 100}); recs.push('Mantén este ritmo. Tienes un excelente control financiero.'); }
     
     return { score: Math.max(0, score), desglose, recs };
-  }, [liquidezTotal, deudaTotal, ingresosMesTotal, egresosMes, activeCalculatedAccounts.length]);
+  }, [liquidezTotal, deudaTotal, ingresosMesTotal, egresosMes, comprasCuotas, activeCalculatedAccounts.length]);
 
 
   // ============================================================================
@@ -273,6 +284,7 @@ function App() {
       if (data.presupuestos) setPresupuestos(data.presupuestos);
       if (data.pagosFijos) setPagosFijos(data.pagosFijos);
       if (data.ingresosFijos) setIngresosFijos(data.ingresosFijos);
+      if (data.comprasCuotas) setComprasCuotas(data.comprasCuotas);
       if (data.categoriasMaestras) setCategoriasMaestras(data.categoriasMaestras);
       await cloudDocRef.set(data, { merge: true });
     } catch(err) { console.error(err); throw err; }
@@ -300,6 +312,11 @@ function App() {
   const addPagoFijo = (p) => { const n = [...pagosFijos, p]; setPagosFijos(n); syncToCloud({ pagosFijos: n }); };
   const updatePagoFijo = (id, nd) => { const n = pagosFijos.map(p => p.id === id ? { ...p, ...nd } : p); setPagosFijos(n); syncToCloud({ pagosFijos: n }); };
   const removePagoFijo = (id) => { const n = pagosFijos.filter(p => p.id !== id); setPagosFijos(n); syncToCloud({ pagosFijos: n }); };
+
+  // Funciones de Cuotas requeridas para evitar errores
+  const addComprasCuotas = (c) => { const n = [...comprasCuotas, c]; setComprasCuotas(n); syncToCloud({ comprasCuotas: n }); };
+  const removeComprasCuotas = (id) => { const n = comprasCuotas.filter(c => c.id !== id); setComprasCuotas(n); syncToCloud({ comprasCuotas: n }); };
+
 
   // ============================================================================
   // RENDERIZADO: CARGA Y LOGIN
@@ -331,10 +348,9 @@ function App() {
         </div>
       )}
 
-      {/* MENÚ LATERAL ESCRITORIO (SECCIONES DIVIDIDAS) */}
+      {/* MENÚ LATERAL ESCRITORIO (RESTAURADO CON SU DISEÑO ORIGINAL) */}
       <aside className="hidden md:flex flex-col w-64 fixed left-0 top-0 bottom-0 bg-[#17171a] border-r border-slate-800/50 z-40 overflow-y-auto">
         <div className="p-6">
-          
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-indigo-500/20">F</div>
             <div>
@@ -343,61 +359,36 @@ function App() {
             </div>
           </div>
           
-          {/* SECCIÓN 1: Visión General */}
-          <div className="mb-6">
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 px-2">Visión General</p>
-            <nav className="space-y-1.5">
-              {[
-                { id: 'dashboard', icon: IconPieChart, label: 'Dashboard' },
-                { id: 'analitica', icon: IconTrendingUp, label: 'Analítica' },
-                { id: 'score', icon: IconActivity, label: 'Score & Avalancha' }
-              ].map(item => (
-                <button 
-                  key={item.id} 
-                  onClick={() => setActiveTab(item.id)} 
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-sm ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}
-                >
-                   <item.icon size={18} />
-                   {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* SECCIÓN 2: Gestión Operativa */}
-          <div className="mb-6">
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 px-2">Gestión Operativa</p>
-            <nav className="space-y-1.5">
-              {[
-                { id: 'cuentas', icon: IconGrid, label: 'Cuentas' },
-                { id: 'inversiones', icon: IconTarget, label: 'Inversiones' },
-                { id: 'ingresos', icon: IconWallet, label: 'Ingresos' },
-                { id: 'egresos', icon: IconReceipt, label: 'Egresos' },
-                { id: 'presupuestos', icon: IconFilter, label: 'Presupuestos' },
-                { id: 'deudas', icon: IconCreditCard, label: 'Deudas & Tarjetas' },
-                { id: 'simulador', icon: IconZap, label: 'Simulador Pagos' },
-                { id: 'settings', icon: IconSettings, label: 'Ajustes & Backup' }
-              ].map(item => (
-                <button 
-                  key={item.id} 
-                  onClick={() => setActiveTab(item.id)} 
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-sm ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}
-                >
-                   <item.icon size={18} />
-                   {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <button 
-            onClick={() => auth.signOut()} 
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-sm text-rose-500 hover:bg-rose-500/10 mt-4 border border-rose-500/20"
-          >
-            <IconLogOut size={18} /> 
-            Cerrar Sesión
-          </button>
-
+          <nav className="space-y-2">
+            {[
+              { id: 'dashboard', icon: IconPieChart, label: 'Dashboard' },
+              { id: 'analitica', icon: IconTrendingUp, label: 'Analítica' },
+              { id: 'score', icon: IconActivity, label: 'Score & Avalancha' },
+              { id: 'cuentas', icon: IconGrid, label: 'Cuentas' },
+              { id: 'inversiones', icon: IconTarget, label: 'Inversiones' },
+              { id: 'ingresos', icon: IconWallet, label: 'Ingresos' },
+              { id: 'egresos', icon: IconReceipt, label: 'Egresos' },
+              { id: 'presupuestos', icon: IconFilter, label: 'Presupuestos' },
+              { id: 'deudas', icon: IconCreditCard, label: 'Deudas & Tarjetas' },
+              { id: 'simulador', icon: IconZap, label: 'Simulador Pagos' },
+              { id: 'settings', icon: IconSettings, label: 'Ajustes & Backup' }
+            ].map(item => (
+              <button 
+                key={item.id} 
+                onClick={() => setActiveTab(item.id)} 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}
+              >
+                 <item.icon size={20} />
+                 {item.label}
+              </button>
+            ))}
+            <button 
+              onClick={() => auth.signOut()} 
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm text-rose-500 hover:bg-rose-500/10 mt-8"
+            >
+              <IconLogOut size={20} /> Cerrar Sesión
+            </button>
+          </nav>
         </div>
       </aside>
 
@@ -418,7 +409,6 @@ function App() {
                  </button>
                ))}
              </div>
-             
              {isOffline && (
                <span className="bg-rose-500/20 text-rose-400 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"> 
                  <IconWifiOff size={14}/> Offline
@@ -442,14 +432,14 @@ function App() {
           </div>
         </div>
 
-        {/* CONTENEDOR DE PESTAÑAS VIRTUALES */}
+        {/* PESTAÑAS (TODAS FUNCIONANDO CON SUS PROPS ORIGINALES PARA EVITAR EL [OBJECT OBJECT]) */}
         <div className="animate-in fade-in duration-300">
           
-          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} cuotasMesRestantes={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} ingresosFijos={ingresosFijos} comprasCuotas={[]} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
+          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} ingresosFijos={ingresosFijos} comprasCuotas={comprasCuotas} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
           
-          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} comprasCuotas={[]} />}
+          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} comprasCuotas={comprasCuotas} />}
           
-          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} comprasCuotas={[]} />}
+          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} pagosFijos={pagosFijos} comprasCuotas={comprasCuotas} />}
           
           {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={transferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} filtroPersona={filtroPersona} getOwner={identifyOwner} />}
           
@@ -457,7 +447,8 @@ function App() {
           
           {activeTab === 'ingresos' && <IngresosTab ingresos={ingresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={ingresosFijos} addIngresoFijo={()=>{}} updateIngresoFijo={()=>{}} removeIngresoFijo={()=>{}} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
           
-          {activeTab === 'egresos' && <EgresosTab egresos={egresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={presupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} filtroPersona={filtroPersona} />}
+          {/* Egresos: Modificado para ocultar las cuotas pero pasarlas como prop */}
+          {activeTab === 'egresos' && <EgresosTab egresos={egresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={comprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={presupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} filtroPersona={filtroPersona} />}
           
           {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={presupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={egresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} filtroPersona={filtroPersona} />}
           
@@ -465,11 +456,11 @@ function App() {
           
           {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijo} showToast={showToast} />}
           
-          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, ingresosFijos, comprasCuotas: [], categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, ingresosFijos, comprasCuotas, categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
         </div>
       </main>
 
-      {/* MENÚ INFERIOR MÓVIL */}
+      {/* MENÚ INFERIOR MÓVIL (RESTAURADO) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a]/95 backdrop-blur-xl border-t border-slate-800/50 pb-safe z-40 px-2 py-2 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         {[
           { id: 'dashboard', icon: IconPieChart, label: 'Dash' },
