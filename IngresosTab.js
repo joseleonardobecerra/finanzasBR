@@ -14,7 +14,9 @@ const IngresosTab = ({
 }) => {
   const { useState, useMemo } = React;
 
-  // --- FORMATEADORES ---
+  // ============================================================================
+  // UTILIDADES DE FORMATEO
+  // ============================================================================
   const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
     style: 'currency', 
     currency: 'COP', 
@@ -27,22 +29,51 @@ const IngresosTab = ({
     return d.toISOString().slice(0, 10);
   };
 
-  // --- ÍCONOS SVG NATIVOS (Prevención de errores de referencia) ---
+  // ============================================================================
+  // ÍCONOS SVG NATIVOS (Prevención de ReferenceError)
+  // ============================================================================
   const CheckIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <svg 
+      width="16" 
+      height="16" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="3" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
       <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
   );
   
   const XIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <svg 
+      width="16" 
+      height="16" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="3" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
   );
 
   const ListIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg 
+      width="18" 
+      height="18" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
       <line x1="8" y1="6" x2="21" y2="6"></line>
       <line x1="8" y1="12" x2="21" y2="12"></line>
       <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -56,7 +87,7 @@ const IngresosTab = ({
   // 1. ESTADOS DEL COMPONENTE
   // ============================================================================
   
-  // Formulario Nuevo Ingreso
+  // --- Formulario de Nuevo Ingreso ---
   const [fecha, setFecha] = useState(getLocalToday());
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
@@ -64,25 +95,24 @@ const IngresosTab = ({
   const [tipo, setTipo] = useState('Fijo');
   const [persona, setPersona] = useState('Total');
 
-  // Edición de Registros
+  // --- Estado de Edición ---
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
 
-  // Filtros de la Tabla
+  // --- Filtros de la Tabla ---
   const [filters, setFilters] = useState({
     descripcion: '',
     tipo: '',
     cuenta: ''
   });
 
-  // Cuentas Disponibles (Cualquiera que no sea deuda)
+  // ✨ FILTRO DE CUENTAS: Asegura que Rappi (Bolsillo/Inversión) sea visible
   const cuentasActivas = cuentas.filter(c => !['credit', 'loan'].includes(c.type));
 
   // ============================================================================
-  // 2. LÓGICA DE CÁLCULO Y FILTRADO
+  // 2. LÓGICA DE CÁLCULO Y FILTRADO (MEMOIZED)
   // ============================================================================
   
-  // Filtrar ingresos por el mes seleccionado
   const ingresosMes = useMemo(() => {
     return ingresos
       .filter(i => i.fecha.startsWith(selectedMonth))
@@ -95,7 +125,6 @@ const IngresosTab = ({
   const totalVariables = ingresosMes.filter(i => i.tipo === 'Variable').reduce((s, i) => s + Number(i.monto), 0);
   const totalRendimientos = ingresosMes.filter(i => i.tipo === 'Rendimiento').reduce((s, i) => s + Number(i.monto), 0);
 
-  // Aplicación de los filtros de la tabla
   const ingresosFiltrados = useMemo(() => {
     return ingresosMes.filter(ingreso => {
       const matchDesc = ingreso.descripcion.toLowerCase().includes(filters.descripcion.toLowerCase());
@@ -112,6 +141,7 @@ const IngresosTab = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
     if (!descripcion || !monto || !cuentaId) {
       showToast('Por favor completa todos los campos requeridos.', 'error');
       return;
@@ -142,9 +172,14 @@ const IngresosTab = ({
       showToast('Faltan datos en la edición', 'error');
       return;
     }
-    await updateIngreso(editingId, { ...editData, monto: Number(editData.monto) });
+    
+    await updateIngreso(editingId, { 
+      ...editData, 
+      monto: Number(editData.monto) 
+    });
+    
     setEditingId(null);
-    showToast('Ingreso actualizado.');
+    showToast('Ingreso actualizado correctamente.');
   };
 
   const handleDelete = (id) => {
@@ -155,17 +190,21 @@ const IngresosTab = ({
   };
 
   const limpiarFiltros = () => {
-    setFilters({ descripcion: '', tipo: '', cuenta: '' });
+    setFilters({ 
+      descripcion: '', 
+      tipo: '', 
+      cuenta: '' 
+    });
   };
 
   // ============================================================================
-  // 4. ESTRUCTURA VISUAL (JSX)
+  // 4. INTERFAZ DE USUARIO (JSX)
   // ============================================================================
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
-      {/* --- ENCABEZADO --- */}
+      {/* SECCIÓN: ENCABEZADO */}
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
           <Wallet className="text-emerald-400 w-8 h-8"/> 
@@ -176,30 +215,48 @@ const IngresosTab = ({
         </p>
       </header>
 
-      {/* --- TARJETAS DE RESUMEN --- */}
+      {/* SECCIÓN: TARJETAS DE RESUMEN */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        
         <Card className="p-4 border-t-4 border-t-emerald-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Total Ingresado</p>
-          <p className="text-xl md:text-2xl font-black text-emerald-400">{formatCOP(totalMes)}</p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
+            Total Ingresado
+          </p>
+          <p className="text-xl md:text-2xl font-black text-emerald-400">
+            {formatCOP(totalMes)}
+          </p>
         </Card>
         
         <Card className="p-4 border-t-4 border-t-indigo-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Ingresos Fijos</p>
-          <p className="text-xl md:text-2xl font-black text-indigo-400">{formatCOP(totalFijos)}</p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
+            Ingresos Fijos
+          </p>
+          <p className="text-xl md:text-2xl font-black text-indigo-400">
+            {formatCOP(totalFijos)}
+          </p>
         </Card>
 
         <Card className="p-4 border-t-4 border-t-blue-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Ingresos Variables</p>
-          <p className="text-xl md:text-2xl font-black text-blue-400">{formatCOP(totalVariables)}</p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
+            Ingresos Variables
+          </p>
+          <p className="text-xl md:text-2xl font-black text-blue-400">
+            {formatCOP(totalVariables)}
+          </p>
         </Card>
 
         <Card className="p-4 border-t-4 border-t-amber-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Rendimientos</p>
-          <p className="text-xl md:text-2xl font-black text-amber-400">{formatCOP(totalRendimientos)}</p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
+            Rendimientos
+          </p>
+          <p className="text-xl md:text-2xl font-black text-amber-400">
+            {formatCOP(totalRendimientos)}
+          </p>
         </Card>
+
       </div>
 
-      {/* --- SECCIÓN 1: FORMULARIO --- */}
+      {/* SECCIÓN 1: FORMULARIO DE REGISTRO */}
       <Card className="border-t-4 border-t-emerald-500">
         <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-black">1</div>
@@ -207,8 +264,11 @@ const IngresosTab = ({
         </h2>
         
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              Fecha
+            </label>
             <input 
               type="date" 
               required 
@@ -219,7 +279,9 @@ const IngresosTab = ({
           </div>
           
           <div className="md:col-span-2">
-            <label className="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              Descripción
+            </label>
             <input 
               type="text" 
               required 
@@ -231,7 +293,9 @@ const IngresosTab = ({
           </div>
           
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Tipo</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              Tipo de Ingreso
+            </label>
             <select 
               value={tipo} 
               onChange={(e) => setTipo(e.target.value)} 
@@ -244,14 +308,16 @@ const IngresosTab = ({
           </div>
 
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Destino</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              Cuenta Destino
+            </label>
             <select 
               required 
               value={cuentaId} 
               onChange={(e) => setCuentaId(e.target.value)} 
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none"
             >
-              <option value="">Seleccione...</option>
+              <option value="">Seleccione cuenta...</option>
               {cuentasActivas.map(c => (
                 <option key={c.id} value={c.id}>
                   {c.type === 'cash' ? '💵' : (c.type === 'pocket' || c.type === 'investment') ? '📈' : '🏦'} {c.name}
@@ -261,14 +327,16 @@ const IngresosTab = ({
           </div>
           
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Monto</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              Monto
+            </label>
             <input 
               type="number" 
               required 
               value={monto} 
               onChange={(e) => setMonto(e.target.value)} 
               placeholder="$ 0" 
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none font-bold"
             />
           </div>
 
@@ -280,41 +348,45 @@ const IngresosTab = ({
               <Plus size={18} /> Agregar Ingreso
             </button>
           </div>
+
         </form>
       </Card>
 
-      {/* --- SECCIÓN 2: TABLA HISTORIAL --- */}
+      {/* SECCIÓN 2: TABLA DE HISTORIAL COMPLETO */}
       <Card className="flex flex-col border-t-4 border-t-slate-600 bg-slate-900/10">
+        
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <ListIcon />
             Historial Completo de Ingresos
           </h2>
           <span className="bg-slate-900 border border-slate-800 text-slate-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-            {ingresosFiltrados.length} Movimientos
+            {ingresosFiltrados.length} Movimientos Registrados
           </span>
         </div>
 
+        {/* CONTENEDOR DE LA TABLA */}
         <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/50">
           <table className="w-full text-left border-collapse min-w-[800px]">
+            
             <thead>
-              {/* Encabezados de Columna */}
+              {/* --- Encabezados de Columna --- */}
               <tr className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/80">
                 <th className="p-4 font-bold w-[12%]">Fecha</th>
                 <th className="p-4 font-bold w-[28%]">Descripción</th>
                 <th className="p-4 font-bold w-[15%]">Tipo</th>
-                <th className="p-4 font-bold w-[20%]">Destino</th>
+                <th className="p-4 font-bold w-[20%]">Destino (Cuenta)</th>
                 <th className="p-4 font-bold w-[15%] text-right">Monto</th>
                 <th className="p-4 font-bold text-center w-[10%]">Acciones</th>
               </tr>
               
-              {/* ✨ Fila de Filtros (Igual que Egresos) */}
+              {/* --- Fila de Filtros Dinámicos --- */}
               <tr className="border-b-2 border-slate-800 bg-slate-900/40">
                 <th className="p-2"></th>
                 <th className="p-2">
                   <input 
                     type="text" 
-                    placeholder="Buscar descripción..." 
+                    placeholder="Buscar por descripción..." 
                     className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-emerald-500 outline-none placeholder:text-slate-600"
                     value={filters.descripcion} 
                     onChange={e => setFilters({...filters, descripcion: e.target.value})}
@@ -339,7 +411,9 @@ const IngresosTab = ({
                     onChange={e => setFilters({...filters, cuenta: e.target.value})}
                   >
                     <option value="">Cuentas (Todas)</option>
-                    {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {cuentasActivas.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
                   </select>
                 </th>
                 <th className="p-2"></th>
@@ -358,7 +432,7 @@ const IngresosTab = ({
               {ingresosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="p-12 text-center text-slate-500 font-medium italic">
-                    No se encontraron registros que coincidan con los filtros.
+                    No se encontraron registros que coincidan con los criterios de búsqueda.
                   </td>
                 </tr>
               ) : (
@@ -369,9 +443,12 @@ const IngresosTab = ({
                   const isPocket = cuentaObj?.type === 'pocket' || cuentaObj?.type === 'investment';
                   
                   return (
-                    <tr key={ingreso.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                    <tr 
+                      key={ingreso.id} 
+                      className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
+                    >
                       
-                      {/* --- COLUMNA FECHA --- */}
+                      {/* COLUMNA: FECHA */}
                       <td className="p-4 text-slate-400 text-xs font-medium">
                         {isEditing ? (
                           <input 
@@ -383,7 +460,7 @@ const IngresosTab = ({
                         ) : ingreso.fecha}
                       </td>
 
-                      {/* --- COLUMNA DESCRIPCIÓN --- */}
+                      {/* COLUMNA: DESCRIPCIÓN */}
                       <td className="p-4 text-slate-200 font-bold text-[13px]">
                         {isEditing ? (
                           <input 
@@ -395,7 +472,7 @@ const IngresosTab = ({
                         ) : ingreso.descripcion}
                       </td>
 
-                      {/* --- COLUMNA TIPO --- */}
+                      {/* COLUMNA: TIPO */}
                       <td className="p-4">
                         {isEditing ? (
                           <select 
@@ -408,17 +485,19 @@ const IngresosTab = ({
                             <option value="Rendimiento">Rendimiento</option>
                           </select>
                         ) : (
-                          <span className={`px-2.5 py-1 text-[9px] font-bold rounded border uppercase tracking-wider ${
-                            ingreso.tipo === 'Fijo' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
-                            ingreso.tipo === 'Rendimiento' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                            'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                          }`}>
+                          <span 
+                            className={`px-2.5 py-1 text-[9px] font-bold rounded border uppercase tracking-wider ${
+                              ingreso.tipo === 'Fijo' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
+                              ingreso.tipo === 'Rendimiento' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                              'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                            }`}
+                          >
                             {ingreso.tipo || 'VARIABLE'}
                           </span>
                         )}
                       </td>
 
-                      {/* --- COLUMNA DESTINO --- */}
+                      {/* COLUMNA: CUENTA DESTINO */}
                       <td className="p-4 text-slate-400 text-xs">
                         {isEditing ? (
                           <select 
@@ -426,7 +505,9 @@ const IngresosTab = ({
                             onChange={e => setEditData({...editData, cuentaId: e.target.value})} 
                             className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none"
                           >
-                            {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            {cuentasActivas.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
                           </select>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -436,7 +517,7 @@ const IngresosTab = ({
                         )}
                       </td>
 
-                      {/* --- COLUMNA MONTO --- */}
+                      {/* COLUMNA: MONTO */}
                       <td className="p-4 font-black text-emerald-400 text-right text-[14px]">
                         {isEditing ? (
                           <input 
@@ -448,23 +529,39 @@ const IngresosTab = ({
                         ) : formatCOP(ingreso.monto)}
                       </td>
 
-                      {/* --- COLUMNA ACCIONES --- */}
+                      {/* COLUMNA: ACCIONES */}
                       <td className="p-4">
                         {isEditing ? (
                           <div className="flex items-center justify-center gap-2">
-                            <button onClick={saveEdit} className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors" title="Confirmar">
+                            <button 
+                              onClick={saveEdit} 
+                              className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors" 
+                              title="Confirmar cambios"
+                            >
                               <CheckIcon />
                             </button>
-                            <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors" title="Cancelar">
+                            <button 
+                              onClick={() => setEditingId(null)} 
+                              className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors" 
+                              title="Cancelar edición"
+                            >
                               <XIcon />
                             </button>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-3">
-                            <button onClick={() => startEditing(ingreso)} className="text-slate-500 hover:text-indigo-400 transition-colors" title="Editar">
+                            <button 
+                              onClick={() => startEditing(ingreso)} 
+                              className="text-slate-500 hover:text-indigo-400 transition-colors" 
+                              title="Editar registro"
+                            >
                               <Edit3 size={14}/>
                             </button>
-                            <button onClick={() => handleDelete(ingreso.id)} className="text-slate-500 hover:text-rose-500 transition-colors" title="Eliminar">
+                            <button 
+                              onClick={() => handleDelete(ingreso.id)} 
+                              className="text-slate-500 hover:text-rose-500 transition-colors" 
+                              title="Eliminar registro"
+                            >
                               <Trash2 size={14}/>
                             </button>
                           </div>
@@ -476,9 +573,12 @@ const IngresosTab = ({
                 })
               )}
             </tbody>
+
           </table>
         </div>
+
       </Card>
+
     </div>
   );
 };
