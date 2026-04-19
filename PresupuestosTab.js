@@ -156,17 +156,26 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
   const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
 
+  // ✨ PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES
   const { fijosItems, varItems } = useMemo(() => {
     const fijos = [];
     const variables = [];
 
     pagosFijos.forEach(pf => {
-      const gastado = egresosMes.filter(e => e.pagoFijoId === pf.id).reduce((s, e) => s + e.monto, 0);
+      const gastado = egresosMes.filter(e => {
+        if (e.tipo !== 'Fijo') return false;
+        // 1. Prioridad: Etiqueta oculta exacta (Cuando pagas desde el checklist)
+        if (e.pagoFijoId) return e.pagoFijoId === pf.id;
+        // 2. Respaldo inteligente: Coincidencia por nombre sin importar mayúsculas o espacios extra
+        return (e.descripcion || '').trim().toLowerCase() === (pf.descripcion || '').trim().toLowerCase();
+      }).reduce((s, e) => s + e.monto, 0);
+      
       fijos.push({ id: pf.id, tipo: 'Fijo', nombre: pf.descripcion, categoria: pf.categoria, limite: pf.monto, gastado, diaPago: pf.diaPago });
     });
 
     presupuestos.forEach(p => {
-      const gastado = egresosMes.filter(e => e.categoria.toLowerCase() === p.categoria.toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
+      // También blindamos las categorías variables contra espacios extra
+      const gastado = egresosMes.filter(e => (e.categoria || '').trim().toLowerCase() === (p.categoria || '').trim().toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
       variables.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
     });
 
@@ -176,7 +185,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     };
   }, [pagosFijos, presupuestos, egresosMes]);
 
-  // Cálculos de Totales y Diferencias
   const totalGastadoFijo = useMemo(() => fijosItems.reduce((s, item) => s + item.gastado, 0), [fijosItems]);
   const totalGastadoVar = useMemo(() => varItems.reduce((s, item) => s + item.gastado, 0), [varItems]);
   const totalGastadoAmbos = totalGastadoFijo + totalGastadoVar;
@@ -185,11 +193,10 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const difVar = totalVar - totalGastadoVar;
   const difTotal = (totalFijo + totalVar) - totalGastadoAmbos;
 
-  // Función para determinar el color de la diferencia
   const getColorDif = (val) => {
     if (val > 0) return 'text-emerald-400';
     if (val < 0) return 'text-rose-500';
-    return 'text-orange-400'; // Exactamente 0
+    return 'text-orange-400'; 
   };
 
   const RenderCardCompacta = ({ p, themeColor }) => {
@@ -254,9 +261,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
       </header>
 
-      {/* ✨ TARJETAS ACTUALIZADAS CON ANÁLISIS DE DIFERENCIA */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Tarjeta Fijos */}
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
           <div>
             <p className="text-[10px] text-yellow-400 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
@@ -274,7 +279,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
           </div>
         </div>
         
-        {/* Tarjeta Variables */}
         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
           <div>
             <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
@@ -292,7 +296,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
           </div>
         </div>
 
-        {/* Tarjeta Total Consolidado */}
         <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col justify-between">
           <div>
             <p className="text-[10px] text-slate-300 uppercase font-bold mb-1">Total Presupuestado</p>
@@ -314,25 +317,15 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       {showForm && (
         <Card className={editId ? "border-t-4 border-t-yellow-500 bg-yellow-950/10" : "border-t-4 border-t-slate-500 bg-slate-900/80"}>
           <div className="flex justify-between items-center mb-4" ref={formRef}>
-            
             <div className="flex gap-4">
-              <button 
-                onClick={() => setTipoForm('variable')} 
-                type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
-              >
+              <button onClick={() => setTipoForm('variable')} type="button" className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
                 {editId ? (editOriginalType === 'variable' ? '✏️ Editando Límite Variable' : '🔄 Convertir a Variable') : 'Añadir Límite Variable'}
               </button>
               <span className="text-slate-700">|</span>
-              <button 
-                onClick={() => setTipoForm('fijo')} 
-                type="button"
-                className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}`}
-              >
+              <button onClick={() => setTipoForm('fijo')} type="button" className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}`}>
                 {editId ? (editOriginalType === 'fijo' ? '✏️ Editando Gasto Fijo' : '🔄 Convertir a Fijo') : 'Añadir Gasto Fijo'}
               </button>
             </div>
-            
             {editId && <button onClick={cancelarEdicion} className="text-xs text-yellow-400 hover:underline bg-slate-950 px-2 py-1 rounded">Cancelar Edición</button>}
           </div>
           
