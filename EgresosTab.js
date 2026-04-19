@@ -33,7 +33,7 @@ const EgresosTab = ({
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
   // ============================================================================
-  // ÍCONOS SVG NATIVOS (Blindaje contra ReferenceError)
+  // ÍCONOS SVG NATIVOS
   // ============================================================================
   const CheckIcon = ({ size = 16, className = "" }) => (
     <svg 
@@ -100,32 +100,11 @@ const EgresosTab = ({
     </svg>
   );
 
-  const ListIcon = ({ size = 18, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <line x1="8" y1="6" x2="21" y2="6"></line>
-      <line x1="8" y1="12" x2="21" y2="12"></line>
-      <line x1="8" y1="18" x2="21" y2="18"></line>
-      <line x1="3" y1="6" x2="3.01" y2="6"></line>
-      <line x1="3" y1="12" x2="3.01" y2="12"></line>
-      <line x1="3" y1="18" x2="3.01" y2="18"></line>
-    </svg>
-  );
-
   // ============================================================================
   // ESTADOS DEL COMPONENTE
   // ============================================================================
   
-  // Formulario Individual
+  // 1. Estados del Formulario Principal
   const [fecha, setFecha] = useState(getLocalToday());
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
@@ -134,11 +113,11 @@ const EgresosTab = ({
   const [deudaId, setDeudaId] = useState('');
   const [tipo, setTipo] = useState('Variable');
 
-  // Edición en línea
+  // 2. Estados de Edición en Línea (Historial)
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
 
-  // Filtros Historial
+  // 3. Filtros del Historial
   const [filters, setFilters] = useState({ 
     descripcion: '', 
     tipo: 'Ambos', 
@@ -146,14 +125,14 @@ const EgresosTab = ({
     cuenta: '' 
   });
 
-  // Acordeones (Mostrar/Ocultar Secciones)
+  // 4. Control de Acordeones
   const [openSections, setOpenSections] = useState({ 
     form: true, 
     fijos: true, 
     historial: false 
   });
 
-  // Estado para la edición rápida de pagos fijos antes de confirmar
+  // 5. Estado temporal para pagos fijos
   const [pfState, setPfState] = useState({});
 
   const toggleSection = (sec) => {
@@ -164,9 +143,9 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // CÁLCULOS Y LISTAS DERIVADAS
+  // CÁLCULOS Y LISTAS FILTRADAS
   // ============================================================================
-  const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
+  const cuentasActivas = cuentas.filter(c => !['loan'].includes(c.type));
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
 
   const egresosMes = useMemo(() => {
@@ -187,19 +166,25 @@ const EgresosTab = ({
 
   const egresosFiltrados = useMemo(() => {
     return egresosMes.filter(egreso => {
-      const matchDesc = (egreso.descripcion || '').toLowerCase().includes(filters.descripcion.toLowerCase());
+      const descSegura = egreso.descripcion || '';
+      const matchDesc = descSegura.toLowerCase().includes(filters.descripcion.toLowerCase());
+      
       const matchTipo = filters.tipo === 'Ambos' || egreso.tipo === filters.tipo;
+      
       const matchCat = filters.categoria === '' || egreso.categoria === filters.categoria;
+      
       const matchCuenta = filters.cuenta === '' || egreso.cuentaId === filters.cuenta;
+      
       return matchDesc && matchTipo && matchCat && matchCuenta;
     });
   }, [egresosMes, filters]);
 
   // ============================================================================
-  // FUNCIONES CRUD
+  // FUNCIONES CRUD (CREAR, EDITAR, ELIMINAR)
   // ============================================================================
   const handleSubmit = (e) => {
     e.preventDefault();
+    
     if (!descripcion || !monto || !categoria || !cuentaId) { 
       showToast('Por favor completa todos los campos requeridos.', 'error'); 
       return; 
@@ -219,7 +204,7 @@ const EgresosTab = ({
     setDescripcion(''); 
     setMonto(''); 
     setDeudaId(''); 
-    showToast('Gasto/Pago registrado correctamente.');
+    showToast('Gasto o Pago registrado correctamente.');
   };
 
   const startEditing = (egreso) => { 
@@ -232,10 +217,12 @@ const EgresosTab = ({
       showToast('Faltan datos en la edición', 'error'); 
       return; 
     }
+    
     await updateEgreso(editingId, { 
       ...editData, 
       monto: Number(editData.monto) 
     });
+    
     setEditingId(null); 
     showToast('Gasto actualizado.');
   };
@@ -248,15 +235,22 @@ const EgresosTab = ({
   };
 
   const limpiarFiltros = () => {
-    setFilters({ descripcion: '', tipo: 'Ambos', categoria: '', cuenta: '' });
+    setFilters({ 
+      descripcion: '', 
+      tipo: 'Ambos', 
+      categoria: '', 
+      cuenta: '' 
+    });
   };
 
   // ============================================================================
-  // LÓGICA DE PAGOS FIJOS
+  // LÓGICA DE PAGOS FIJOS (CHECKLIST)
   // ============================================================================
   const checkPagoRealizado = (pfDesc) => {
+    const descSegura = pfDesc || '';
     return egresosMes.some(e => 
-      e.tipo === 'Fijo' && (e.descripcion || '').toLowerCase().includes((pfDesc || '').toLowerCase())
+      e.tipo === 'Fijo' && 
+      (e.descripcion || '').toLowerCase().includes(descSegura.toLowerCase())
     );
   };
 
@@ -314,22 +308,24 @@ const EgresosTab = ({
     return [...pagosFijos].sort((a, b) => {
       const aPaid = checkPagoRealizado(a.descripcion);
       const bPaid = checkPagoRealizado(b.descripcion);
+      
       if (aPaid && !bPaid) return 1;
       if (!aPaid && bPaid) return -1;
+      
       return (a.diaPago || 1) - (b.diaPago || 1);
     });
   }, [pagosFijos, egresosMes]);
 
   // ============================================================================
-  // RENDER JSX
+  // RENDER JSX DE LA VISTA
   // ============================================================================
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
-      {/* --- HEADER --- */}
+      {/* ----------------- HEADER ----------------- */}
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-          <Receipt className="text-rose-400 w-8 h-8"/> 
+          <span className="text-rose-400 text-3xl">🧾</span> 
           Gestión de Egresos
         </h1>
         <p className="text-sm text-slate-400 mt-1">
@@ -337,38 +333,41 @@ const EgresosTab = ({
         </p>
       </header>
 
-      {/* --- TARJETAS RESUMEN --- */}
+      {/* ----------------- TARJETAS DE RESUMEN ----------------- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 border-t-4 border-t-rose-500 bg-slate-900/30">
+        
+        <div className="bg-slate-900/30 p-4 rounded-xl border border-slate-800 shadow-sm border-t-4 border-t-rose-500">
           <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
             Total Gastado/Pagado (Mes)
           </p>
           <p className="text-xl md:text-2xl font-black text-rose-400">
             {formatCOP(totalMes)}
           </p>
-        </Card>
+        </div>
         
-        <Card className="p-4 border-t-4 border-t-orange-500 bg-slate-900/30">
+        <div className="bg-slate-900/30 p-4 rounded-xl border border-slate-800 shadow-sm border-t-4 border-t-orange-500">
           <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
             Gastos/Pagos Fijos
           </p>
           <p className="text-xl md:text-2xl font-black text-orange-400">
             {formatCOP(totalFijos)}
           </p>
-        </Card>
+        </div>
         
-        <Card className="p-4 border-t-4 border-t-blue-500 bg-slate-900/30">
+        <div className="bg-slate-900/30 p-4 rounded-xl border border-slate-800 shadow-sm border-t-4 border-t-blue-500">
           <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
             Gastos Variables
           </p>
           <p className="text-xl md:text-2xl font-black text-blue-400">
             {formatCOP(totalVariables)}
           </p>
-        </Card>
+        </div>
+
       </div>
 
-      {/* --- 1. FORMULARIO REGISTRO INDIVIDUAL --- */}
-      <Card className="border-t-4 border-t-rose-500 transition-all duration-300">
+      {/* ----------------- SECCIÓN 1: FORMULARIO PRINCIPAL ----------------- */}
+      <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 shadow-lg border-t-4 border-t-rose-500 transition-all duration-300">
+        
         <div 
           className="flex justify-between items-center cursor-pointer mb-2 select-none" 
           onClick={() => toggleSection('form')}
@@ -386,6 +385,7 @@ const EgresosTab = ({
             onSubmit={handleSubmit} 
             className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-4 fade-in duration-300"
           >
+            {/* Campo: Fecha */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
                 Fecha
@@ -399,6 +399,7 @@ const EgresosTab = ({
               />
             </div>
             
+            {/* Campo: Descripción */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
                 Descripción
@@ -413,6 +414,7 @@ const EgresosTab = ({
               />
             </div>
             
+            {/* Campo: Categoría */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
                 Categoría
@@ -425,11 +427,14 @@ const EgresosTab = ({
               >
                 <option value="">Seleccione...</option>
                 {categoriasMaestras.map(c => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
             </div>
 
+            {/* Campo: Cuenta Origen */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
                 De dónde sale la plata
@@ -449,6 +454,7 @@ const EgresosTab = ({
               </select>
             </div>
             
+            {/* Campo: Abono a Deuda */}
             <div>
               <label className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-1">
                 Abonar a Deuda (Opcional)
@@ -467,6 +473,7 @@ const EgresosTab = ({
               </select>
             </div>
             
+            {/* Campo: Monto */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
                 Monto Total
@@ -481,171 +488,198 @@ const EgresosTab = ({
               />
             </div>
 
+            {/* Controles Finales del Formulario */}
             <div className="md:col-span-3 flex justify-between items-center mt-2 pt-4 border-t border-slate-800/50">
+               
+               {/* Toggle Fijo/Variable */}
                <div className="flex bg-slate-950 rounded-lg border border-slate-800 p-1">
                   <button 
                     type="button" 
                     onClick={() => setTipo('Variable')} 
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
+                      tipo === 'Variable' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'text-slate-400 hover:text-slate-300'
+                    }`}
                   >
                     Variable
                   </button>
                   <button 
                     type="button" 
                     onClick={() => setTipo('Fijo')} 
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
+                      tipo === 'Fijo' 
+                        ? 'bg-orange-600 text-white' 
+                        : 'text-slate-400 hover:text-slate-300'
+                    }`}
                   >
                     Fijo
                   </button>
                </div>
+              
+              {/* Botón de Enviar */}
               <button 
                 type="submit" 
                 className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95"
               >
-                <Plus size={18} /> Registrar Movimiento
+                <span className="text-lg leading-none">+</span> Registrar Movimiento
               </button>
+
             </div>
           </form>
         )}
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        
-        {/* --- 2. PAGOS FIJOS (CHECKLIST) --- */}
-        <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300 lg:col-span-2">
-          <div 
-            className="flex justify-between items-center cursor-pointer select-none" 
-            onClick={() => toggleSection('fijos')}
-          >
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <CheckSquare size={20} className="text-orange-400"/> 
-              2. Pagos Fijos (Checklist)
-            </h2>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
-                {pagosFijos.filter(pf => checkPagoRealizado(pf.descripcion)).length} / {pagosFijos.length} Pagados
-              </span>
-              <button className="text-slate-400 hover:text-white transition-colors">
-                {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              </button>
-            </div>
-          </div>
-          
-          {openSections.fijos && (
-            <div className="mt-4 flex-1 overflow-y-auto max-h-[400px] pr-1 space-y-3 animate-in slide-in-from-top-4 fade-in duration-300">
-              {pagosFijosOrdenados.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-10">
-                  No has configurado pagos fijos en Presupuestos.
-                </p>
-              ) : (
-                pagosFijosOrdenados.map(pf => {
-                  const isPaid = checkPagoRealizado(pf.descripcion);
-                  
-                  return (
-                    <div 
-                      key={pf.id} 
-                      className={`p-4 rounded-xl border flex flex-col transition-all gap-4 ${
-                        isPaid 
-                          ? 'bg-emerald-900/10 border-emerald-500/20 opacity-60' 
-                          : 'bg-slate-950 border-slate-800 hover:border-orange-500/30 shadow-md'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => !isPaid && registrarPagoFijo(pf)} 
-                            disabled={isPaid} 
-                            className={`w-6 h-6 rounded flex items-center justify-center border transition-colors shrink-0 ${
-                              isPaid 
-                                ? 'bg-emerald-500 border-emerald-500 text-white' 
-                                : 'bg-slate-900 border-slate-600 text-transparent hover:border-orange-500'
-                            }`}
-                          >
-                            <CheckIcon size={14} />
-                          </button>
-                          <div>
-                            <p className={`text-base font-bold ${isPaid ? 'text-emerald-400 line-through' : 'text-slate-200'}`}>
-                              {pf.descripcion}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              Día sugerido de pago: {pf.diaPago || 1}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {isPaid && (
-                          <p className="text-lg font-black text-emerald-500/50 text-right">
-                            {formatCOP(Number(pf.monto || pf.montoEstimado || 0))}
-                          </p>
-                        )}
-                      </div>
-                      
-                      {!isPaid && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-800/50">
-                          
-                          <div className="flex flex-col">
-                            <label className="text-[10px] uppercase text-slate-500 font-bold mb-1">
-                              Pagar desde:
-                            </label>
-                            <select 
-                              value={getPfCuenta(pf)} 
-                              onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)} 
-                              className="bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded-lg p-2 outline-none focus:border-orange-500 w-full"
-                            >
-                              <option value="">Seleccione cuenta...</option>
-                              {cuentasActivas.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                          
-                          <div className="flex flex-col">
-                            <label className="text-[10px] uppercase text-indigo-400 font-bold mb-1">
-                              Abonar a Deuda (Opcional):
-                            </label>
-                            <select 
-                              value={getPfDeuda(pf)} 
-                              onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)} 
-                              className="bg-indigo-950/20 border border-indigo-500/30 text-xs text-indigo-300 rounded-lg p-2 outline-none focus:border-indigo-500 w-full"
-                            >
-                              <option value="">No es deuda</option>
-                              {todasLasDeudas.map(d => (
-                                <option key={d.id} value={d.id}>Pagar: {d.name}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="flex flex-col">
-                            <label className="text-[10px] uppercase text-slate-500 font-bold mb-1">
-                              Monto Exacto:
-                            </label>
-                            <input 
-                              type="number" 
-                              value={getPfMonto(pf)} 
-                              onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)} 
-                              className="bg-slate-900 border border-slate-700 text-sm font-bold text-orange-400 rounded-lg p-2 outline-none focus:border-orange-500 w-full text-right"
-                            />
-                          </div>
-
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </Card>
       </div>
 
-      {/* --- 3. HISTORIAL COMPLETO --- */}
-      <Card className="flex flex-col border-t-4 border-t-slate-600 mt-6 bg-slate-900/10 transition-all duration-300">
+      {/* ----------------- SECCIÓN 2: PAGOS FIJOS (CHECKLIST) ----------------- */}
+      <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 shadow-lg border-t-4 border-t-orange-500 flex flex-col transition-all duration-300">
+        
+        <div 
+          className="flex justify-between items-center cursor-pointer select-none" 
+          onClick={() => toggleSection('fijos')}
+        >
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <span className="text-orange-400 text-xl">✅</span> 
+            2. Pagos Fijos (Checklist)
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+              {pagosFijos.filter(pf => checkPagoRealizado(pf.descripcion)).length} / {pagosFijos.length} Pagados
+            </span>
+            <button className="text-slate-400 hover:text-white transition-colors">
+              {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            </button>
+          </div>
+        </div>
+
+        {openSections.fijos && (
+          <div className="mt-4 flex-1 overflow-y-auto max-h-[400px] pr-1 space-y-3 animate-in slide-in-from-top-4 fade-in duration-300">
+            
+            {pagosFijosOrdenados.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-10">
+                No has configurado pagos fijos en Presupuestos.
+              </p>
+            ) : (
+              pagosFijosOrdenados.map(pf => {
+                const isPaid = checkPagoRealizado(pf.descripcion);
+                
+                return (
+                  <div 
+                    key={pf.id} 
+                    className={`p-4 rounded-xl border flex flex-col transition-all gap-4 ${
+                      isPaid 
+                        ? 'bg-emerald-900/10 border-emerald-500/20 opacity-60' 
+                        : 'bg-slate-950 border-slate-800 hover:border-orange-500/30 shadow-md'
+                    }`}
+                  >
+                    
+                    {/* Parte Superior del Checklist */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => !isPaid && registrarPagoFijo(pf)} 
+                          disabled={isPaid} 
+                          className={`w-6 h-6 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                            isPaid 
+                              ? 'bg-emerald-500 border-emerald-500 text-white' 
+                              : 'bg-slate-900 border-slate-600 text-transparent hover:border-orange-500'
+                          }`}
+                        >
+                          <CheckIcon size={14} />
+                        </button>
+                        <div>
+                          <p className={`text-base font-bold ${
+                            isPaid ? 'text-emerald-400 line-through' : 'text-slate-200'
+                          }`}>
+                            {pf.descripcion}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Día sugerido de pago: {pf.diaPago || 1}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Si ya está pagado, muestra el valor aquí */}
+                      {isPaid && (
+                        <p className="text-lg font-black text-emerald-500/50 text-right">
+                          {formatCOP(Number(pf.monto || pf.montoEstimado || 0))}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Controles de Edición Rápida (Solo si no está pagado) */}
+                    {!isPaid && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-800/50">
+                        
+                        {/* Selector: Cuenta */}
+                        <div className="flex flex-col">
+                          <label className="text-[10px] uppercase text-slate-500 font-bold mb-1">
+                            Pagar desde:
+                          </label>
+                          <select 
+                            value={getPfCuenta(pf)} 
+                            onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)} 
+                            className="bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded-lg p-2 outline-none focus:border-orange-500 w-full"
+                          >
+                            <option value="">Seleccione cuenta...</option>
+                            {cuentasActivas.map(c => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        {/* Selector: Deuda */}
+                        <div className="flex flex-col">
+                          <label className="text-[10px] uppercase text-indigo-400 font-bold mb-1">
+                            Abonar a Deuda (Opcional):
+                          </label>
+                          <select 
+                            value={getPfDeuda(pf)} 
+                            onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)} 
+                            className="bg-indigo-950/20 border border-indigo-500/30 text-xs text-indigo-300 rounded-lg p-2 outline-none focus:border-indigo-500 w-full"
+                          >
+                            <option value="">No es deuda</option>
+                            {todasLasDeudas.map(d => (
+                              <option key={d.id} value={d.id}>
+                                Pagar: {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Input: Monto Exacto */}
+                        <div className="flex flex-col">
+                          <label className="text-[10px] uppercase text-slate-500 font-bold mb-1">
+                            Monto Exacto:
+                          </label>
+                          <input 
+                            type="number" 
+                            value={getPfMonto(pf)} 
+                            onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)} 
+                            className="bg-slate-900 border border-slate-700 text-sm font-bold text-orange-400 rounded-lg p-2 outline-none focus:border-orange-500 w-full text-right"
+                          />
+                        </div>
+
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ----------------- SECCIÓN 3: TABLA HISTORIAL ----------------- */}
+      <div className="bg-slate-900/10 p-6 rounded-2xl border border-slate-800 border-t-4 border-t-slate-600 transition-all duration-300 mt-6">
+        
         <div 
           className="flex justify-between items-center cursor-pointer select-none mb-2" 
           onClick={() => toggleSection('historial')}
         >
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <ListIcon className="text-slate-400" /> 
+            <span className="text-slate-400 text-xl">📜</span> 
             3. Historial Completo de Egresos
           </h2>
           <div className="flex items-center gap-3">
@@ -663,6 +697,7 @@ const EgresosTab = ({
             <table className="w-full text-left border-collapse min-w-[900px]">
               
               <thead>
+                {/* --- Encabezados Principales --- */}
                 <tr className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/80">
                   <th className="p-4 font-bold w-[10%]">Fecha</th>
                   <th className="p-4 font-bold w-[25%]">Descripción</th>
@@ -673,7 +708,7 @@ const EgresosTab = ({
                   <th className="p-4 font-bold text-center w-[8%]">Acciones</th>
                 </tr>
                 
-                {/* FILA DE FILTROS */}
+                {/* --- Fila de Filtros Dinámicos --- */}
                 <tr className="border-b-2 border-slate-800 bg-slate-900/40">
                   <th className="p-2"></th>
                   <th className="p-2">
@@ -732,7 +767,9 @@ const EgresosTab = ({
                 </tr>
               </thead>
 
+              {/* --- Cuerpo de la Tabla --- */}
               <tbody className="text-sm">
+                
                 {egresosFiltrados.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="p-12 text-center text-slate-500 font-medium italic">
@@ -750,6 +787,7 @@ const EgresosTab = ({
                         className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
                       >
                         
+                        {/* Celda: Fecha */}
                         <td className="p-4 text-slate-400 text-xs font-medium">
                           {isEditing ? (
                             <input 
@@ -758,9 +796,12 @@ const EgresosTab = ({
                               onChange={e => setEditData({...editData, fecha: e.target.value})} 
                               className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-white"
                             />
-                          ) : egreso.fecha}
+                          ) : (
+                            egreso.fecha
+                          )}
                         </td>
 
+                        {/* Celda: Descripción */}
                         <td className="p-4 text-slate-200 font-bold text-[13px]">
                           {isEditing ? (
                             <input 
@@ -769,9 +810,12 @@ const EgresosTab = ({
                               onChange={e => setEditData({...editData, descripcion: e.target.value})} 
                               className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs outline-none text-white"
                             />
-                          ) : egreso.descripcion}
+                          ) : (
+                            egreso.descripcion
+                          )}
                         </td>
 
+                        {/* Celda: Tipo (Fijo/Variable) */}
                         <td className="p-4 text-center">
                           {isEditing ? (
                             <select 
@@ -795,6 +839,7 @@ const EgresosTab = ({
                           )}
                         </td>
 
+                        {/* Celda: Categoría */}
                         <td className="p-4">
                           {isEditing ? (
                             <select 
@@ -813,6 +858,7 @@ const EgresosTab = ({
                           )}
                         </td>
 
+                        {/* Celda: Cuenta */}
                         <td className="p-4">
                           {isEditing ? (
                             <select 
@@ -831,6 +877,7 @@ const EgresosTab = ({
                           )}
                         </td>
 
+                        {/* Celda: Monto */}
                         <td className="p-4 text-right">
                           {isEditing ? (
                             <input 
@@ -846,20 +893,19 @@ const EgresosTab = ({
                           )}
                         </td>
 
+                        {/* Celda: Acciones */}
                         <td className="p-4">
                           {isEditing ? (
                             <div className="flex items-center justify-center gap-2">
                               <button 
                                 onClick={saveEdit} 
-                                className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors" 
-                                title="Confirmar"
+                                className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors"
                               >
                                 <CheckIcon size={16} />
                               </button>
                               <button 
                                 onClick={() => setEditingId(null)} 
-                                className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors" 
-                                title="Cancelar"
+                                className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors"
                               >
                                 <XIcon size={16} />
                               </button>
@@ -868,17 +914,15 @@ const EgresosTab = ({
                             <div className="flex items-center justify-center gap-3">
                               <button 
                                 onClick={() => startEditing(egreso)} 
-                                className="text-slate-500 hover:text-indigo-400 transition-colors" 
-                                title="Editar"
+                                className="text-slate-500 hover:text-indigo-400 transition-colors"
                               >
-                                <Edit3 size={14}/>
+                                <span className="text-sm">✏️</span>
                               </button>
                               <button 
                                 onClick={() => handleDelete(egreso.id)} 
-                                className="text-slate-500 hover:text-rose-500 transition-colors" 
-                                title="Eliminar"
+                                className="text-slate-500 hover:text-rose-500 transition-colors"
                               >
-                                <Trash2 size={14}/>
+                                <span className="text-sm">🗑️</span>
                               </button>
                             </div>
                           )}
@@ -889,10 +933,12 @@ const EgresosTab = ({
                   })
                 )}
               </tbody>
+
             </table>
           </div>
         )}
-      </Card>
+
+      </div>
     </div>
   );
 };
