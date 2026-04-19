@@ -1,6 +1,20 @@
 const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, scoreHistory }) => {
   const { useMemo } = React;
 
+  // --- ÍCONOS FALTANTES AÑADIDOS NATIVAMENTE ---
+  const Zap = ({ size = 24, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+    </svg>
+  );
+
+  const TrendingDown = ({ size = 24, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline>
+      <polyline points="16 17 22 17 22 11"></polyline>
+    </svg>
+  );
+
   const formatCOP = (val) => new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
@@ -80,13 +94,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   const deudasOrdenadas = useMemo(() => {
     return cuentas
       .filter(c => (c.type === 'credit' || c.type === 'loan') && c.currentDebt > 0)
-      .sort((a, b) => b.tasaEA - a.tasaEA); // Ordenadas de mayor a menor tasa
+      .sort((a, b) => b.tasaEA - a.tasaEA); 
   }, [cuentas]);
 
   const ingMesActual = historialMensual[11]?.ingresos || 0;
   const cuotasMesActual = cuentas.reduce((sum, c) => sum + (c.currentDebt > 0 ? (Number(c.cuotaMinima) || 0) : 0), 0);
   
-  // KPIs Estratégicos
   const cargaDeuda = ingMesActual > 0 ? (cuotasMesActual / ingMesActual) * 100 : 0;
   const tasaAhorroAnual = totalIngresosAnual > 0 ? ((totalIngresosAnual - totalEgresosAnual) / totalIngresosAnual) * 100 : 0;
   const flujoPromedioMes = (totalIngresosAnual - totalEgresosAnual) / 12;
@@ -97,7 +110,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   const recomendaciones = useMemo(() => {
     const recs = [];
 
-    // 1. Análisis de Carga de Deuda
     if (cargaDeuda > 40) {
       recs.push({
         tipo: 'alerta',
@@ -114,7 +126,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       });
     }
 
-    // 2. Análisis de Tasa de Ahorro / Flujo
     if (tasaAhorroAnual < 5) {
       recs.push({
         tipo: 'alerta',
@@ -131,7 +142,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       });
     }
 
-    // 3. Análisis de Constancia (Meses positivos vs negativos)
     if (mesesConSuperavit <= 6) {
       recs.push({
         tipo: 'precaucion',
@@ -141,7 +151,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       });
     }
 
-    // 4. Integrar alertas del Score General
     scoreData.recs.forEach(r => {
       if (!recs.find(existing => existing.title === r.title)) {
         recs.push({ tipo: 'info', ico: r.ico, title: r.title, desc: r.txt });
@@ -187,8 +196,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     return { mejorMes: mejor, peorMes: peor };
   }, [historialMensual]);
 
-
-  // Valores Máximos para Gráficas
   const maxValHist = Math.max(...historialMensual.map(m => Math.max(m.ingresos, m.egresos)), 1);
   const maxValCat = topCategoriasAnual.length > 0 ? topCategoriasAnual[0][1] : 1;
   const pctFijos = totalEgresosAnual > 0 ? (totalFijosAnual / totalEgresosAnual) * 100 : 0;
@@ -268,14 +275,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
             {historialMensual.map((m, i) => (
               <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                 
-                {/* Barras Verdes y Rojas originales */}
                 <div className="flex gap-0.5 md:gap-1 w-full justify-center items-end h-full">
                   <div style={{ height: `${Math.max((m.ingresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-emerald-500/80 rounded-t-sm group-hover:bg-emerald-400 transition-all"></div>
                   <div style={{ height: `${Math.max((m.egresos / maxValHist) * 100, 2)}%` }} className="w-3 md:w-5 bg-rose-500/80 rounded-t-sm group-hover:bg-rose-400 transition-all"></div>
                 </div>
                 <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase">{m.label}</span>
                 
-                {/* Tooltip con los datos */}
                 <div className="opacity-0 group-hover:opacity-100 absolute -top-24 bg-slate-950 border border-slate-700 p-3 rounded shadow-2xl z-20 pointer-events-none transition-opacity text-[10px] min-w-[140px]">
                   <p className="text-slate-300 font-bold uppercase mb-2 border-b border-slate-800 pb-1">{m.label}</p>
                   <div className="flex justify-between mb-1"><span className="text-emerald-400 font-bold">Ingresos:</span> <span className="text-white">{formatCOP(m.ingresos)}</span></div>
