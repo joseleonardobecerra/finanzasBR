@@ -7,9 +7,6 @@ const EgresosTab = ({
   addPagoFijo, 
   updatePagoFijo, 
   removePagoFijo, 
-  comprasCuotas, 
-  addComprasCuotas, 
-  removeComprasCuotas, 
   cuentas, 
   selectedMonth, 
   presupuestos, 
@@ -37,82 +34,32 @@ const EgresosTab = ({
   // ÍCONOS SVG NATIVOS 
   // ============================================================================
   const CheckIcon = ({ size = 16, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
   );
   
   const XIcon = ({ size = 16, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
   );
 
   const ChevronDownIcon = ({ size = 20, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="6 9 12 15 18 9"></polyline>
     </svg>
   );
 
   const ChevronUpIcon = ({ size = 20, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="18 15 12 9 6 15"></polyline>
     </svg>
   );
 
   const ListIcon = ({ size = 18, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <line x1="8" y1="6" x2="21" y2="6"></line>
       <line x1="8" y1="12" x2="21" y2="12"></line>
       <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -150,25 +97,10 @@ const EgresosTab = ({
   });
 
   // ============================================================================
-  // 4. ESTADOS PARA COMPRAS A CUOTAS
-  // ============================================================================
-  const [showModalCuotas, setShowModalCuotas] = useState(false);
-  const [cuotaData, setCuotaData] = useState({
-    fecha: getLocalToday(),
-    descripcion: '',
-    categoria: '',
-    montoTotal: '',
-    numeroCuotas: '',
-    tarjetaId: '',
-    tasaMensual: ''
-  });
-
-  // ============================================================================
-  // 5. ESTADOS PARA LOS ACORDEONES
+  // 4. ESTADOS PARA LOS ACORDEONES (CUOTAS ELIMINADO)
   // ============================================================================
   const [openSections, setOpenSections] = useState({
     form: true,
-    cuotas: false,
     fijos: true,
     historial: false
   });
@@ -181,13 +113,12 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // 6. ESTADOS PARA EDICIÓN RÁPIDA DE PAGOS FIJOS
+  // 5. ESTADOS PARA EDICIÓN RÁPIDA DE PAGOS FIJOS
   // ============================================================================
   const [pfState, setPfState] = useState({});
 
   // Listas de Cuentas Filtradas
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
-  const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
 
   // ============================================================================
@@ -290,15 +221,10 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
   // ============================================================================
-  // FIX: Detectar pago realizado usando pagoFijoId (campo seguro y único).
-  // Para egresos registrados antes de esta corrección (sin pagoFijoId), se mantiene
-  // el fallback por texto, pero solo si la descripción coincide exactamente (no includes).
   const checkPagoRealizado = (pf) => {
     return egresosMes.some(e => {
       if (e.tipo !== 'Fijo') return false;
-      // Método seguro: comparación por ID
       if (e.pagoFijoId) return e.pagoFijoId === pf.id;
-      // Fallback para registros legados (sin pagoFijoId): coincidencia exacta de descripción
       return e.descripcion.toLowerCase() === pf.descripcion.toLowerCase();
     });
   };
@@ -348,13 +274,12 @@ const EgresosTab = ({
       cuentaId: cuentaFinal,
       tipo: 'Fijo',
       deudaId: deudaFinal,
-      pagoFijoId: pf.id, // FIX: guardamos el ID del pago fijo para detección segura
+      pagoFijoId: pf.id, 
     });
     
     showToast(`Pago de ${pf.descripcion} registrado.`);
   };
 
-  // Ordenamiento: Pendientes arriba, pagados abajo
   const pagosFijosOrdenados = useMemo(() => {
     return [...pagosFijos].sort((a, b) => {
       const aPaid = checkPagoRealizado(a);
@@ -366,73 +291,6 @@ const EgresosTab = ({
       return (a.diaPago || 1) - (b.diaPago || 1);
     });
   }, [pagosFijos, egresosMes]);
-
-  // ============================================================================
-  // FUNCIONES PARA COMPRAS A CUOTAS
-  // ============================================================================
-  // FIX: Compras a cuotas - El egreso que se registra debe ser solo la CUOTA MENSUAL
-  // (montoTotal / numeroCuotas), NO el monto total. De lo contrario, el mes de la compra
-  // aparece inflado con el 100% del valor en lugar del valor de una sola cuota.
-  const handleAddCuotas = (e) => {
-    e.preventDefault();
-    
-    if (!cuotaData.descripcion || !cuotaData.montoTotal || !cuotaData.numeroCuotas || !cuotaData.tarjetaId || !cuotaData.categoria) {
-      showToast('Faltan datos de la compra a cuotas', 'error');
-      return;
-    }
-
-    const montoTotal = Number(cuotaData.montoTotal);
-    const numeroCuotas = Number(cuotaData.numeroCuotas);
-    // Cuota mensual aproximada (sin intereses si tasaMensual es 0)
-    const tasaMes = Number(cuotaData.tasaMensual) || 0;
-    let valorCuota;
-    if (tasaMes > 0) {
-      const tm = tasaMes / 100;
-      valorCuota = Math.round(montoTotal * (tm * Math.pow(1 + tm, numeroCuotas)) / (Math.pow(1 + tm, numeroCuotas) - 1));
-    } else {
-      valorCuota = Math.round(montoTotal / numeroCuotas);
-    }
-
-    addComprasCuotas({
-      id: generateId(),
-      fecha: cuotaData.fecha,
-      descripcion: cuotaData.descripcion,
-      categoria: cuotaData.categoria,
-      montoTotal: montoTotal,
-      numeroCuotas: numeroCuotas,
-      tarjetaId: cuotaData.tarjetaId,
-      tasaMensual: tasaMes,
-      cuotasPagadas: 1,
-      valorCuota: valorCuota,
-      estado: 'Activa'
-    });
-
-    // Solo registramos la cuota del mes de la compra, NO el total
-    addEgreso({
-      id: generateId(),
-      fecha: cuotaData.fecha,
-      descripcion: `Cuota 1/${numeroCuotas}: ${cuotaData.descripcion}`,
-      categoria: cuotaData.categoria,
-      monto: valorCuota,
-      cuentaId: cuotaData.tarjetaId,
-      tipo: 'Variable',
-      esCuota: true,
-      deudaId: null
-    });
-
-    setShowModalCuotas(false);
-    setCuotaData({ 
-      fecha: getLocalToday(), 
-      descripcion: '', 
-      categoria: '', 
-      montoTotal: '', 
-      numeroCuotas: '', 
-      tarjetaId: '', 
-      tasaMensual: '' 
-    });
-    
-    showToast(`Compra a cuotas registrada. Cuota mensual: ${formatCOP(valorCuota)}`);
-  };
 
   // ============================================================================
   // ESTRUCTURA VISUAL (UI)
@@ -447,7 +305,7 @@ const EgresosTab = ({
           Gestión de Egresos
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Registra tus gastos diarios, abonos a deudas, pagos fijos y compras a cuotas.
+          Registra tus gastos diarios, abonos a deudas y checklist de pagos fijos.
         </p>
       </header>
 
@@ -630,100 +488,18 @@ const EgresosTab = ({
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* ============================================================================ */}
-        {/* 2. COMPRAS A CUOTAS (ACORDEÓN) */}
-        {/* ============================================================================ */}
-        <Card className="border-t-4 border-t-indigo-500 flex flex-col transition-all duration-300">
-          <div 
-            className="flex justify-between items-center cursor-pointer select-none"
-            onClick={() => toggleSection('cuotas')}
-          >
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-               <CreditCard size={20} className="text-indigo-400"/>
-               2. Compras a Cuotas
-            </h2>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setShowModalCuotas(true); 
-                }} 
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-colors"
-              >
-                <Plus size={14}/> Nueva
-              </button>
-              <button className="text-slate-400 hover:text-white transition-colors">
-                {openSections.cuotas ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              </button>
-            </div>
-          </div>
-
-          {openSections.cuotas && (
-            <div className="mt-4 flex-1 overflow-y-auto max-h-[350px] pr-1 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full animate-in slide-in-from-top-4 fade-in duration-300">
-              
-              {comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-10">
-                  No tienes compras a cuotas activas.
-                </p>
-              ) : (
-                comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).map(cuota => {
-                  
-                  const tarjetaAsociada = tarjetasCredito.find(t => t.id === cuota.tarjetaId);
-                  const numCuotasSeguro = Number(cuota.numeroCuotas) || 1;
-                  const montoTotalSeguro = Number(cuota.montoTotal) || Number(cuota.monto) || 0;
-                  const valorCuotaAprox = montoTotalSeguro / numCuotasSeguro;
-
-                  return (
-                    <div 
-                      key={cuota.id} 
-                      className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between items-center relative overflow-hidden group"
-                    >
-                      <div className="absolute top-0 left-0 bottom-0 w-1 bg-indigo-500"></div>
-                      
-                      <div className="pl-3">
-                         <p className="text-sm font-bold text-white">
-                           {cuota.descripcion}
-                         </p>
-                         <p className="text-[10px] text-slate-400 mt-0.5">
-                           {tarjetaAsociada?.name || 'Tarjeta'} • {cuota.cuotasPagadas || 0}/{cuota.numeroCuotas || '?'} Cuotas
-                         </p>
-                      </div>
-                      
-                      <div className="text-right pr-6">
-                         <p className="text-sm font-black text-indigo-400">
-                           {formatCOP(valorCuotaAprox)} 
-                           <span className="text-[9px] text-slate-500 font-normal">/mes</span>
-                         </p>
-                         <p className="text-[10px] text-slate-500 mt-0.5">
-                           Total: {formatCOP(montoTotalSeguro)}
-                         </p>
-                      </div>
-                      
-                      <button 
-                        onClick={() => removeComprasCuotas(cuota.id)} 
-                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-2 rounded-lg shadow-lg transition-all hover:bg-rose-400"
-                      >
-                        <Trash2 size={14}/>
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </Card>
 
         {/* ============================================================================ */}
-        {/* 3. PAGOS FIJOS (ACORDEÓN + EDICIÓN + CONEXIÓN A DEUDAS) */}
+        {/* 2. PAGOS FIJOS (ACORDEÓN + EDICIÓN + CONEXIÓN A DEUDAS) */}
         {/* ============================================================================ */}
-        <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300">
+        <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300 lg:col-span-2">
           <div 
             className="flex justify-between items-center cursor-pointer select-none"
             onClick={() => toggleSection('fijos')}
           >
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
                <CheckSquare size={20} className="text-orange-400"/>
-               3. Pagos Fijos (Checklist)
+               2. Pagos Fijos (Checklist)
             </h2>
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
@@ -743,7 +519,8 @@ const EgresosTab = ({
                   No has configurado pagos fijos en Presupuestos.
                 </p>
               ) : (
-                pagosFijosOrdenados.map(pf => {
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pagosFijosOrdenados.map(pf => {
                   const isPaid = checkPagoRealizado(pf);
                   
                   return (
@@ -830,7 +607,8 @@ const EgresosTab = ({
                       )}
                     </div>
                   );
-                })
+                })}
+                </div>
               )}
             </div>
           )}
@@ -838,7 +616,7 @@ const EgresosTab = ({
       </div>
 
       {/* ============================================================================ */}
-      {/* 4. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
+      {/* 3. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
       {/* ============================================================================ */}
       <Card className="flex flex-col border-t-4 border-t-slate-600 mt-6 bg-slate-900/10 transition-all duration-300">
         <div 
@@ -847,7 +625,7 @@ const EgresosTab = ({
         >
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <ListIcon className="text-slate-400" />
-            4. Historial Completo de Egresos
+            3. Historial Completo de Egresos
           </h2>
           <div className="flex items-center gap-3">
             <span className="bg-slate-900 border border-slate-700 text-slate-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
@@ -1095,128 +873,6 @@ const EgresosTab = ({
         )}
       </Card>
 
-      {/* ============================================================================ */}
-      {/* MODAL PARA AGREGAR NUEVA COMPRA A CUOTAS */}
-      {/* ============================================================================ */}
-      {showModalCuotas && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#17171a] w-full max-w-md rounded-2xl border border-slate-800 p-6 animate-in zoom-in-95 duration-200">
-            
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-white">
-                Nueva Compra a Cuotas
-              </h3>
-              <button 
-                onClick={() => setShowModalCuotas(false)} 
-                className="text-slate-500 hover:text-white transition-colors"
-              >
-                <XIcon size={24}/>
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddCuotas} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">
-                  Fecha de compra
-                </label>
-                <input 
-                  type="date" 
-                  required 
-                  value={cuotaData.fecha} 
-                  onChange={e => setCuotaData({...cuotaData, fecha: e.target.value})} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-              
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">
-                  Descripción
-                </label>
-                <input 
-                  type="text" 
-                  required 
-                  value={cuotaData.descripcion} 
-                  onChange={e => setCuotaData({...cuotaData, descripcion: e.target.value})} 
-                  placeholder="Ej. Computador, Viaje..." 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Categoría
-                  </label>
-                  <select 
-                    required 
-                    value={cuotaData.categoria} 
-                    onChange={e => setCuotaData({...cuotaData, categoria: e.target.value})} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Seleccione...</option>
-                    {categoriasMaestras.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Tarjeta de Crédito
-                  </label>
-                  <select 
-                    required 
-                    value={cuotaData.tarjetaId} 
-                    onChange={e => setCuotaData({...cuotaData, tarjetaId: e.target.value})} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Seleccione...</option>
-                    {tarjetasCredito.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Monto Total
-                  </label>
-                  <input 
-                    type="number" 
-                    required 
-                    value={cuotaData.montoTotal} 
-                    onChange={e => setCuotaData({...cuotaData, montoTotal: e.target.value})} 
-                    placeholder="$ 0" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Número de Cuotas
-                  </label>
-                  <input 
-                    type="number" 
-                    required 
-                    min="1" 
-                    value={cuotaData.numeroCuotas} 
-                    onChange={e => setCuotaData({...cuotaData, numeroCuotas: e.target.value})} 
-                    placeholder="Ej. 12" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit" 
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl mt-6 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-              >
-                Guardar Compra a Cuotas
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
