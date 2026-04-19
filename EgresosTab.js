@@ -97,7 +97,7 @@ const EgresosTab = ({
   });
 
   // ============================================================================
-  // 4. ESTADOS PARA LOS ACORDEONES (CUOTAS ELIMINADO)
+  // 4. ESTADOS PARA LOS ACORDEONES
   // ============================================================================
   const [openSections, setOpenSections] = useState({
     form: true,
@@ -221,8 +221,10 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
   // ============================================================================
-  const checkPagoRealizado = (pf) => {
-    return egresosMes.some(e => {
+  
+  // ✨ NUEVO: Retorna el Gasto exacto asociado a este pago fijo
+  const getEgresoPagoFijo = (pf) => {
+    return egresosMes.find(e => {
       if (e.tipo !== 'Fijo') return false;
       if (e.pagoFijoId) return e.pagoFijoId === pf.id;
       return e.descripcion.toLowerCase() === pf.descripcion.toLowerCase();
@@ -280,10 +282,18 @@ const EgresosTab = ({
     showToast(`Pago de ${pf.descripcion} registrado.`);
   };
 
+  // ✨ NUEVO: Función para revertir un pago fijo
+  const deshacerPagoFijo = (egreso) => {
+    if (window.confirm('¿Deshacer este pago? El dinero volverá a tus cuentas automáticamente.')) {
+      removeEgreso(egreso.id);
+      showToast('Pago revertido y cuentas ajustadas.', 'success');
+    }
+  };
+
   const pagosFijosOrdenados = useMemo(() => {
     return [...pagosFijos].sort((a, b) => {
-      const aPaid = checkPagoRealizado(a);
-      const bPaid = checkPagoRealizado(b);
+      const aPaid = !!getEgresoPagoFijo(a);
+      const bPaid = !!getEgresoPagoFijo(b);
       
       if (aPaid && !bPaid) return 1;
       if (!aPaid && bPaid) return -1;
@@ -291,6 +301,8 @@ const EgresosTab = ({
       return (a.diaPago || 1) - (b.diaPago || 1);
     });
   }, [pagosFijos, egresosMes]);
+
+  const pagosRealizados = pagosFijosOrdenados.filter(pf => !!getEgresoPagoFijo(pf)).length;
 
   // ============================================================================
   // ESTRUCTURA VISUAL (UI)
@@ -312,30 +324,18 @@ const EgresosTab = ({
       {/* TARJETAS RESUMEN */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4 border-t-4 border-t-rose-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
-            Total Gastado/Pagado (Mes)
-          </p>
-          <p className="text-xl md:text-2xl font-black text-rose-400">
-            {formatCOP(totalMes)}
-          </p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Total Gastado/Pagado (Mes)</p>
+          <p className="text-xl md:text-2xl font-black text-rose-400">{formatCOP(totalMes)}</p>
         </Card>
         
         <Card className="p-4 border-t-4 border-t-orange-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
-            Gastos/Pagos Fijos
-          </p>
-          <p className="text-xl md:text-2xl font-black text-orange-400">
-            {formatCOP(totalFijos)}
-          </p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Gastos/Pagos Fijos</p>
+          <p className="text-xl md:text-2xl font-black text-orange-400">{formatCOP(totalFijos)}</p>
         </Card>
         
         <Card className="p-4 border-t-4 border-t-blue-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
-            Gastos Variables
-          </p>
-          <p className="text-xl md:text-2xl font-black text-blue-400">
-            {formatCOP(totalVariables)}
-          </p>
+          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Gastos Variables</p>
+          <p className="text-xl md:text-2xl font-black text-blue-400">{formatCOP(totalVariables)}</p>
         </Card>
       </div>
 
@@ -362,9 +362,7 @@ const EgresosTab = ({
           >
             {/* Fila 1 */}
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">
-                Fecha
-              </label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
               <input 
                 type="date" 
                 required 
@@ -375,9 +373,7 @@ const EgresosTab = ({
             </div>
             
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">
-                Descripción
-              </label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Descripción</label>
               <input 
                 type="text" 
                 required 
@@ -389,9 +385,7 @@ const EgresosTab = ({
             </div>
             
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">
-                Categoría
-              </label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Categoría</label>
               <select 
                 required 
                 value={categoria} 
@@ -399,17 +393,13 @@ const EgresosTab = ({
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
               >
                 <option value="">Seleccione...</option>
-                {categoriasMaestras.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
             {/* Fila 2 */}
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">
-                De dónde sale la plata
-              </label>
+              <label className="text-xs font-bold text-slate-500 uppercase">De dónde sale la plata</label>
               <select 
                 required 
                 value={cuentaId} 
@@ -435,18 +425,12 @@ const EgresosTab = ({
                 className="w-full bg-indigo-950/20 border border-indigo-500/30 rounded-lg px-3 py-2 mt-1 text-sm text-indigo-300 focus:border-indigo-500 outline-none"
               >
                 <option value="">No es pago a deuda (Gasto normal)</option>
-                {todasLasDeudas.map(d => (
-                  <option key={d.id} value={d.id}>
-                    Pagar: {d.name}
-                  </option>
-                ))}
+                {todasLasDeudas.map(d => <option key={d.id} value={d.id}>Pagar: {d.name}</option>)}
               </select>
             </div>
             
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">
-                Monto Total
-              </label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Monto Total</label>
               <input 
                 type="number" 
                 required 
@@ -460,26 +444,11 @@ const EgresosTab = ({
             {/* Fila 3: Controles */}
             <div className="md:col-span-3 flex justify-between items-center mt-2 pt-4 border-t border-slate-800/50">
                <div className="flex bg-slate-950 rounded-lg border border-slate-800 p-1">
-                  <button 
-                    type="button" 
-                    onClick={() => setTipo('Variable')} 
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}
-                  >
-                    Variable
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setTipo('Fijo')} 
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}
-                  >
-                    Fijo
-                  </button>
+                  <button type="button" onClick={() => setTipo('Variable')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}>Variable</button>
+                  <button type="button" onClick={() => setTipo('Fijo')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${tipo === 'Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-300'}`}>Fijo</button>
                </div>
                
-              <button 
-                type="submit" 
-                className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95"
-              >
+              <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95">
                 <Plus size={18} /> Registrar Movimiento
               </button>
             </div>
@@ -487,133 +456,139 @@ const EgresosTab = ({
         )}
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-        {/* ============================================================================ */}
-        {/* 2. PAGOS FIJOS (ACORDEÓN + EDICIÓN + CONEXIÓN A DEUDAS) */}
-        {/* ============================================================================ */}
-        <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300 lg:col-span-2">
-          <div 
-            className="flex justify-between items-center cursor-pointer select-none"
-            onClick={() => toggleSection('fijos')}
-          >
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-               <CheckSquare size={20} className="text-orange-400"/>
-               2. Pagos Fijos (Checklist)
-            </h2>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
-                 {pagosFijos.filter(pf => checkPagoRealizado(pf)).length} / {pagosFijos.length} Pagados
-              </span>
-              <button className="text-slate-400 hover:text-white transition-colors">
-                {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              </button>
-            </div>
+      {/* ============================================================================ */}
+      {/* 2. PAGOS FIJOS (CHECKLIST EN MODO TABLA / FILAS) */}
+      {/* ============================================================================ */}
+      <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300">
+        <div 
+          className="flex justify-between items-center cursor-pointer select-none"
+          onClick={() => toggleSection('fijos')}
+        >
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+             <CheckSquare size={20} className="text-orange-400"/>
+             2. Pagos Fijos (Checklist)
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+               {pagosRealizados} / {pagosFijos.length} Pagados
+            </span>
+            <button className="text-slate-400 hover:text-white transition-colors">
+              {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            </button>
           </div>
+        </div>
 
-          {openSections.fijos && (
-            <div className="mt-4 flex-1 overflow-y-auto max-h-[350px] pr-1 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full animate-in slide-in-from-top-4 fade-in duration-300">
-              
-              {pagosFijosOrdenados.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-10">
-                  No has configurado pagos fijos en Presupuestos.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {pagosFijosOrdenados.map(pf => {
-                  const isPaid = checkPagoRealizado(pf);
-                  
-                  return (
-                    <div 
-                      key={pf.id} 
-                      className={`p-3 rounded-xl border flex flex-col transition-all gap-3 ${
-                        isPaid 
-                          ? 'bg-emerald-900/10 border-emerald-500/20 opacity-60' 
-                          : 'bg-slate-950 border-slate-800 hover:border-orange-500/30'
-                      }`}
-                    >
-                      {/* Fila 1: Botón y Título */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => !isPaid && registrarPagoFijo(pf)} 
-                            disabled={isPaid} 
-                            className={`w-5 h-5 rounded flex items-center justify-center border transition-colors shrink-0 ${
-                              isPaid 
-                                ? 'bg-emerald-500 border-emerald-500 text-white' 
-                                : 'bg-slate-900 border-slate-600 text-transparent hover:border-orange-500'
-                            }`}
-                          >
-                            <CheckIcon size={14} />
-                          </button>
-                          
-                          <div>
-                            <p className={`text-sm font-bold ${isPaid ? 'text-emerald-400 line-through' : 'text-slate-200'}`}>
-                              {pf.descripcion}
-                            </p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">
-                              Día sugerido: {pf.diaPago || 1}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Monto pagado si ya está checkeado */}
-                        {isPaid && (
-                          <p className="text-sm font-black text-emerald-500/50 text-right">
-                            {formatCOP(Number(pf.monto || pf.montoEstimado || 0))}
-                          </p>
-                        )}
-                      </div>
+        {openSections.fijos && (
+          <div className="mt-4 flex-1 overflow-y-auto max-h-[450px] pr-1 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full animate-in slide-in-from-top-4 fade-in duration-300">
+            
+            {pagosFijosOrdenados.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-10">No has configurado pagos fijos en Presupuestos.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+              {pagosFijosOrdenados.map(pf => {
+                const egresoAsociado = getEgresoPagoFijo(pf);
+                const isPaid = !!egresoAsociado;
+                
+                return (
+                  <div 
+                    key={pf.id} 
+                    className={`p-3 md:p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
+                      isPaid 
+                        ? 'bg-emerald-900/10 border-emerald-500/20' 
+                        : 'bg-slate-950 border-slate-800 hover:border-orange-500/30'
+                    }`}
+                  >
+                    {/* Sección Izquierda: Botón, Nombre y Fecha */}
+                    <div className="flex items-center gap-3 w-full md:w-1/3 shrink-0">
+                      <button 
+                        onClick={() => isPaid ? deshacerPagoFijo(egresoAsociado) : registrarPagoFijo(pf)} 
+                        className={`w-6 h-6 rounded flex items-center justify-center border transition-colors shrink-0 group ${
+                          isPaid 
+                            ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-rose-500 hover:border-rose-500' 
+                            : 'bg-slate-900 border-slate-600 text-transparent hover:border-orange-500'
+                        }`}
+                        title={isPaid ? "Deshacer este pago" : "Marcar como pagado"}
+                      >
+                         {isPaid ? (
+                           <React.Fragment>
+                             <CheckIcon size={14} className="group-hover:hidden" />
+                             <XIcon size={14} className="hidden group-hover:block" />
+                           </React.Fragment>
+                         ) : (
+                           <CheckIcon size={14} />
+                         )}
+                      </button>
                       
-                      {/* Fila 2: Controles de edición ANTES de pagar */}
-                      {!isPaid && (
-                        <div className="flex flex-col md:flex-row items-center gap-2 pl-8 pt-2 border-t border-slate-800/50">
-                          
-                          {/* Origen del dinero */}
-                          <select 
-                            value={getPfCuenta(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)}
-                            title="Cuenta desde la que pagas"
-                            className="bg-slate-900 border border-slate-700 text-[10px] text-slate-300 rounded p-1.5 outline-none focus:border-orange-500 flex-1 w-full"
-                          >
-                            <option value="">De dónde sale...</option>
-                            {cuentasActivas.map(c => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
-
-                          {/* Selector de Abono a Deuda en Pagos Fijos */}
-                          <select 
-                            value={getPfDeuda(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)}
-                            title="Deuda a la que vas a abonar (Opcional)"
-                            className="bg-indigo-950/20 border border-indigo-500/30 text-[10px] text-indigo-300 rounded p-1.5 outline-none focus:border-indigo-500 flex-1 w-full"
-                          >
-                            <option value="">No es pago a deuda</option>
-                            {todasLasDeudas.map(d => (
-                              <option key={d.id} value={d.id}>Pagar: {d.name}</option>
-                            ))}
-                          </select>
-                          
-                          {/* Monto exacto */}
-                          <input 
-                            type="number" 
-                            value={getPfMonto(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)}
-                            title="Monto exacto a pagar"
-                            className="bg-slate-900 border border-slate-700 text-[11px] font-bold text-orange-400 rounded p-1.5 outline-none focus:border-orange-500 w-full md:w-24 text-right"
-                          />
-                        </div>
-                      )}
+                      <div className="overflow-hidden">
+                        <p className={`text-sm font-bold truncate ${isPaid ? 'text-emerald-400 line-through opacity-70' : 'text-slate-200'}`}>
+                          {pf.descripcion}
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-0.5 uppercase">
+                          Día sugerido: {pf.diaPago || 1} • {pf.categoria}
+                        </p>
+                      </div>
                     </div>
-                  );
-                })}
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-      </div>
+                    
+                    {/* Sección Central y Derecha: Controles si no está pago, Resumen si está pago */}
+                    {!isPaid ? (
+                      <div className="flex-1 flex flex-col md:flex-row items-center gap-2 w-full">
+                        
+                        <select 
+                          value={getPfCuenta(pf)} 
+                          onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)}
+                          title="Cuenta desde la que pagas"
+                          className="bg-slate-900 border border-slate-700 text-slate-300 rounded p-2 text-[11px] outline-none focus:border-orange-500 flex-1 w-full transition-colors"
+                        >
+                          <option value="">De dónde sale...</option>
+                          {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+
+                        <select 
+                          value={getPfDeuda(pf)} 
+                          onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)}
+                          title="Deuda a la que vas a abonar (Opcional)"
+                          className="bg-slate-900 border border-slate-700 text-slate-300 rounded p-2 text-[11px] outline-none focus:border-orange-500 flex-1 w-full transition-colors"
+                        >
+                          <option value="">No es pago a deuda</option>
+                          {todasLasDeudas.map(d => <option key={d.id} value={d.id}>Pagar: {d.name}</option>)}
+                        </select>
+                        
+                        <div className="w-full md:w-32 shrink-0">
+                           <input 
+                             type="number" 
+                             value={getPfMonto(pf)} 
+                             onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)}
+                             title="Monto exacto a pagar"
+                             className="bg-slate-900 border border-slate-700 text-[13px] font-bold text-orange-400 rounded p-2 outline-none focus:border-orange-500 w-full text-right transition-colors"
+                           />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex justify-end items-center gap-4 w-full">
+                        <div className="text-right">
+                          <p className="text-[10px] text-emerald-500/70 uppercase font-bold mb-0.5">Monto Pagado</p>
+                          <p className="text-sm font-black text-emerald-500 opacity-80">
+                            {formatCOP(egresoAsociado.monto)}
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => deshacerPagoFijo(egresoAsociado)}
+                          className="text-[11px] font-bold text-rose-500/70 hover:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded transition-colors border border-rose-500/20"
+                        >
+                          Deshacer
+                        </button>
+                      </div>
+                    )}
+
+                  </div>
+                );
+              })}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
 
       {/* ============================================================================ */}
       {/* 3. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
