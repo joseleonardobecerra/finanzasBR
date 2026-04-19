@@ -1,3 +1,24 @@
+// ============================================================================
+// ÍCONOS SVG SEGUROS (Garantizan que la UI nunca se rompa)
+// ============================================================================
+const IconPieChart = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
+const IconTrendingUp = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
+const IconActivity = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+const IconGrid = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
+const IconTarget = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+const IconWallet = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>;
+const IconReceipt = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 14h-4"/><path d="M16 10H8"/><path d="M16 18H8"/></svg>;
+const IconFilter = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+const IconCreditCard = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
+const IconZap = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+const IconSettings = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+const IconLogOut = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+const IconWifiOff = ({size=14, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.82"/></svg>;
+const IconPlus = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const IconX = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const IconCheck = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
+
+
 // --- MAIN APP ---
 function App() {
   const { useState, useMemo, useEffect, useRef } = React;
@@ -24,7 +45,7 @@ function App() {
   const [qeCuenta, setQeCuenta] = useState('');
   const [qeDeuda, setQeDeuda] = useState(''); // ✨ Conexión a deudas en móvil
 
-  // BASES DE DATOS GLOBALES (Sin Compras a Cuotas)
+  // BASES DE DATOS GLOBALES
   const [cuentas, setCuentas] = useState([]);
   const [ingresos, setIngresos] = useState([]);
   const [egresos, setEgresos] = useState([]);
@@ -33,29 +54,12 @@ function App() {
   const [pagosFijos, setPagosFijos] = useState([]);
   const [ingresosFijos, setIngresosFijos] = useState([]);
   
+  // ✨ SALVAVIDAS ANTI-ERROR: Mantenemos el estado de comprasCuotas vacío para que ninguna pestaña se estrelle buscando esto.
+  const [comprasCuotas, setComprasCuotas] = useState([]);
+  
   const [categoriasMaestras, setCategoriasMaestras] = useState([
     'Vivienda', 'Transporte', 'Alimentación', 'Servicios', 'Educación', 'Salud', 'Entretenimiento', 'Ropa', 'Otros', 'Intereses y Cargos'
   ]);
-
-  // ============================================================================
-  // ÍCONOS SVG RESTAURADOS AL 100% (LA UI VUELVE A LA NORMALIDAD)
-  // ============================================================================
-  const XIcon = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-  const CheckIcon = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
-  const PlusIcon = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-  const PieChartIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
-  const TrendingUpIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
-  const ActivityIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
-  const GridIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
-  const TargetIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
-  const WalletIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>;
-  const ReceiptIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 14h-4"/><path d="M16 10H8"/><path d="M16 18H8"/></svg>;
-  const FilterIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
-  const CreditCardIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
-  const ZapIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
-  const SettingsIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
-  const LogOutIcon = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
-  const WifiOffIcon = ({size=14, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.82"/></svg>;
 
   // ============================================================================
   // CONEXIÓN A FIREBASE
@@ -96,12 +100,13 @@ function App() {
         if (data.presupuestos) setPresupuestos(data.presupuestos);
         if (data.pagosFijos) setPagosFijos(data.pagosFijos);
         if (data.ingresosFijos) setIngresosFijos(data.ingresosFijos);
+        if (data.comprasCuotas) setComprasCuotas(data.comprasCuotas);
         if (data.categoriasMaestras) setCategoriasMaestras(data.categoriasMaestras);
         if (data.scoreHistory) setScoreHistory(data.scoreHistory);
       } else {
         cloudDocRef.set({
           cuentas: [], ingresos: [], egresos: [], transferencias: [], presupuestos: [],
-          pagosFijos: [], ingresosFijos: [], categoriasMaestras, scoreHistory: {}
+          pagosFijos: [], ingresosFijos: [], comprasCuotas: [], categoriasMaestras, scoreHistory: {}
         });
       }
       setAppCargando(false);
@@ -131,6 +136,16 @@ function App() {
     const d = new Date();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().slice(0, 10);
+  };
+
+  // IDENTIFICADOR DE PROPIETARIOS DE CUENTAS (Para Inversiones y Cuentas)
+  const identifyOwner = (name) => {
+    const t = (name || '').toUpperCase();
+    const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
+    const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
+    if (hasL && !hasA) return 'Leo';
+    if (hasA && !hasL) return 'Andre';
+    return 'Shared';
   };
 
   // ============================================================================
@@ -226,7 +241,7 @@ function App() {
 
 
   // ============================================================================
-  // FUNCIONES CRUD
+  // FUNCIONES CRUD GLOBALES
   // ============================================================================
   const handleQuickSave = () => {
     if (!qeMonto || !qeDescripcion || !qeCategoria || !qeCuenta) { showToast("Faltan datos", "error"); return; }
@@ -242,7 +257,7 @@ function App() {
     };
 
     if (qeType === 'egreso') {
-      txData.deudaId = qeDeuda || null; // ✨ Conexión a deudas desde el móvil
+      txData.deudaId = qeDeuda || null; 
       const newEgresos = [...egresos, txData];
       setEgresos(newEgresos); syncToCloud({ egresos: newEgresos });
       showToast("Gasto guardado rápido");
@@ -296,7 +311,7 @@ function App() {
 
 
   // ============================================================================
-  // RENDERIZADO CONDICIONAL
+  // RENDERIZADO PRINCIPAL
   // ============================================================================
   if (appCargando || authChecking) {
     return (
@@ -313,10 +328,11 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-slate-300 font-sans pb-24 md:pb-0 select-none">
-      {/* TOASTS */}
+      
+      {/* TOASTS GLOBALES */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl font-bold text-white flex items-center gap-3 animate-in slide-in-from-top-5 duration-300 ${toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`}>
-          {toast.type === 'error' ? <XIcon/> : <CheckIcon/>}
+          {toast.type === 'error' ? <IconX/> : <IconCheck/>}
           {toast.msg}
         </div>
       )}
@@ -334,17 +350,17 @@ function App() {
           
           <nav className="space-y-2">
             {[
-              { id: 'dashboard', icon: PieChartIcon, label: 'Dashboard' },
-              { id: 'analitica', icon: TrendingUpIcon, label: 'Analítica' },
-              { id: 'score', icon: ActivityIcon, label: 'Score & Avalancha' },
-              { id: 'cuentas', icon: GridIcon, label: 'Cuentas' },
-              { id: 'inversiones', icon: TargetIcon, label: 'Inversiones' },
-              { id: 'ingresos', icon: WalletIcon, label: 'Ingresos' },
-              { id: 'egresos', icon: ReceiptIcon, label: 'Egresos' },
-              { id: 'presupuestos', icon: FilterIcon, label: 'Presupuestos' },
-              { id: 'deudas', icon: CreditCardIcon, label: 'Deudas & Tarjetas' },
-              { id: 'simulador', icon: ZapIcon, label: 'Simulador Pagos' },
-              { id: 'settings', icon: SettingsIcon, label: 'Ajustes & Backup' }
+              { id: 'dashboard', icon: IconPieChart, label: 'Dashboard' },
+              { id: 'analitica', icon: IconTrendingUp, label: 'Analítica' },
+              { id: 'score', icon: IconActivity, label: 'Score & Avalancha' },
+              { id: 'cuentas', icon: IconGrid, label: 'Cuentas' },
+              { id: 'inversiones', icon: IconTarget, label: 'Inversiones' },
+              { id: 'ingresos', icon: IconWallet, label: 'Ingresos' },
+              { id: 'egresos', icon: IconReceipt, label: 'Egresos' },
+              { id: 'presupuestos', icon: IconFilter, label: 'Presupuestos' },
+              { id: 'deudas', icon: IconCreditCard, label: 'Deudas & Tarjetas' },
+              { id: 'simulador', icon: IconZap, label: 'Simulador Pagos' },
+              { id: 'settings', icon: IconSettings, label: 'Ajustes & Backup' }
             ].map(item => (
               <button 
                 key={item.id} 
@@ -360,7 +376,7 @@ function App() {
               onClick={() => auth.signOut()} 
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm text-rose-500 hover:bg-rose-500/10 mt-8"
             >
-              <LogOutIcon size={20} /> 
+              <IconLogOut size={20} /> 
               Cerrar Sesión
             </button>
           </nav>
@@ -385,7 +401,7 @@ function App() {
              </div>
              {isOffline && (
                <span className="bg-rose-500/20 text-rose-400 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"> 
-                 <WifiOffIcon size={14}/> Offline
+                 <IconWifiOff size={14}/> Offline
                </span>
              )}
           </div>
@@ -401,48 +417,50 @@ function App() {
               onClick={() => {setQeType('egreso'); setQuickEntryOpen(true);}} 
               className="md:hidden bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl shadow-lg active:scale-95 transition-transform"
             >
-              <PlusIcon size={20}/>
+              <IconPlus size={20}/>
             </button>
           </div>
         </div>
 
-        {/* PESTAÑAS (RUTEO VIRTUAL) */}
+        {/* ============================================================================ */}
+        {/* PESTAÑAS (RUTEO VIRTUAL SEGURO) */}
+        {/* Se pasan TODOS los props exactos para evitar crashes por undefined */}
+        {/* ============================================================================ */}
         <div className="animate-in fade-in duration-300">
           
-          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} cuotasMesRestantes={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} ingresosFijos={ingresosFijos} comprasCuotas={[]} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
+          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} cuotasMesRestantes={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} ingresosFijos={ingresosFijos} comprasCuotas={comprasCuotas} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
           
-          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} comprasCuotas={[]} />}
+          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} comprasCuotas={comprasCuotas} />}
           
-          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} comprasCuotas={[]} />}
+          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} comprasCuotas={comprasCuotas} />}
           
-          {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={transferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} showToast={showToast} filtroPersona={filtroPersona} />}
+          {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={transferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} filtroPersona={filtroPersona} getOwner={identifyOwner} />}
           
-          {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} />}
+          {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={identifyOwner} />}
           
-          {activeTab === 'ingresos' && <IngresosTab ingresos={ingresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
+          {activeTab === 'ingresos' && <IngresosTab ingresos={ingresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={ingresosFijos} addIngresoFijo={()=>{}} updateIngresoFijo={()=>{}} removeIngresoFijo={()=>{}} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
           
-          {activeTab === 'egresos' && <EgresosTab egresos={egresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={presupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
+          {activeTab === 'egresos' && <EgresosTab egresos={egresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={presupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} filtroPersona={filtroPersona} />}
           
-          {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={presupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={egresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
+          {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={presupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={egresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} filtroPersona={filtroPersona} />}
           
           {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={egresos} />}
           
-          {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} showToast={showToast} />}
+          {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijo} showToast={showToast} />}
           
-          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, ingresosFijos, comprasCuotas: [], categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, ingresosFijos, comprasCuotas, categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
         </div>
       </main>
 
-      {/* MENÚ INFERIOR MÓVIL RESTAURADO */}
+      {/* MENÚ INFERIOR MÓVIL */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a]/95 backdrop-blur-xl border-t border-slate-800/50 pb-safe z-40 px-2 py-2 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         {[
-          { id: 'dashboard', icon: PieChartIcon, label: 'Dash' },
-          { id: 'cuentas', icon: GridIcon, label: 'Cuentas' },
+          { id: 'dashboard', icon: IconPieChart, label: 'Dash' },
+          { id: 'cuentas', icon: IconGrid, label: 'Cuentas' },
           { id: 'add_button' }, 
-          { id: 'egresos', icon: ReceiptIcon, label: 'Gastos' },
-          { id: 'settings', icon: SettingsIcon, label: 'Ajustes' }
+          { id: 'egresos', icon: IconReceipt, label: 'Gastos' },
+          { id: 'settings', icon: IconSettings, label: 'Ajustes' }
         ].map((item) => {
-          
           if (item.id === 'add_button') {
             return (
               <button 
@@ -450,7 +468,7 @@ function App() {
                 onClick={() => {setQeType('egreso'); setQuickEntryOpen(true);}} 
                 className="relative -top-6 w-14 h-14 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] border-4 border-[#0f0f11] active:scale-90 transition-transform"
               >
-                <PlusIcon size={24} />
+                <IconPlus size={24} />
               </button>
             );
           }
@@ -473,23 +491,21 @@ function App() {
       {/* WIZARD DE REGISTRO RÁPIDO (MÓVIL) */}
       {quickEntryOpen && (
         <div className="fixed inset-0 bg-[#0f0f11]/95 backdrop-blur-md z-50 flex flex-col animate-in slide-in-from-bottom-full duration-300">
-          
           <div className="p-6 flex justify-between items-center border-b border-slate-800">
             <h3 className="text-xl font-black text-white tracking-wide flex items-center gap-2">
-               <ZapIcon size={20} className="text-amber-400"/> Movimiento Rápido
+               <IconZap size={20} className="text-amber-400"/> Movimiento Rápido
             </h3>
             <button 
               onClick={() => {setQuickEntryOpen(false); setQeStep(1);}} 
               className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full transition-colors"
             >
-              <XIcon size={18}/>
+              <IconX size={18}/>
             </button>
           </div>
           
           <div className="flex-1 overflow-y-auto p-6">
             <div className="w-full max-w-sm mx-auto">
               
-              {/* Barra de progreso */}
               <div className="flex gap-2 mb-8">
                 {[1,2,3,4,5].map(step => (
                   <div 
@@ -507,7 +523,7 @@ function App() {
                     onClick={() => {setQeType('egreso'); setQeStep(2);}} 
                     className="w-full bg-rose-500/10 hover:bg-rose-500/20 border-2 border-rose-500/30 text-rose-400 py-6 rounded-2xl flex flex-col items-center gap-3 transition-colors"
                   >
-                    <ReceiptIcon size={32}/>
+                    <IconReceipt size={32}/>
                     <span className="font-black text-lg tracking-widest uppercase">Un Gasto</span>
                   </button>
                   
@@ -515,7 +531,7 @@ function App() {
                     onClick={() => {setQeType('ingreso'); setQeStep(2);}} 
                     className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 border-2 border-emerald-500/30 text-emerald-400 py-6 rounded-2xl flex flex-col items-center gap-3 transition-colors"
                   >
-                    <WalletIcon size={32}/>
+                    <IconWallet size={32}/>
                     <span className="font-black text-lg tracking-widest uppercase">Un Ingreso</span>
                   </button>
                 </div>
@@ -614,7 +630,7 @@ function App() {
                         className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${qeCuenta === acc.id ? 'bg-indigo-600 text-white border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-600'}`}
                       >
                         <span className="font-bold">{acc.name}</span>
-                        {qeCuenta === acc.id && <CheckIcon size={20} />}
+                        {qeCuenta === acc.id && <IconCheck size={20} />}
                       </button>
                     ))}
                   </div>
