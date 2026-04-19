@@ -7,9 +7,6 @@ const EgresosTab = ({
   addPagoFijo, 
   updatePagoFijo, 
   removePagoFijo, 
-  comprasCuotas, 
-  addComprasCuotas, 
-  removeComprasCuotas, 
   cuentas, 
   selectedMonth, 
   presupuestos, 
@@ -33,8 +30,10 @@ const EgresosTab = ({
     return d.toISOString().slice(0, 10);
   };
 
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
   // ============================================================================
-  // ÍCONOS SVG NATIVOS 
+  // ÍCONOS SVG NATIVOS (Blindaje contra ReferenceError)
   // ============================================================================
   const CheckIcon = ({ size = 16, className = "" }) => (
     <svg 
@@ -123,8 +122,10 @@ const EgresosTab = ({
   );
 
   // ============================================================================
-  // 1. ESTADOS DEL FORMULARIO PRINCIPAL
+  // ESTADOS DEL COMPONENTE
   // ============================================================================
+  
+  // Formulario Individual
   const [fecha, setFecha] = useState(getLocalToday());
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
@@ -133,45 +134,27 @@ const EgresosTab = ({
   const [deudaId, setDeudaId] = useState('');
   const [tipo, setTipo] = useState('Variable');
 
-  // ============================================================================
-  // 2. ESTADOS DE EDICIÓN EN LÍNEA
-  // ============================================================================
+  // Edición en línea
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
 
-  // ============================================================================
-  // 3. ESTADOS DE FILTROS PARA LA TABLA
-  // ============================================================================
-  const [filters, setFilters] = useState({
-    descripcion: '',
-    tipo: 'Ambos',
-    categoria: '',
-    cuenta: ''
+  // Filtros Historial
+  const [filters, setFilters] = useState({ 
+    descripcion: '', 
+    tipo: 'Ambos', 
+    categoria: '', 
+    cuenta: '' 
   });
 
-  // ============================================================================
-  // 4. ESTADOS PARA COMPRAS A CUOTAS
-  // ============================================================================
-  const [showModalCuotas, setShowModalCuotas] = useState(false);
-  const [cuotaData, setCuotaData] = useState({
-    fecha: getLocalToday(),
-    descripcion: '',
-    categoria: '',
-    montoTotal: '',
-    numeroCuotas: '',
-    tarjetaId: '',
-    tasaMensual: ''
+  // Acordeones (Mostrar/Ocultar Secciones)
+  const [openSections, setOpenSections] = useState({ 
+    form: true, 
+    fijos: true, 
+    historial: false 
   });
 
-  // ============================================================================
-  // 5. ESTADOS PARA LOS ACORDEONES
-  // ============================================================================
-  const [openSections, setOpenSections] = useState({
-    form: true,
-    cuotas: false,
-    fijos: true,
-    historial: false
-  });
+  // Estado para la edición rápida de pagos fijos antes de confirmar
+  const [pfState, setPfState] = useState({});
 
   const toggleSection = (sec) => {
     setOpenSections(prev => ({ 
@@ -181,18 +164,11 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // 6. ESTADOS PARA EDICIÓN RÁPIDA DE PAGOS FIJOS
+  // CÁLCULOS Y LISTAS DERIVADAS
   // ============================================================================
-  const [pfState, setPfState] = useState({});
-
-  // Listas de Cuentas Filtradas
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
-  const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
 
-  // ============================================================================
-  // CÁLCULOS PRINCIPALES DEL MES
-  // ============================================================================
   const egresosMes = useMemo(() => {
     return egresos
       .filter(e => e.fecha.startsWith(selectedMonth))
@@ -209,89 +185,79 @@ const EgresosTab = ({
     .filter(e => e.tipo !== 'Fijo')
     .reduce((s, e) => s + Number(e.monto), 0);
 
-  // ============================================================================
-  // FILTRADO DEL HISTORIAL COMPLETO
-  // ============================================================================
   const egresosFiltrados = useMemo(() => {
     return egresosMes.filter(egreso => {
-      const matchDesc = egreso.descripcion.toLowerCase().includes(filters.descripcion.toLowerCase());
+      const matchDesc = (egreso.descripcion || '').toLowerCase().includes(filters.descripcion.toLowerCase());
       const matchTipo = filters.tipo === 'Ambos' || egreso.tipo === filters.tipo;
       const matchCat = filters.categoria === '' || egreso.categoria === filters.categoria;
       const matchCuenta = filters.cuenta === '' || egreso.cuentaId === filters.cuenta;
-      
       return matchDesc && matchTipo && matchCat && matchCuenta;
     });
   }, [egresosMes, filters]);
 
   // ============================================================================
-  // FUNCIONES DE REGISTRO INDIVIDUAL
+  // FUNCIONES CRUD
   // ============================================================================
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    if (!descripcion || !monto || !categoria || !cuentaId) {
-      showToast('Por favor completa todos los campos requeridos.', 'error');
-      return;
+    if (!descripcion || !monto || !categoria || !cuentaId) { 
+      showToast('Por favor completa todos los campos requeridos.', 'error'); 
+      return; 
     }
     
-    addEgreso({
-      id: generateId(),
-      fecha,
-      descripcion,
-      categoria,
-      monto: Number(monto),
-      cuentaId,
-      tipo,
-      deudaId: deudaId || null
+    addEgreso({ 
+      id: generateId(), 
+      fecha, 
+      descripcion, 
+      categoria, 
+      monto: Number(monto), 
+      cuentaId, 
+      tipo, 
+      deudaId: deudaId || null 
     });
     
-    setDescripcion('');
-    setMonto('');
-    setDeudaId('');
-    showToast('Gasto registrado correctamente.');
+    setDescripcion(''); 
+    setMonto(''); 
+    setDeudaId(''); 
+    showToast('Gasto/Pago registrado correctamente.');
   };
 
-  const startEditing = (egreso) => {
-    setEditingId(egreso.id);
-    setEditData({ ...egreso });
+  const startEditing = (egreso) => { 
+    setEditingId(egreso.id); 
+    setEditData({ ...egreso }); 
   };
 
   const saveEdit = async () => {
-    if (!editData.descripcion || !editData.monto || !editData.cuentaId || !editData.categoria) {
-      showToast('Faltan datos en la edición', 'error');
-      return;
+    if (!editData.descripcion || !editData.monto || !editData.cuentaId || !editData.categoria) { 
+      showToast('Faltan datos en la edición', 'error'); 
+      return; 
     }
-    
     await updateEgreso(editingId, { 
       ...editData, 
       monto: Number(editData.monto) 
     });
-    
-    setEditingId(null);
+    setEditingId(null); 
     showToast('Gasto actualizado.');
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('¿Estás seguro de eliminar este gasto?')) {
-      removeEgreso(id);
-      showToast('Gasto eliminado.', 'error');
+    if (window.confirm('¿Estás seguro de eliminar este registro?')) { 
+      removeEgreso(id); 
+      showToast('Registro eliminado.', 'error'); 
     }
   };
 
   const limpiarFiltros = () => {
-    setFilters({ 
-      descripcion: '', 
-      tipo: 'Ambos', 
-      categoria: '', 
-      cuenta: '' 
-    });
+    setFilters({ descripcion: '', tipo: 'Ambos', categoria: '', cuenta: '' });
   };
 
   // ============================================================================
-  // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
+  // LÓGICA DE PAGOS FIJOS
   // ============================================================================
   const checkPagoRealizado = (pfDesc) => {
-    return egresosMes.some(e => e.tipo === 'Fijo' && e.descripcion.toLowerCase().includes(pfDesc.toLowerCase()));
+    return egresosMes.some(e => 
+      e.tipo === 'Fijo' && (e.descripcion || '').toLowerCase().includes((pfDesc || '').toLowerCase())
+    );
   };
 
   const getPfMonto = (pf) => pfState[pf.id]?.monto !== undefined 
@@ -305,14 +271,14 @@ const EgresosTab = ({
   const getPfDeuda = (pf) => pfState[pf.id]?.deudaId !== undefined 
     ? pfState[pf.id].deudaId 
     : '';
-
+  
   const handlePfChange = (id, field, value) => {
-    setPfState(prev => ({
-      ...prev,
+    setPfState(prev => ({ 
+      ...prev, 
       [id]: { 
         ...prev[id], 
         [field]: value 
-      }
+      } 
     }));
   };
 
@@ -321,110 +287,57 @@ const EgresosTab = ({
     const montoFinal = Number(getPfMonto(pf));
     const deudaFinal = getPfDeuda(pf) || null;
     
-    if (!cuentaFinal) {
-      showToast('Selecciona una cuenta para registrar el pago.', 'error');
-      return;
+    if (!cuentaFinal) { 
+      showToast('Selecciona una cuenta de pago.', 'error'); 
+      return; 
     }
-    if (montoFinal <= 0) {
-      showToast('El monto del pago debe ser mayor a 0.', 'error');
-      return;
+    if (montoFinal <= 0) { 
+      showToast('El monto debe ser mayor a 0.', 'error'); 
+      return; 
     }
 
-    addEgreso({
-      id: generateId(),
-      fecha: getLocalToday(),
-      descripcion: pf.descripcion,
-      categoria: pf.categoria || 'Otros',
-      monto: montoFinal,
-      cuentaId: cuentaFinal,
-      tipo: 'Fijo',
-      deudaId: deudaFinal
+    addEgreso({ 
+      id: generateId(), 
+      fecha: getLocalToday(), 
+      descripcion: pf.descripcion, 
+      categoria: pf.categoria || 'Otros', 
+      monto: montoFinal, 
+      cuentaId: cuentaFinal, 
+      tipo: 'Fijo', 
+      deudaId: deudaFinal 
     });
     
     showToast(`Pago de ${pf.descripcion} registrado.`);
   };
 
-  // Ordenamiento: Pendientes arriba, pagados abajo
   const pagosFijosOrdenados = useMemo(() => {
     return [...pagosFijos].sort((a, b) => {
       const aPaid = checkPagoRealizado(a.descripcion);
       const bPaid = checkPagoRealizado(b.descripcion);
-      
       if (aPaid && !bPaid) return 1;
       if (!aPaid && bPaid) return -1;
-      
       return (a.diaPago || 1) - (b.diaPago || 1);
     });
   }, [pagosFijos, egresosMes]);
 
   // ============================================================================
-  // FUNCIONES PARA COMPRAS A CUOTAS
-  // ============================================================================
-  const handleAddCuotas = (e) => {
-    e.preventDefault();
-    
-    if (!cuotaData.descripcion || !cuotaData.montoTotal || !cuotaData.numeroCuotas || !cuotaData.tarjetaId || !cuotaData.categoria) {
-      showToast('Faltan datos de la compra a cuotas', 'error');
-      return;
-    }
-
-    addComprasCuotas({
-      id: generateId(),
-      fecha: cuotaData.fecha,
-      descripcion: cuotaData.descripcion,
-      categoria: cuotaData.categoria,
-      montoTotal: Number(cuotaData.montoTotal),
-      numeroCuotas: Number(cuotaData.numeroCuotas),
-      tarjetaId: cuotaData.tarjetaId,
-      tasaMensual: Number(cuotaData.tasaMensual) || 0,
-      cuotasPagadas: 0,
-      estado: 'Activa'
-    });
-
-    addEgreso({
-      id: generateId(),
-      fecha: cuotaData.fecha,
-      descripcion: `Compra a cuotas: ${cuotaData.descripcion}`,
-      categoria: cuotaData.categoria,
-      monto: Number(cuotaData.montoTotal),
-      cuentaId: cuotaData.tarjetaId,
-      tipo: 'Variable',
-      esCuota: true,
-      deudaId: null
-    });
-
-    setShowModalCuotas(false);
-    setCuotaData({ 
-      fecha: getLocalToday(), 
-      descripcion: '', 
-      categoria: '', 
-      montoTotal: '', 
-      numeroCuotas: '', 
-      tarjetaId: '', 
-      tasaMensual: '' 
-    });
-    
-    showToast('Compra a cuotas registrada exitosamente.');
-  };
-
-  // ============================================================================
-  // ESTRUCTURA VISUAL (UI)
+  // RENDER JSX
   // ============================================================================
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
-      {/* ENCABEZADO */}
+      {/* --- HEADER --- */}
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
           <Receipt className="text-rose-400 w-8 h-8"/> 
           Gestión de Egresos
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Registra tus gastos diarios, abonos a deudas, pagos fijos y compras a cuotas.
+          Registra tus gastos diarios, abonos a deudas y checklist de pagos fijos.
         </p>
       </header>
 
-      {/* TARJETAS RESUMEN */}
+      {/* --- TARJETAS RESUMEN --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4 border-t-4 border-t-rose-500 bg-slate-900/30">
           <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">
@@ -454,12 +367,10 @@ const EgresosTab = ({
         </Card>
       </div>
 
-      {/* ============================================================================ */}
-      {/* 1. FORMULARIO REGISTRO NORMAL (ACORDEÓN) */}
-      {/* ============================================================================ */}
+      {/* --- 1. FORMULARIO REGISTRO INDIVIDUAL --- */}
       <Card className="border-t-4 border-t-rose-500 transition-all duration-300">
         <div 
-          className="flex justify-between items-center cursor-pointer mb-2 select-none"
+          className="flex justify-between items-center cursor-pointer mb-2 select-none" 
           onClick={() => toggleSection('form')}
         >
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -475,7 +386,6 @@ const EgresosTab = ({
             onSubmit={handleSubmit} 
             className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-4 fade-in duration-300"
           >
-            {/* Fila 1 */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
                 Fecha
@@ -520,7 +430,6 @@ const EgresosTab = ({
               </select>
             </div>
 
-            {/* Fila 2 */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
                 De dónde sale la plata
@@ -539,10 +448,10 @@ const EgresosTab = ({
                 ))}
               </select>
             </div>
-
+            
             <div>
               <label className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-1">
-                <ShieldAlert size={12}/> Abonar a Deuda (Opcional)
+                Abonar a Deuda (Opcional)
               </label>
               <select 
                 value={deudaId} 
@@ -572,7 +481,6 @@ const EgresosTab = ({
               />
             </div>
 
-            {/* Fila 3: Controles */}
             <div className="md:col-span-3 flex justify-between items-center mt-2 pt-4 border-t border-slate-800/50">
                <div className="flex bg-slate-950 rounded-lg border border-slate-800 p-1">
                   <button 
@@ -590,7 +498,6 @@ const EgresosTab = ({
                     Fijo
                   </button>
                </div>
-               
               <button 
                 type="submit" 
                 className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95"
@@ -603,114 +510,29 @@ const EgresosTab = ({
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* ============================================================================ */}
-        {/* 2. COMPRAS A CUOTAS (ACORDEÓN) */}
-        {/* ============================================================================ */}
-        <Card className="border-t-4 border-t-indigo-500 flex flex-col transition-all duration-300">
+        
+        {/* --- 2. PAGOS FIJOS (CHECKLIST) --- */}
+        <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300 lg:col-span-2">
           <div 
-            className="flex justify-between items-center cursor-pointer select-none"
-            onClick={() => toggleSection('cuotas')}
-          >
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-               <CreditCard size={20} className="text-indigo-400"/>
-               2. Compras a Cuotas
-            </h2>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setShowModalCuotas(true); 
-                }} 
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-colors"
-              >
-                <Plus size={14}/> Nueva
-              </button>
-              <button className="text-slate-400 hover:text-white transition-colors">
-                {openSections.cuotas ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              </button>
-            </div>
-          </div>
-
-          {openSections.cuotas && (
-            <div className="mt-4 flex-1 overflow-y-auto max-h-[350px] pr-1 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full animate-in slide-in-from-top-4 fade-in duration-300">
-              
-              {comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-10">
-                  No tienes compras a cuotas activas.
-                </p>
-              ) : (
-                comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).map(cuota => {
-                  
-                  const tarjetaAsociada = tarjetasCredito.find(t => t.id === cuota.tarjetaId);
-                  const numCuotasSeguro = Number(cuota.numeroCuotas) || 1;
-                  const montoTotalSeguro = Number(cuota.montoTotal) || Number(cuota.monto) || 0;
-                  const valorCuotaAprox = montoTotalSeguro / numCuotasSeguro;
-
-                  return (
-                    <div 
-                      key={cuota.id} 
-                      className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between items-center relative overflow-hidden group"
-                    >
-                      <div className="absolute top-0 left-0 bottom-0 w-1 bg-indigo-500"></div>
-                      
-                      <div className="pl-3">
-                         <p className="text-sm font-bold text-white">
-                           {cuota.descripcion}
-                         </p>
-                         <p className="text-[10px] text-slate-400 mt-0.5">
-                           {tarjetaAsociada?.name || 'Tarjeta'} • {cuota.cuotasPagadas || 0}/{cuota.numeroCuotas || '?'} Cuotas
-                         </p>
-                      </div>
-                      
-                      <div className="text-right pr-6">
-                         <p className="text-sm font-black text-indigo-400">
-                           {formatCOP(valorCuotaAprox)} 
-                           <span className="text-[9px] text-slate-500 font-normal">/mes</span>
-                         </p>
-                         <p className="text-[10px] text-slate-500 mt-0.5">
-                           Total: {formatCOP(montoTotalSeguro)}
-                         </p>
-                      </div>
-                      
-                      <button 
-                        onClick={() => removeComprasCuotas(cuota.id)} 
-                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-2 rounded-lg shadow-lg transition-all hover:bg-rose-400"
-                      >
-                        <Trash2 size={14}/>
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* ============================================================================ */}
-        {/* 3. PAGOS FIJOS (ACORDEÓN + EDICIÓN + CONEXIÓN A DEUDAS) */}
-        {/* ============================================================================ */}
-        <Card className="border-t-4 border-t-orange-500 flex flex-col transition-all duration-300">
-          <div 
-            className="flex justify-between items-center cursor-pointer select-none"
+            className="flex justify-between items-center cursor-pointer select-none" 
             onClick={() => toggleSection('fijos')}
           >
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-               <CheckSquare size={20} className="text-orange-400"/>
-               3. Pagos Fijos (Checklist)
+              <CheckSquare size={20} className="text-orange-400"/> 
+              2. Pagos Fijos (Checklist)
             </h2>
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
-                 {pagosFijos.filter(pf => checkPagoRealizado(pf.descripcion)).length} / {pagosFijos.length} Pagados
+                {pagosFijos.filter(pf => checkPagoRealizado(pf.descripcion)).length} / {pagosFijos.length} Pagados
               </span>
               <button className="text-slate-400 hover:text-white transition-colors">
                 {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
               </button>
             </div>
           </div>
-
+          
           {openSections.fijos && (
-            <div className="mt-4 flex-1 overflow-y-auto max-h-[350px] pr-1 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full animate-in slide-in-from-top-4 fade-in duration-300">
-              
+            <div className="mt-4 flex-1 overflow-y-auto max-h-[400px] pr-1 space-y-3 animate-in slide-in-from-top-4 fade-in duration-300">
               {pagosFijosOrdenados.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-10">
                   No has configurado pagos fijos en Presupuestos.
@@ -722,19 +544,18 @@ const EgresosTab = ({
                   return (
                     <div 
                       key={pf.id} 
-                      className={`p-3 rounded-xl border flex flex-col transition-all gap-3 ${
+                      className={`p-4 rounded-xl border flex flex-col transition-all gap-4 ${
                         isPaid 
                           ? 'bg-emerald-900/10 border-emerald-500/20 opacity-60' 
-                          : 'bg-slate-950 border-slate-800 hover:border-orange-500/30'
+                          : 'bg-slate-950 border-slate-800 hover:border-orange-500/30 shadow-md'
                       }`}
                     >
-                      {/* Fila 1: Botón y Título */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <button 
                             onClick={() => !isPaid && registrarPagoFijo(pf)} 
                             disabled={isPaid} 
-                            className={`w-5 h-5 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                            className={`w-6 h-6 rounded flex items-center justify-center border transition-colors shrink-0 ${
                               isPaid 
                                 ? 'bg-emerald-500 border-emerald-500 text-white' 
                                 : 'bg-slate-900 border-slate-600 text-transparent hover:border-orange-500'
@@ -742,63 +563,70 @@ const EgresosTab = ({
                           >
                             <CheckIcon size={14} />
                           </button>
-                          
                           <div>
-                            <p className={`text-sm font-bold ${isPaid ? 'text-emerald-400 line-through' : 'text-slate-200'}`}>
+                            <p className={`text-base font-bold ${isPaid ? 'text-emerald-400 line-through' : 'text-slate-200'}`}>
                               {pf.descripcion}
                             </p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">
-                              Día sugerido: {pf.diaPago || 1}
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Día sugerido de pago: {pf.diaPago || 1}
                             </p>
                           </div>
                         </div>
-
-                        {/* Monto pagado si ya está checkeado */}
+                        
                         {isPaid && (
-                          <p className="text-sm font-black text-emerald-500/50 text-right">
+                          <p className="text-lg font-black text-emerald-500/50 text-right">
                             {formatCOP(Number(pf.monto || pf.montoEstimado || 0))}
                           </p>
                         )}
                       </div>
                       
-                      {/* Fila 2: Controles de edición ANTES de pagar */}
                       {!isPaid && (
-                        <div className="flex flex-col md:flex-row items-center gap-2 pl-8 pt-2 border-t border-slate-800/50">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-800/50">
                           
-                          {/* Origen del dinero */}
-                          <select 
-                            value={getPfCuenta(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)}
-                            title="Cuenta desde la que pagas"
-                            className="bg-slate-900 border border-slate-700 text-[10px] text-slate-300 rounded p-1.5 outline-none focus:border-orange-500 flex-1 w-full"
-                          >
-                            <option value="">De dónde sale...</option>
-                            {cuentasActivas.map(c => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
+                          <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-slate-500 font-bold mb-1">
+                              Pagar desde:
+                            </label>
+                            <select 
+                              value={getPfCuenta(pf)} 
+                              onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)} 
+                              className="bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded-lg p-2 outline-none focus:border-orange-500 w-full"
+                            >
+                              <option value="">Seleccione cuenta...</option>
+                              {cuentasActivas.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-indigo-400 font-bold mb-1">
+                              Abonar a Deuda (Opcional):
+                            </label>
+                            <select 
+                              value={getPfDeuda(pf)} 
+                              onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)} 
+                              className="bg-indigo-950/20 border border-indigo-500/30 text-xs text-indigo-300 rounded-lg p-2 outline-none focus:border-indigo-500 w-full"
+                            >
+                              <option value="">No es deuda</option>
+                              {todasLasDeudas.map(d => (
+                                <option key={d.id} value={d.id}>Pagar: {d.name}</option>
+                              ))}
+                            </select>
+                          </div>
 
-                          {/* Selector de Abono a Deuda en Pagos Fijos */}
-                          <select 
-                            value={getPfDeuda(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)}
-                            title="Deuda a la que vas a abonar (Opcional)"
-                            className="bg-indigo-950/20 border border-indigo-500/30 text-[10px] text-indigo-300 rounded p-1.5 outline-none focus:border-indigo-500 flex-1 w-full"
-                          >
-                            <option value="">No es pago a deuda</option>
-                            {todasLasDeudas.map(d => (
-                              <option key={d.id} value={d.id}>Pagar: {d.name}</option>
-                            ))}
-                          </select>
-                          
-                          {/* Monto exacto */}
-                          <input 
-                            type="number" 
-                            value={getPfMonto(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)}
-                            title="Monto exacto a pagar"
-                            className="bg-slate-900 border border-slate-700 text-[11px] font-bold text-orange-400 rounded p-1.5 outline-none focus:border-orange-500 w-full md:w-24 text-right"
-                          />
+                          <div className="flex flex-col">
+                            <label className="text-[10px] uppercase text-slate-500 font-bold mb-1">
+                              Monto Exacto:
+                            </label>
+                            <input 
+                              type="number" 
+                              value={getPfMonto(pf)} 
+                              onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)} 
+                              className="bg-slate-900 border border-slate-700 text-sm font-bold text-orange-400 rounded-lg p-2 outline-none focus:border-orange-500 w-full text-right"
+                            />
+                          </div>
+
                         </div>
                       )}
                     </div>
@@ -810,17 +638,15 @@ const EgresosTab = ({
         </Card>
       </div>
 
-      {/* ============================================================================ */}
-      {/* 4. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
-      {/* ============================================================================ */}
+      {/* --- 3. HISTORIAL COMPLETO --- */}
       <Card className="flex flex-col border-t-4 border-t-slate-600 mt-6 bg-slate-900/10 transition-all duration-300">
         <div 
-          className="flex justify-between items-center cursor-pointer select-none mb-2"
+          className="flex justify-between items-center cursor-pointer select-none mb-2" 
           onClick={() => toggleSection('historial')}
         >
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <ListIcon className="text-slate-400" />
-            4. Historial Completo de Egresos
+            <ListIcon className="text-slate-400" /> 
+            3. Historial Completo de Egresos
           </h2>
           <div className="flex items-center gap-3">
             <span className="bg-slate-900 border border-slate-700 text-slate-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
@@ -847,7 +673,7 @@ const EgresosTab = ({
                   <th className="p-4 font-bold text-center w-[8%]">Acciones</th>
                 </tr>
                 
-                {/* Fila de Filtros */}
+                {/* FILA DE FILTROS */}
                 <tr className="border-b-2 border-slate-800 bg-slate-900/40">
                   <th className="p-2"></th>
                   <th className="p-2">
@@ -916,8 +742,7 @@ const EgresosTab = ({
                 ) : (
                   egresosFiltrados.map(egreso => {
                     const isEditing = editingId === egreso.id;
-                    const cuentaObj = cuentas.find(c => c.id === egreso.cuentaId);
-                    const cuentaName = cuentaObj?.name || 'Cuenta eliminada';
+                    const cuentaName = cuentas.find(c => c.id === egreso.cuentaId)?.name || 'Cuenta eliminada';
                     
                     return (
                       <tr 
@@ -1058,6 +883,7 @@ const EgresosTab = ({
                             </div>
                           )}
                         </td>
+
                       </tr>
                     );
                   })
@@ -1067,129 +893,6 @@ const EgresosTab = ({
           </div>
         )}
       </Card>
-
-      {/* ============================================================================ */}
-      {/* MODAL PARA AGREGAR NUEVA COMPRA A CUOTAS */}
-      {/* ============================================================================ */}
-      {showModalCuotas && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#17171a] w-full max-w-md rounded-2xl border border-slate-800 p-6 animate-in zoom-in-95 duration-200">
-            
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-white">
-                Nueva Compra a Cuotas
-              </h3>
-              <button 
-                onClick={() => setShowModalCuotas(false)} 
-                className="text-slate-500 hover:text-white transition-colors"
-              >
-                <XIcon size={24}/>
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddCuotas} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">
-                  Fecha de compra
-                </label>
-                <input 
-                  type="date" 
-                  required 
-                  value={cuotaData.fecha} 
-                  onChange={e => setCuotaData({...cuotaData, fecha: e.target.value})} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-              
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">
-                  Descripción
-                </label>
-                <input 
-                  type="text" 
-                  required 
-                  value={cuotaData.descripcion} 
-                  onChange={e => setCuotaData({...cuotaData, descripcion: e.target.value})} 
-                  placeholder="Ej. Computador, Viaje..." 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Categoría
-                  </label>
-                  <select 
-                    required 
-                    value={cuotaData.categoria} 
-                    onChange={e => setCuotaData({...cuotaData, categoria: e.target.value})} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Seleccione...</option>
-                    {categoriasMaestras.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Tarjeta de Crédito
-                  </label>
-                  <select 
-                    required 
-                    value={cuotaData.tarjetaId} 
-                    onChange={e => setCuotaData({...cuotaData, tarjetaId: e.target.value})} 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  >
-                    <option value="">Seleccione...</option>
-                    {tarjetasCredito.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Monto Total
-                  </label>
-                  <input 
-                    type="number" 
-                    required 
-                    value={cuotaData.montoTotal} 
-                    onChange={e => setCuotaData({...cuotaData, montoTotal: e.target.value})} 
-                    placeholder="$ 0" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">
-                    Número de Cuotas
-                  </label>
-                  <input 
-                    type="number" 
-                    required 
-                    min="1" 
-                    value={cuotaData.numeroCuotas} 
-                    onChange={e => setCuotaData({...cuotaData, numeroCuotas: e.target.value})} 
-                    placeholder="Ej. 12" 
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit" 
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl mt-6 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-              >
-                Guardar Compra a Cuotas
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
