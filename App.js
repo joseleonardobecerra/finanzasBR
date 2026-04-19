@@ -13,7 +13,7 @@ function App() {
   const [filtroPersona, setFiltroPersona] = useState('Total');
   const [scoreHistory, setScoreHistory] = useState({});
 
-  // WIZARD DE REGISTRO RÁPIDO
+  // WIZARD DE REGISTRO RÁPIDO (MÓVIL)
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [qeStep, setQeStep] = useState(1);
   const [qeType, setQeType] = useState('');
@@ -22,7 +22,7 @@ function App() {
   const [qeCategoria, setQeCategoria] = useState('');
   const [qeMethod, setQeMethod] = useState('');
   const [qeCuenta, setQeCuenta] = useState('');
-  const [qeDeuda, setQeDeuda] = useState(''); // ✨ NUEVO: Para el pago rápido de deudas
+  const [qeDeuda, setQeDeuda] = useState(''); // Conexión a deudas en móvil
 
   // BASES DE DATOS GLOBALES
   const [cuentas, setCuentas] = useState([]);
@@ -32,10 +32,21 @@ function App() {
   const [presupuestos, setPresupuestos] = useState([]);
   const [pagosFijos, setPagosFijos] = useState([]);
   const [ingresosFijos, setIngresosFijos] = useState([]);
-  const [comprasCuotas, setComprasCuotas] = useState([]);
+  
   const [categoriasMaestras, setCategoriasMaestras] = useState([
     'Vivienda', 'Transporte', 'Alimentación', 'Servicios', 'Educación', 'Salud', 'Entretenimiento', 'Ropa', 'Otros', 'Intereses y Cargos'
   ]);
+
+  // Íconos SVG Nativos
+  const XIcon = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  );
+  const CheckIcon = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
+  );
+  const PlusIcon = ({ size = 18, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  );
 
   // ============================================================================
   // CONEXIÓN A FIREBASE Y SINCRONIZACIÓN
@@ -69,21 +80,19 @@ function App() {
     const unsubscribeDB = cloudDocRef.onSnapshot((doc) => {
       if (doc.exists) {
         const data = doc.data();
-        setCuentas(data.cuentas || []);
-        setIngresos(data.ingresos || []);
-        setEgresos(data.egresos || []);
-        setTransferencias(data.transferencias || []);
-        setPresupuestos(data.presupuestos || []);
-        setPagosFijos(data.pagosFijos || []);
-        setIngresosFijos(data.ingresosFijos || []);
-        setComprasCuotas(data.comprasCuotas || []);
+        if (data.cuentas) setCuentas(data.cuentas);
+        if (data.ingresos) setIngresos(data.ingresos);
+        if (data.egresos) setEgresos(data.egresos);
+        if (data.transferencias) setTransferencias(data.transferencias);
+        if (data.presupuestos) setPresupuestos(data.presupuestos);
+        if (data.pagosFijos) setPagosFijos(data.pagosFijos);
+        if (data.ingresosFijos) setIngresosFijos(data.ingresosFijos);
         if (data.categoriasMaestras) setCategoriasMaestras(data.categoriasMaestras);
         if (data.scoreHistory) setScoreHistory(data.scoreHistory);
       } else {
         cloudDocRef.set({
           cuentas: [], ingresos: [], egresos: [], transferencias: [], presupuestos: [],
-          pagosFijos: [], ingresosFijos: [], comprasCuotas: [],
-          categoriasMaestras, scoreHistory: {}
+          pagosFijos: [], ingresosFijos: [], categoriasMaestras, scoreHistory: {}
         });
       }
       setAppCargando(false);
@@ -98,8 +107,8 @@ function App() {
   const syncToCloud = (partialData) => {
     if (!authUser) return;
     cloudDocRef.set(partialData, { merge: true }).catch(err => {
-      console.error("Error al sincronizar con la nube:", err);
-      if (isOffline) showToast("Guardado localmente. Se sincronizará cuando vuelvas a estar online.");
+      console.error("Error al sincronizar:", err);
+      if (isOffline) showToast("Guardado localmente. Se sincronizará al conectar.");
     });
   };
 
@@ -111,57 +120,38 @@ function App() {
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
   // ============================================================================
-  // 🧠 EL CEREBRO MATEMÁTICO (AQUÍ ESTÁ LA CONEXIÓN TOTAL)
+  // EL CEREBRO MATEMÁTICO (PARTIDA DOBLE)
   // ============================================================================
   const activeCalculatedAccounts = useMemo(() => {
     return cuentas.map(acc => {
-      // 1. Partimos del saldo y deuda inicial de la cuenta
       let currentBalance = Number(acc.initialBalance) || 0;
       let currentDebt = Number(acc.initialDebt) || 0;
 
-      // 2. SUMAR INGRESOS
       ingresos.forEach(ing => {
-        if (ing.cuentaId === acc.id) {
-          currentBalance += Number(ing.monto);
-        }
+        if (ing.cuentaId === acc.id) currentBalance += Number(ing.monto);
       });
 
-      // 3. PROCESAR EGRESOS Y PAGOS DE DEUDAS
       egresos.forEach(egr => {
-        // CASO A: El dinero salió de esta cuenta
+        // Gasto desde la cuenta
         if (egr.cuentaId === acc.id) {
-           if (acc.type === 'credit') {
-              // Si pagas algo usando la Tarjeta, LA DEUDA AUMENTA
-              currentDebt += Number(egr.monto);
-           } else {
-              // Si pagas algo con Débito o Efectivo, EL SALDO BAJA
-              currentBalance -= Number(egr.monto);
-           }
+           if (acc.type === 'credit') currentDebt += Number(egr.monto);
+           else currentBalance -= Number(egr.monto);
         }
-
-        // CASO B: Abono directo a una Deuda
-        // ✨ ¡Esta es la corrección maestra! Si la tarjeta coincide con el deudaId del egreso
+        // Abono a la deuda
         if (egr.deudaId === acc.id) {
            currentDebt -= Number(egr.monto);
-           if (currentDebt < 0) currentDebt = 0; // Previene que la deuda quede en negativo
+           if (currentDebt < 0) currentDebt = 0; 
         }
       });
 
-      // 4. PROCESAR TRANSFERENCIAS Y AVANCES
       transferencias.forEach(tx => {
-         // Si la plata salió de aquí
          if (tx.fromId === acc.id) {
             const montoAExtraer = Number(tx.monto) + Number(tx.costoAvance || 0);
-            if (acc.type === 'credit') {
-               currentDebt += montoAExtraer; // Avance de tarjeta aumenta deuda + comisión
-            } else {
-               currentBalance -= montoAExtraer; // Traslado normal baja el saldo
-            }
+            if (acc.type === 'credit') currentDebt += montoAExtraer; 
+            else currentBalance -= montoAExtraer; 
          }
-         // Si la plata entró aquí
          if (tx.toId === acc.id) {
             if (acc.type === 'credit' || acc.type === 'loan') {
-               // Si le transfieres a una tarjeta, es un PAGO (Baja la deuda)
                currentDebt -= Number(tx.monto);
                if (currentDebt < 0) currentDebt = 0;
             } else {
@@ -176,18 +166,17 @@ function App() {
 
 
   // ============================================================================
-  // CÁLCULOS GLOBALES PARA EL DASHBOARD
+  // CÁLCULOS GLOBALES
   // ============================================================================
   const egresosMes = egresos.filter(e => e.fecha.startsWith(selectedMonth));
   const ingresosMes = ingresos.filter(i => i.fecha.startsWith(selectedMonth));
   
   const ingresosMesTotal = ingresosMes.reduce((sum, i) => sum + Number(i.monto), 0);
-  const egresosMesTotal = egresosMes.filter(e => !e.esCuota).reduce((sum, e) => sum + Number(e.monto), 0);
-  const cuotasMesTotal = egresosMes.filter(e => e.esCuota).reduce((sum, e) => sum + Number(e.monto), 0);
+  const egresosMesTotal = egresosMes.reduce((sum, e) => sum + Number(e.monto), 0);
   
   const liquidezTotal = activeCalculatedAccounts.filter(c => ['bank', 'cash', 'pocket'].includes(c.type)).reduce((sum, c) => sum + c.currentBalance, 0);
   const deudaTotal = activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type)).reduce((sum, c) => sum + c.currentDebt, 0);
-  const flujoNetoMes = ingresosMesTotal - egresosMesTotal - cuotasMesTotal;
+  const flujoNetoMes = ingresosMesTotal - egresosMesTotal;
 
   // Calculadora de Score
   const scoreData = useMemo(() => {
@@ -216,22 +205,18 @@ function App() {
       score -= 10; desglose.push({label:'Deuda > Liquidez', val: -10});
     }
 
-    const activeCuotas = comprasCuotas.filter(c => c.estado === 'Activa').length;
-    if (activeCuotas > 3) {
-      score -= 10; desglose.push({label:'Exceso de Compras a Cuotas', val: -10}); recs.push('Tienes más de 3 compras a cuotas activas. Trata de unificarlas o liquidarlas.');
-    }
-
     if (score === 100) { desglose.push({label:'¡Salud Óptima!', val: 100}); recs.push('Mantén este ritmo. Tienes un excelente control financiero.'); }
     
     return { score: Math.max(0, score), desglose, recs };
-  }, [liquidezTotal, deudaTotal, ingresosMesTotal, egresosMes, comprasCuotas, activeCalculatedAccounts.length]);
+  }, [liquidezTotal, deudaTotal, ingresosMesTotal, egresosMes, activeCalculatedAccounts.length]);
 
 
   // ============================================================================
-  // FUNCIONES DE CONTROL (CRUD PARA COMPONENTES)
+  // FUNCIONES CRUD
   // ============================================================================
   const handleQuickSave = () => {
     if (!qeMonto || !qeDescripcion || !qeCategoria || !qeCuenta) { showToast("Faltan datos", "error"); return; }
+    
     const txData = {
       id: generateId(),
       fecha: getLocalToday(),
@@ -243,7 +228,7 @@ function App() {
     };
 
     if (qeType === 'egreso') {
-      txData.deudaId = qeDeuda || null; // Conexión rápida de deudas
+      txData.deudaId = qeDeuda || null;
       const newEgresos = [...egresos, txData];
       setEgresos(newEgresos); syncToCloud({ egresos: newEgresos });
       showToast("Gasto guardado rápido");
@@ -267,13 +252,11 @@ function App() {
       if (data.presupuestos) setPresupuestos(data.presupuestos);
       if (data.pagosFijos) setPagosFijos(data.pagosFijos);
       if (data.ingresosFijos) setIngresosFijos(data.ingresosFijos);
-      if (data.comprasCuotas) setComprasCuotas(data.comprasCuotas);
       if (data.categoriasMaestras) setCategoriasMaestras(data.categoriasMaestras);
       await cloudDocRef.set(data, { merge: true });
     } catch(err) { console.error(err); throw err; }
   };
 
-  // ... (RESTO DE FUNCIONES CRUD PARA PASAR COMO PROPS)
   const addCuenta = (c) => { const n = [...cuentas, c]; setCuentas(n); syncToCloud({ cuentas: n }); };
   const updateCuenta = (id, nd) => { const n = cuentas.map(c => c.id === id ? { ...c, ...nd } : c); setCuentas(n); syncToCloud({ cuentas: n }); };
   const removeCuenta = (id) => { const n = cuentas.filter(c => c.id !== id); setCuentas(n); syncToCloud({ cuentas: n }); };
@@ -297,13 +280,9 @@ function App() {
   const updatePagoFijo = (id, nd) => { const n = pagosFijos.map(p => p.id === id ? { ...p, ...nd } : p); setPagosFijos(n); syncToCloud({ pagosFijos: n }); };
   const removePagoFijo = (id) => { const n = pagosFijos.filter(p => p.id !== id); setPagosFijos(n); syncToCloud({ pagosFijos: n }); };
 
-  const addComprasCuotas = (c) => { const n = [...comprasCuotas, c]; setComprasCuotas(n); syncToCloud({ comprasCuotas: n }); };
-  const updateComprasCuotas = (id, nd) => { const n = comprasCuotas.map(c => c.id === id ? { ...c, ...nd } : c); setComprasCuotas(n); syncToCloud({ comprasCuotas: n }); };
-  const removeComprasCuotas = (id) => { const n = comprasCuotas.filter(c => c.id !== id); setComprasCuotas(n); syncToCloud({ comprasCuotas: n }); };
-
 
   // ============================================================================
-  // RENDERIZADO CONDICIONAL DE PANTALLAS
+  // RENDERIZADO CONDICIONAL
   // ============================================================================
   if (appCargando || authChecking) {
     return (
@@ -320,7 +299,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#0f0f11] text-slate-300 font-sans pb-24 md:pb-0 select-none">
-      {/* NOTIFICACIONES TOAST */}
+      {/* TOASTS */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl font-bold text-white flex items-center gap-3 animate-in slide-in-from-top-5 duration-300 ${toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`}>
           {toast.type === 'error' ? <XIcon/> : <CheckIcon/>}
@@ -366,7 +345,6 @@ function App() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="md:ml-64 p-4 md:p-8 max-w-7xl mx-auto min-h-screen">
         
-        {/* BARRA SUPERIOR */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-[#17171a] p-4 rounded-2xl border border-slate-800/50 shadow-sm">
           <div className="flex items-center gap-4">
              <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-800">
@@ -385,23 +363,29 @@ function App() {
           </div>
         </div>
 
-        {/* PESTAÑAS (RUTEO VIRTUAL) */}
+        {/* PESTAÑAS */}
         <div className="animate-in fade-in duration-300">
-          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
+          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
           {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} />}
-          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={cuotasMesTotal} />}
+          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} />}
           {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={transferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} showToast={showToast} filtroPersona={filtroPersona} />}
           {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} />}
           {activeTab === 'ingresos' && <IngresosTab ingresos={ingresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
-          {activeTab === 'egresos' && <EgresosTab egresos={egresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={comprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={presupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} filtroPersona={filtroPersona} />}
-          {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={presupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={egresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} filtroPersona={filtroPersona} />}
+          
+          {/* EGRESOS: Ya no pasa compras a cuotas */}
+          {activeTab === 'egresos' && <EgresosTab egresos={egresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={presupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
+          
+          {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={presupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={pagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={egresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
+          
           {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={egresos} />}
           {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} showToast={showToast} />}
-          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, comprasCuotas, categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+          
+          {/* SETTINGS: Ya no guarda/importa cuotas */}
+          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
         </div>
       </main>
 
-      {/* MENÚ INFERIOR (MÓVIL) */}
+      {/* MENÚ INFERIOR MÓVIL */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a]/95 backdrop-blur-xl border-t border-slate-800/50 pb-safe z-40 px-2 py-2 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         {[
           { id: 'dashboard', icon: PieChartIcon, label: 'Dash' },
@@ -427,7 +411,7 @@ function App() {
         })}
       </nav>
 
-      {/* WIZARD: REGISTRO RÁPIDO (MÓVIL) */}
+      {/* WIZARD DE REGISTRO RÁPIDO (MÓVIL) */}
       {quickEntryOpen && (
         <div className="fixed inset-0 bg-[#0f0f11]/95 backdrop-blur-md z-50 flex flex-col animate-in slide-in-from-bottom-full duration-300">
           <div className="p-6 flex justify-between items-center border-b border-slate-800">
@@ -440,7 +424,6 @@ function App() {
           <div className="flex-1 overflow-y-auto p-6">
             <div className="w-full max-w-sm mx-auto">
               
-              {/* Barra de progreso */}
               <div className="flex gap-2 mb-8">
                 {[1,2,3,4,5].map(step => (
                   <div key={step} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${step <= qeStep ? 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]' : 'bg-slate-800'}`}></div>
@@ -528,6 +511,23 @@ function App() {
                       </button>
                     ))}
                   </div>
+
+                  {/* ✨ NUEVO: Selector de Abono a Deuda en el Botón Móvil */}
+                  {qeType === 'egreso' && (
+                    <div className="mt-6 p-4 bg-indigo-900/10 border border-indigo-500/20 rounded-xl">
+                      <label className="text-xs font-bold text-indigo-400 uppercase block mb-2">Abonar a Deuda (Opcional)</label>
+                      <select 
+                        value={qeDeuda} 
+                        onChange={e => setQeDeuda(e.target.value)} 
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none focus:border-indigo-500"
+                      >
+                        <option value="">No es pago a deuda</option>
+                        {activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type)).map(d => (
+                          <option key={d.id} value={d.id}>Pagar: {d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   
                   {qeCuenta && (
                     <button 
