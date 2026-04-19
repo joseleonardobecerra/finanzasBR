@@ -1,24 +1,3 @@
-// ============================================================================
-// ÍCONOS SVG SEGUROS (Garantizan que la UI nunca se rompa)
-// ============================================================================
-const IconPieChart = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
-const IconTrendingUp = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
-const IconActivity = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
-const IconGrid = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
-const IconTarget = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
-const IconWallet = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>;
-const IconReceipt = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 14h-4"/><path d="M16 10H8"/><path d="M16 18H8"/></svg>;
-const IconFilter = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
-const IconCreditCard = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
-const IconZap = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
-const IconSettings = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
-const IconLogOut = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
-const IconWifiOff = ({size=14, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.82"/></svg>;
-const IconPlus = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-const IconX = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-const IconCheck = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
-
-
 // --- MAIN APP ---
 function App() {
   const { useState, useMemo, useEffect, useRef } = React;
@@ -43,7 +22,7 @@ function App() {
   const [qeCategoria, setQeCategoria] = useState('');
   const [qeMethod, setQeMethod] = useState('');
   const [qeCuenta, setQeCuenta] = useState('');
-  const [qeDeuda, setQeDeuda] = useState(''); // ✨ Conexión a deudas en móvil
+  const [qeDeuda, setQeDeuda] = useState('');
 
   // BASES DE DATOS GLOBALES
   const [cuentas, setCuentas] = useState([]);
@@ -54,15 +33,33 @@ function App() {
   const [pagosFijos, setPagosFijos] = useState([]);
   const [ingresosFijos, setIngresosFijos] = useState([]);
   
-  // ✨ SALVAVIDAS ANTI-ERROR: Mantenemos el estado de comprasCuotas vacío para que ninguna pestaña se estrelle buscando esto.
-  const [comprasCuotas, setComprasCuotas] = useState([]);
-  
+  // Categorías por defecto
   const [categoriasMaestras, setCategoriasMaestras] = useState([
     'Vivienda', 'Transporte', 'Alimentación', 'Servicios', 'Educación', 'Salud', 'Entretenimiento', 'Ropa', 'Otros', 'Intereses y Cargos'
   ]);
 
   // ============================================================================
-  // CONEXIÓN A FIREBASE
+  // ÍCONOS SVG
+  // ============================================================================
+  const IconPieChart = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
+  const IconTrendingUp = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
+  const IconActivity = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+  const IconGrid = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>;
+  const IconTarget = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+  const IconWallet = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>;
+  const IconReceipt = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 14h-4"/><path d="M16 10H8"/><path d="M16 18H8"/></svg>;
+  const IconFilter = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+  const IconCreditCard = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
+  const IconZap = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+  const IconSettings = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+  const IconLogOut = ({size=20, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+  const IconWifiOff = ({size=14, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.82"/></svg>;
+  const IconPlus = ({size=18, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+  const IconX = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+  const IconCheck = ({size=16, className=""}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
+
+  // ============================================================================
+  // CONEXIÓN A FIREBASE Y ESTADOS DE RED
   // ============================================================================
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -100,13 +97,12 @@ function App() {
         if (data.presupuestos) setPresupuestos(data.presupuestos);
         if (data.pagosFijos) setPagosFijos(data.pagosFijos);
         if (data.ingresosFijos) setIngresosFijos(data.ingresosFijos);
-        if (data.comprasCuotas) setComprasCuotas(data.comprasCuotas);
         if (data.categoriasMaestras) setCategoriasMaestras(data.categoriasMaestras);
         if (data.scoreHistory) setScoreHistory(data.scoreHistory);
       } else {
         cloudDocRef.set({
           cuentas: [], ingresos: [], egresos: [], transferencias: [], presupuestos: [],
-          pagosFijos: [], ingresosFijos: [], comprasCuotas: [], categoriasMaestras, scoreHistory: {}
+          pagosFijos: [], ingresosFijos: [], categoriasMaestras, scoreHistory: {}
         });
       }
       setAppCargando(false);
@@ -138,7 +134,6 @@ function App() {
     return d.toISOString().slice(0, 10);
   };
 
-  // IDENTIFICADOR DE PROPIETARIOS DE CUENTAS (Para Inversiones y Cuentas)
   const identifyOwner = (name) => {
     const t = (name || '').toUpperCase();
     const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
@@ -149,7 +144,7 @@ function App() {
   };
 
   // ============================================================================
-  // EL CEREBRO MATEMÁTICO (PARTIDA DOBLE)
+  // EL CEREBRO MATEMÁTICO (Cuentas, Inversiones, Deudas)
   // ============================================================================
   const activeCalculatedAccounts = useMemo(() => {
     return cuentas.map(acc => {
@@ -161,12 +156,10 @@ function App() {
       });
 
       egresos.forEach(egr => {
-        // Gasto desde la cuenta
         if (egr.cuentaId === acc.id) {
            if (acc.type === 'credit') currentDebt += Number(egr.monto);
            else currentBalance -= Number(egr.monto);
         }
-        // Abono a la deuda
         if (egr.deudaId === acc.id) {
            currentDebt -= Number(egr.monto);
            if (currentDebt < 0) currentDebt = 0; 
@@ -195,7 +188,7 @@ function App() {
 
 
   // ============================================================================
-  // CÁLCULOS GLOBALES
+  // CÁLCULOS GLOBALES DEL MES
   // ============================================================================
   const egresosMes = egresos.filter(e => e.fecha.startsWith(selectedMonth));
   const ingresosMes = ingresos.filter(i => i.fecha.startsWith(selectedMonth));
@@ -207,7 +200,6 @@ function App() {
   const deudaTotal = activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type)).reduce((sum, c) => sum + c.currentDebt, 0);
   const flujoNetoMes = ingresosMesTotal - egresosMesTotal;
 
-  // Calculadora de Score
   const scoreData = useMemo(() => {
     let score = 100;
     const desglose = [];
@@ -241,7 +233,7 @@ function App() {
 
 
   // ============================================================================
-  // FUNCIONES CRUD GLOBALES
+  // FUNCIONES CRUD
   // ============================================================================
   const handleQuickSave = () => {
     if (!qeMonto || !qeDescripcion || !qeCategoria || !qeCuenta) { showToast("Faltan datos", "error"); return; }
@@ -309,9 +301,8 @@ function App() {
   const updatePagoFijo = (id, nd) => { const n = pagosFijos.map(p => p.id === id ? { ...p, ...nd } : p); setPagosFijos(n); syncToCloud({ pagosFijos: n }); };
   const removePagoFijo = (id) => { const n = pagosFijos.filter(p => p.id !== id); setPagosFijos(n); syncToCloud({ pagosFijos: n }); };
 
-
   // ============================================================================
-  // RENDERIZADO PRINCIPAL
+  // RENDERIZADO: CARGA Y LOGIN
   // ============================================================================
   if (appCargando || authChecking) {
     return (
@@ -326,10 +317,13 @@ function App() {
     return <Login />;
   }
 
+  // ============================================================================
+  // RENDERIZADO PRINCIPAL DE LA APP
+  // ============================================================================
   return (
     <div className="min-h-screen bg-[#0f0f11] text-slate-300 font-sans pb-24 md:pb-0 select-none">
       
-      {/* TOASTS GLOBALES */}
+      {/* Notificaciones (Toast) */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl font-bold text-white flex items-center gap-3 animate-in slide-in-from-top-5 duration-300 ${toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`}>
           {toast.type === 'error' ? <IconX/> : <IconCheck/>}
@@ -337,9 +331,10 @@ function App() {
         </div>
       )}
 
-      {/* MENÚ LATERAL ESCRITORIO */}
+      {/* MENÚ LATERAL ESCRITORIO (SECCIONES DIVIDIDAS) */}
       <aside className="hidden md:flex flex-col w-64 fixed left-0 top-0 bottom-0 bg-[#17171a] border-r border-slate-800/50 z-40 overflow-y-auto">
         <div className="p-6">
+          
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-indigo-500/20">F</div>
             <div>
@@ -348,38 +343,61 @@ function App() {
             </div>
           </div>
           
-          <nav className="space-y-2">
-            {[
-              { id: 'dashboard', icon: IconPieChart, label: 'Dashboard' },
-              { id: 'analitica', icon: IconTrendingUp, label: 'Analítica' },
-              { id: 'score', icon: IconActivity, label: 'Score & Avalancha' },
-              { id: 'cuentas', icon: IconGrid, label: 'Cuentas' },
-              { id: 'inversiones', icon: IconTarget, label: 'Inversiones' },
-              { id: 'ingresos', icon: IconWallet, label: 'Ingresos' },
-              { id: 'egresos', icon: IconReceipt, label: 'Egresos' },
-              { id: 'presupuestos', icon: IconFilter, label: 'Presupuestos' },
-              { id: 'deudas', icon: IconCreditCard, label: 'Deudas & Tarjetas' },
-              { id: 'simulador', icon: IconZap, label: 'Simulador Pagos' },
-              { id: 'settings', icon: IconSettings, label: 'Ajustes & Backup' }
-            ].map(item => (
-              <button 
-                key={item.id} 
-                onClick={() => setActiveTab(item.id)} 
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}
-              >
-                 <item.icon size={20} />
-                 {item.label}
-              </button>
-            ))}
-            
-            <button 
-              onClick={() => auth.signOut()} 
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm text-rose-500 hover:bg-rose-500/10 mt-8"
-            >
-              <IconLogOut size={20} /> 
-              Cerrar Sesión
-            </button>
-          </nav>
+          {/* SECCIÓN 1: Visión General */}
+          <div className="mb-6">
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 px-2">Visión General</p>
+            <nav className="space-y-1.5">
+              {[
+                { id: 'dashboard', icon: IconPieChart, label: 'Dashboard' },
+                { id: 'analitica', icon: IconTrendingUp, label: 'Analítica' },
+                { id: 'score', icon: IconActivity, label: 'Score & Avalancha' }
+              ].map(item => (
+                <button 
+                  key={item.id} 
+                  onClick={() => setActiveTab(item.id)} 
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-sm ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}
+                >
+                   <item.icon size={18} />
+                   {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* SECCIÓN 2: Gestión Operativa */}
+          <div className="mb-6">
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 px-2">Gestión Operativa</p>
+            <nav className="space-y-1.5">
+              {[
+                { id: 'cuentas', icon: IconGrid, label: 'Cuentas' },
+                { id: 'inversiones', icon: IconTarget, label: 'Inversiones' },
+                { id: 'ingresos', icon: IconWallet, label: 'Ingresos' },
+                { id: 'egresos', icon: IconReceipt, label: 'Egresos' },
+                { id: 'presupuestos', icon: IconFilter, label: 'Presupuestos' },
+                { id: 'deudas', icon: IconCreditCard, label: 'Deudas & Tarjetas' },
+                { id: 'simulador', icon: IconZap, label: 'Simulador Pagos' },
+                { id: 'settings', icon: IconSettings, label: 'Ajustes & Backup' }
+              ].map(item => (
+                <button 
+                  key={item.id} 
+                  onClick={() => setActiveTab(item.id)} 
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-sm ${activeTab === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-500 hover:bg-slate-800 hover:text-white'}`}
+                >
+                   <item.icon size={18} />
+                   {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <button 
+            onClick={() => auth.signOut()} 
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-bold text-sm text-rose-500 hover:bg-rose-500/10 mt-4 border border-rose-500/20"
+          >
+            <IconLogOut size={18} /> 
+            Cerrar Sesión
+          </button>
+
         </div>
       </aside>
 
@@ -387,6 +405,7 @@ function App() {
       <main className="md:ml-64 p-4 md:p-8 max-w-7xl mx-auto min-h-screen">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-[#17171a] p-4 rounded-2xl border border-slate-800/50 shadow-sm">
+          
           <div className="flex items-center gap-4">
              <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-800">
                {['Total', 'Leo', 'Andre'].map(p => (
@@ -399,6 +418,7 @@ function App() {
                  </button>
                ))}
              </div>
+             
              {isOffline && (
                <span className="bg-rose-500/20 text-rose-400 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"> 
                  <IconWifiOff size={14}/> Offline
@@ -422,17 +442,14 @@ function App() {
           </div>
         </div>
 
-        {/* ============================================================================ */}
-        {/* PESTAÑAS (RUTEO VIRTUAL SEGURO) */}
-        {/* Se pasan TODOS los props exactos para evitar crashes por undefined */}
-        {/* ============================================================================ */}
+        {/* CONTENEDOR DE PESTAÑAS VIRTUALES */}
         <div className="animate-in fade-in duration-300">
           
-          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} cuotasMesRestantes={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} ingresosFijos={ingresosFijos} comprasCuotas={comprasCuotas} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
+          {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={0} cuotasMesRestantes={0} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={ingresos} egresos={egresos} presupuestos={presupuestos} pagosFijos={pagosFijos} ingresosFijos={ingresosFijos} comprasCuotas={[]} cuentas={activeCalculatedAccounts} filtroPersona={filtroPersona} />}
           
-          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} comprasCuotas={comprasCuotas} />}
+          {activeTab === 'analitica' && <AnaliticaTab ingresos={ingresos} egresos={egresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} filtroPersona={filtroPersona} comprasCuotas={[]} />}
           
-          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} comprasCuotas={comprasCuotas} />}
+          {activeTab === 'score' && <ScoreTab scoreData={scoreData} scoreHistory={scoreHistory} selectedMonth={selectedMonth} presupuestos={presupuestos} egresosMes={egresosMes} cuentas={activeCalculatedAccounts} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} cuotasMesTotal={0} pagosFijos={pagosFijos} comprasCuotas={[]} />}
           
           {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={transferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} filtroPersona={filtroPersona} getOwner={identifyOwner} />}
           
@@ -448,7 +465,7 @@ function App() {
           
           {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijo} showToast={showToast} />}
           
-          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, ingresosFijos, comprasCuotas, categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+          {activeTab === 'settings' && <SettingsTab stateData={{cuentas, ingresos, egresos, transferencias, presupuestos, pagosFijos, ingresosFijos, comprasCuotas: [], categoriasMaestras}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
         </div>
       </main>
 
@@ -491,6 +508,7 @@ function App() {
       {/* WIZARD DE REGISTRO RÁPIDO (MÓVIL) */}
       {quickEntryOpen && (
         <div className="fixed inset-0 bg-[#0f0f11]/95 backdrop-blur-md z-50 flex flex-col animate-in slide-in-from-bottom-full duration-300">
+          
           <div className="p-6 flex justify-between items-center border-b border-slate-800">
             <h3 className="text-xl font-black text-white tracking-wide flex items-center gap-2">
                <IconZap size={20} className="text-amber-400"/> Movimiento Rápido
