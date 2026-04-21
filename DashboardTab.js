@@ -1,4 +1,4 @@
-const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas, proyeccionLiquidez }) => {
+const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
   const { useState, useMemo } = React;
   const [chartFilter, setChartFilter] = useState('Todos');
   const [expandedCard, setExpandedCard] = useState(null);
@@ -117,7 +117,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
   const maxMonto = chartData.length > 0 ? chartData[0][1] : 1;
 
-  // ✨ LÓGICA DE INICIO DESDE ABRIL 2026
   const trendData = useMemo(() => {
     const APP_START = '2026-04';
     const data = [];
@@ -279,33 +278,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </div>
       )}
 
-      {/* 3. PROYECCIÓN DE LIQUIDEZ */}
-      {proyeccionLiquidez && (
-        <Card>
-          <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2 uppercase tracking-widest">
-            <TrendingUp size={18} className="text-neoncyan"/> Proyección de Liquidez
-          </h2>
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: '30 días', val: proyeccionLiquidez.liq30 },
-              { label: '60 días', val: proyeccionLiquidez.liq60 },
-              { label: '90 días', val: proyeccionLiquidez.liq90 },
-            ].map(({ label, val }) => (
-              <div key={label} className="bg-[#111222] shadow-neumorph-inset border border-transparent rounded-2xl p-4 text-center flex flex-col items-center gap-2">
-                <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest">{label}</p>
-                <p className={`text-base md:text-xl font-black ${val >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.3)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.3)]'}`}>
-                  {formatCOP(val)}
-                </p>
-                <div className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${val >= 0 ? 'bg-neoncyan/10 text-neoncyan' : 'bg-neonmagenta/10 text-neonmagenta'}`}>
-                  {val >= 0 ? '✓ Positivo' : '⚠ Déficit'}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* 4. RESUMEN EN VIVO (LEO VS ANDRE) */}
+      {/* 3. RESUMEN EN VIVO (LEO VS ANDRE) */}
       <Card className="flex flex-col">
         <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2 uppercase tracking-widest">
           <Calculator size={18} className="text-neoncyan" /> Resumen y Realidad (En Vivo)
@@ -408,7 +381,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </div>
       </Card>
 
-      {/* 5. GRÁFICAS DE TENDENCIA Y DISTRIBUCIÓN */}
+      {/* 4. GRÁFICAS DE TENDENCIA Y DISTRIBUCIÓN */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* GRÁFICA: TENDENCIA 6 MESES */}
