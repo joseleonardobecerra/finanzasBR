@@ -11,12 +11,11 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   const fileInputRef = useRef(null);
 
   // ============================================================================
-  // ÍCONOS SVG NATIVOS 
+  // ÍCONOS SVG NATIVOS (Prevención de ReferenceError)
   // ============================================================================
   const CheckIcon = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
   );
-  
   const XIcon = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
   );
@@ -160,7 +159,6 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
     e.target.value = '';
   };
 
-  // Estilos UI Base para Neumorfismo Oscuro
   const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta focus:shadow-glow-magenta transition-all duration-300 placeholder:text-slate-600";
   const labelBaseClass = "text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block";
 
@@ -277,7 +275,7 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
             
             <div className="sm:col-span-1 relative">
               <label className={labelBaseClass}>Total Pagado Previo</label>
-              <input type="number" value={newLoanData.totalPagadoPrevio} onChange={e=>setNewLoanData({...newLoanData, totalPagadoPrevio: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="Abonado antes de usar la app" />
+              <input type="number" value={newLoanData.totalPagadoPrevio} onChange={e=>setNewLoanData({...newLoanData, totalPagadoPrevio: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="Abonado antes de app" />
               <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
             </div>
             
@@ -399,7 +397,6 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
               {todasLasTC.length === 0 && (
                 <tr><td colSpan="7" className="px-5 py-10 text-center text-[#8A92A6] font-bold italic">No hay tarjetas de crédito registradas.</td></tr>
               )}
-              {/* ✨ NUEVO: FILA DE TOTALES PARA TARJETAS DE CRÉDITO */}
               {todasLasTC.length > 0 && (
                 <tr className="bg-[#0b0c16]/50 font-black text-white border-t border-white/[0.05]">
                   <td className="px-5 py-5 uppercase tracking-widest text-[11px] text-[#8A92A6]">TOTAL TC</td>
@@ -433,8 +430,8 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
                          <Edit3 size={16}/> Editando Préstamo
                        </h3>
                        <div className="flex gap-2">
-                         <button onClick={saveInlineEdit} className="bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-glow-cyan">Guardar</button>
-                         <button onClick={() => setEditId(null)} className="bg-appcard hover:bg-white/[0.05] text-[#8A92A6] border border-white/[0.02] shadow-neumorph px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">Cancelar</button>
+                         <button onClick={saveInlineEdit} className="bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-glow-cyan flex items-center gap-1"><CheckIcon size={14}/> Guardar</button>
+                         <button onClick={() => setEditId(null)} className="bg-appcard hover:bg-white/[0.05] text-[#8A92A6] border border-white/[0.02] shadow-neumorph px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1"><XIcon size={14}/> Cancelar</button>
                        </div>
                      </div>
                      
