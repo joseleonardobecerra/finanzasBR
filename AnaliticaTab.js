@@ -39,12 +39,10 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   // ✨ COMPONENTES SVG DINÁMICOS (CYBERPUNK STYLE) ✨
   // ============================================================================
 
-  // 1. VELOCÍMETRO CIRCULAR (Para el Score)
   const ScoreGauge = ({ score }) => {
     const radius = 54;
     const circum = 2 * Math.PI * radius;
     const offset = circum - (score / 100) * circum;
-    // Cyan para >=80, Amber para >=50, Magenta para <50
     const colorClass = score >= 80 ? '#00E5FF' : score >= 50 ? '#fbbf24' : '#FF007A'; 
 
     return (
@@ -64,7 +62,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     );
   };
 
-  // 2. DONA BICOLOR (Para Gastos Fijos vs Variables)
   const DonutChart = ({ fijos, variables }) => {
     const total = fijos + variables || 1;
     const pFijos = (fijos / total) * 100;
@@ -75,11 +72,11 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     return (
       <div className="relative flex items-center justify-center">
         <svg viewBox="0 0 120 120" className="w-32 h-32 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#00E5FF" strokeWidth="12" /> {/* Cyan (Variables) */}
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="#00E5FF" strokeWidth="12" />
           <circle cx="60" cy="60" r={radius} fill="none" stroke="#fbbf24" strokeWidth="12" strokeLinecap="round"
             strokeDasharray={circum} strokeDashoffset={fijosOffset} transform="rotate(-90 60 60)"
             style={{ transition: 'stroke-dashoffset 1.5s ease-in-out' }}
-          /> {/* Amber (Fijos) */}
+          />
         </svg>
         <div className="absolute flex flex-col items-center justify-center text-center mt-1">
           <span className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">Fijos</span>
@@ -89,7 +86,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     );
   };
 
-  // 3. GRÁFICA DE ÁREAS SUPERPUESTAS (Para Historial 12 Meses)
   const AreaChart = ({ data }) => {
     if (!data || data.length === 0) return null;
     const maxVal = Math.max(...data.map(d => Math.max(d.ingresos, d.egresos)), 1);
@@ -97,6 +93,11 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     const height = 240;
 
     const getPath = (key) => {
+      // Fix division by 0 si solo hay un mes (data.length === 1)
+      if (data.length === 1) {
+         const y = height - ((data[0][key] / maxVal) * height);
+         return `M 0,${y} L ${width},${y}`;
+      }
       return data.map((d, i) => {
         const x = (i / (data.length - 1)) * width;
         const y = height - ((d[key] / maxVal) * height);
@@ -125,11 +126,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
           <filter id="glowEgr"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         </defs>
         
-        {/* Áreas con gradiente */}
         <path d={ingArea} fill="url(#gradIng)" className="transition-all duration-1000" />
         <path d={egrArea} fill="url(#gradEgr)" className="transition-all duration-1000" />
         
-        {/* Líneas de Neón */}
         <path d={ingPath} fill="none" stroke="#00E5FF" strokeWidth="4" filter="url(#glowIng)" strokeLinejoin="round" />
         <path d={egrPath} fill="none" stroke="#FF007A" strokeWidth="4" filter="url(#glowEgr)" strokeLinejoin="round" />
       </svg>
@@ -140,9 +139,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   // ============================================================================
   // LÓGICA DE DATOS
   // ============================================================================
+  
+  // ✨ LÓGICA DE INICIO DESDE ABRIL 2026
   const {
     historialMensual, totalIngresosAnual, totalEgresosAnual, totalFijosAnual, totalVariablesAnual, mesesConSuperavit
   } = useMemo(() => {
+    const APP_START = '2026-04';
     const meses = [];
     const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
     let sumIng = 0, sumEgr = 0, sumFijos = 0, sumVar = 0, superavitCount = 0;
@@ -152,21 +154,25 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       d.setMonth(d.getMonth() - i);
 
       const mesStr = d.toISOString().slice(0, 7);
-      const label = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace(/^\w/, c => c.toUpperCase());
+      
+      // SOLO procesar si el mes es mayor o igual a Abril 2026
+      if (mesStr >= APP_START) {
+        const label = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace(/^\w/, c => c.toUpperCase());
 
-      const egresosMesFiltrados = egresos.filter(e => e.fecha.startsWith(mesStr));
-      const ingMes = ingresos.filter(i => i.fecha.startsWith(mesStr)).reduce((s, i) => s + Number(i.monto), 0);
-      const egrMes = egresosMesFiltrados.reduce((s, e) => s + Number(e.monto), 0);
-      const fijosMes = egresosMesFiltrados.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
-      const varMes = egresosMesFiltrados.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+        const egresosMesFiltrados = egresos.filter(e => e.fecha.startsWith(mesStr));
+        const ingMes = ingresos.filter(i => i.fecha.startsWith(mesStr)).reduce((s, i) => s + Number(i.monto), 0);
+        const egrMes = egresosMesFiltrados.reduce((s, e) => s + Number(e.monto), 0);
+        const fijosMes = egresosMesFiltrados.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+        const varMes = egresosMesFiltrados.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
 
-      const neto = ingMes - egrMes;
-      const tasaAhorroMes = ingMes > 0 ? (neto > 0 ? (neto / ingMes) * 100 : 0) : 0;
-      if (neto > 0) superavitCount++;
+        const neto = ingMes - egrMes;
+        const tasaAhorroMes = ingMes > 0 ? (neto > 0 ? (neto / ingMes) * 100 : 0) : 0;
+        if (neto > 0) superavitCount++;
 
-      sumIng += ingMes; sumEgr += egrMes; sumFijos += fijosMes; sumVar += varMes;
+        sumIng += ingMes; sumEgr += egrMes; sumFijos += fijosMes; sumVar += varMes;
 
-      meses.push({ mesStr, label, ingresos: ingMes, egresos: egrMes, neto, tasaAhorro: tasaAhorroMes });
+        meses.push({ mesStr, label, ingresos: ingMes, egresos: egrMes, neto, tasaAhorro: tasaAhorroMes });
+      }
     }
 
     return { historialMensual: meses, totalIngresosAnual: sumIng, totalEgresosAnual: sumEgr, totalFijosAnual: sumFijos, totalVariablesAnual: sumVar, mesesConSuperavit: superavitCount };
@@ -176,12 +182,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     return cuentas.filter(c => (c.type === 'credit' || c.type === 'loan') && c.currentDebt > 0).sort((a, b) => b.tasaEA - a.tasaEA); 
   }, [cuentas]);
 
-  const ingMesActual = historialMensual[11]?.ingresos || 0;
+  const ingMesActual = historialMensual[historialMensual.length - 1]?.ingresos || 0;
   const cuotasMesActual = cuentas.reduce((sum, c) => sum + (c.currentDebt > 0 ? (Number(c.cuotaMinima) || 0) : 0), 0);
   
   const cargaDeuda = ingMesActual > 0 ? (cuotasMesActual / ingMesActual) * 100 : 0;
   const tasaAhorroAnual = totalIngresosAnual > 0 ? ((totalIngresosAnual - totalEgresosAnual) / totalIngresosAnual) * 100 : 0;
-  const flujoPromedioMes = (totalIngresosAnual - totalEgresosAnual) / 12;
+  const flujoPromedioMes = (totalIngresosAnual - totalEgresosAnual) / (historialMensual.length || 1);
 
   const recomendaciones = useMemo(() => {
     const recs = [];
@@ -201,8 +207,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
     fechaBase.setMonth(fechaBase.getMonth() - 11);
     const hace12MesesStr = fechaBase.toISOString().slice(0, 7);
+    
+    // Clamp to April 2026 if earlier
+    const APP_START = '2026-04';
+    const filterStart = hace12MesesStr < APP_START ? APP_START : hace12MesesStr;
 
-    const gastos12m = egresos.filter(e => e.fecha >= hace12MesesStr);
+    const gastos12m = egresos.filter(e => e.fecha >= filterStart);
     const catMap = {};
     gastos12m.forEach(g => { const c = g.categoria || 'Otros'; catMap[c] = (catMap[c] || 0) + Number(g.monto); });
     return Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
@@ -210,7 +220,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
 
   const { mejorMes, peorMes } = useMemo(() => {
     let mejor = historialMensual[0]; let peor = historialMensual[0];
-    historialMensual.forEach(m => { if (m.neto > mejor.neto) mejor = m; if (m.neto < peor.neto) peor = m; });
+    historialMensual.forEach(m => { if (m.neto > mejor?.neto) mejor = m; if (m.neto < peor?.neto) peor = m; });
     return { mejorMes: mejor, peorMes: peor };
   }, [historialMensual]);
 
@@ -236,18 +246,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </p>
       </header>
 
-      {/* ---------------------------------------------------- */}
-      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA              */}
-      {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Gráfica Circular de Score */}
         <Card className="flex flex-col items-center justify-center p-6 !border-t-0 shadow-neumorph-inset bg-[#111222]">
           <p className="text-[10px] md:text-xs text-[#8A92A6] uppercase font-black tracking-widest mb-4">Salud Financiera</p>
           <ScoreGauge score={scoreData.score} />
         </Card>
 
-        {/* Tarjetas de KPI */}
         <div className="flex flex-col gap-4 lg:col-span-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
             <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-magenta transition-all">
@@ -273,29 +277,20 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* ---------------------------------------------------- */}
-        {/* SECCIÓN 2: GRÁFICA DE ÁREAS SUPERPUESTAS             */}
-        {/* ---------------------------------------------------- */}
         <Card className="xl:col-span-2 overflow-visible">
-          <h2 className="text-lg font-black text-white mb-6 tracking-wide">Comparativo Histórico (12 Meses)</h2>
+          <h2 className="text-lg font-black text-white mb-6 tracking-wide">Comparativo Histórico ({historialMensual.length} Meses)</h2>
           
           <div className="relative h-64 mt-4 border-b border-white/[0.05] pb-2">
-            
-            {/* Capa 1: Gráfica SVG de Áreas y Líneas */}
             <div className="absolute inset-0 z-0 px-4">
                <AreaChart data={historialMensual} />
             </div>
 
-            {/* Capa 2: Interfaz HTML para Tooltips (Hitboxes) */}
             <div className="absolute inset-0 z-10 flex items-end justify-between px-4">
               {historialMensual.map((m, i) => (
                 <div key={i} className="h-full flex-1 group relative flex flex-col justify-end items-center cursor-crosshair">
-                  {/* Línea vertical de tracking invisible que aparece al hover */}
                   <div className="absolute h-full w-px bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  
                   <span className="text-[9px] md:text-[10px] text-[#8A92A6] mt-2 font-black uppercase tracking-widest translate-y-6">{m.label}</span>
                   
-                  {/* Tooltip Cyberpunk */}
                   <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-4 bg-appcard/95 backdrop-blur-xl border border-white/[0.05] p-4 rounded-xl shadow-neumorph z-20 pointer-events-none transition-all duration-200 text-[11px] min-w-[160px]">
                     <p className="text-white font-black uppercase tracking-widest mb-3 border-b border-white/10 pb-2">{m.label}</p>
                     <div className="flex justify-between mb-1.5"><span className="text-neoncyan font-bold tracking-wide">Ingresos:</span> <span className="text-white font-black tabular-nums">{formatCOP(m.ingresos)}</span></div>
@@ -308,6 +303,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
                   </div>
                 </div>
               ))}
+              {historialMensual.length === 0 && (
+                <div className="w-full flex items-center justify-center h-full text-slate-500 font-bold text-sm">Esperando datos...</div>
+              )}
             </div>
           </div>
           
@@ -317,9 +315,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
           </div>
         </Card>
 
-        {/* ---------------------------------------------------- */}
-        {/* SECCIÓN 3: RECOMENDACIONES                           */}
-        {/* ---------------------------------------------------- */}
         <Card className="flex flex-col">
            <div className="flex items-center gap-2 mb-6">
               <Zap className="text-amber-400 w-5 h-5 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/>
@@ -348,10 +343,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* ---------------------------------------------------- */}
-        {/* TARJETA 1: ESTRATEGIA AVALANCHA                      */}
-        {/* ---------------------------------------------------- */}
         <Card className="flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-black tracking-wide text-white flex items-center gap-2">Estrategia Avalancha</h2>
@@ -393,19 +384,16 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </Card>
 
         <div className="flex flex-col gap-6">
-          {/* ---------------------------------------------------- */}
-          {/* TARJETA 2: EXTREMOS DEL AÑO                          */}
-          {/* ---------------------------------------------------- */}
           <Card className="flex flex-col justify-center gap-4">
-            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-2">Extremos del Año</h3>
+            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-2">Extremos de tu Historial</h3>
             
             <div className="bg-[#111222] shadow-neumorph-inset border border-transparent p-4 rounded-2xl flex items-center gap-5">
               <div className="w-12 h-12 bg-neoncyan/10 text-neoncyan flex items-center justify-center rounded-xl shrink-0 shadow-glow-cyan border border-neoncyan/30">
                 <TrendingUp size={24} />
               </div>
               <div>
-                <p className="text-[10px] text-neoncyan font-black tracking-widest uppercase mb-1 drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">Mejor Mes ({mejorMes?.label})</p>
-                <p className="text-2xl font-black text-white tabular-nums">{formatCOP(mejorMes?.neto)}</p>
+                <p className="text-[10px] text-neoncyan font-black tracking-widest uppercase mb-1 drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">Mejor Mes ({mejorMes?.label || 'N/A'})</p>
+                <p className="text-2xl font-black text-white tabular-nums">{formatCOP(mejorMes?.neto || 0)}</p>
               </div>
             </div>
 
@@ -414,17 +402,14 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
                 <TrendingDown size={24} />
               </div>
               <div>
-                <p className="text-[10px] text-neonmagenta font-black tracking-widest uppercase mb-1 drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]">Peor Mes ({peorMes?.label})</p>
-                <p className="text-2xl font-black text-white tabular-nums">{formatCOP(peorMes?.neto)}</p>
+                <p className="text-[10px] text-neonmagenta font-black tracking-widest uppercase mb-1 drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]">Peor Mes ({peorMes?.label || 'N/A'})</p>
+                <p className="text-2xl font-black text-white tabular-nums">{formatCOP(peorMes?.neto || 0)}</p>
               </div>
             </div>
           </Card>
 
-          {/* ---------------------------------------------------- */}
-          {/* TARJETA 3: TOP 5 FUGAS                               */}
-          {/* ---------------------------------------------------- */}
           <Card className="flex flex-col flex-1">
-            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Top 5 Fugas (12 meses)</h3>
+            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Top Fugas ({topCategoriasAnual.length > 0 ? topCategoriasAnual.length : 0})</h3>
             <div className="space-y-5 flex-1 flex flex-col justify-center">
               {topCategoriasAnual.map(([cat, amount], i) => {
                 const width = Math.max((amount / maxValCat) * 100, 5);
@@ -437,7 +422,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
                       </span>
                       <span className="font-black text-neonmagenta tabular-nums">{formatCOP(amount)}</span>
                     </div>
-                    {/* Barra Neumórfica Inset */}
                     <div className="w-full bg-[#111222] shadow-neumorph-inset rounded-full h-[10px] border border-transparent overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-neonmagenta to-[#ff5e99] rounded-full transition-all duration-1000 shadow-glow-magenta relative" style={{ width: `${width}%` }}>
                         <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white rounded-full opacity-60 mix-blend-screen"></div>
@@ -451,9 +435,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
           </Card>
         </div>
 
-        {/* ---------------------------------------------------- */}
-        {/* TARJETA 4: ESTRUCTURA DE GASTO CON DONA SVG          */}
-        {/* ---------------------------------------------------- */}
         <Card className="lg:col-span-2 flex flex-col justify-center">
           <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Estructura de Gasto Real</h3>
           
