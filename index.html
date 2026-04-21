@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0" />
   
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#141526">
+  <meta name="theme-color" content="#0b0c16">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135706.png">
@@ -26,22 +26,23 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Outfit', 'sans-serif'], // Fuerza la nueva fuente en toda la app
+            sans: ['Outfit', 'sans-serif'],
           },
           colors: {
-            appbg: '#141526',      /* Fondo principal azul oscuro profundo */
-            appcard: '#1c1e32',    /* Fondo de las tarjetas, levemente más claro */
+            appbg: '#0b0c16',      /* Fondo principal azul oscuro ultra profundo */
+            appcard: '#111222',    /* Fondo de las tarjetas, levemente más claro para contraste */
             neoncyan: '#00E5FF',   /* Acento principal: Cyan brillante */
             neonmagenta: '#FF007A',/* Acento secundario: Magenta/Rosa brillante */
           },
           boxShadow: {
             /* Sombra hacia afuera para dar relieve (Neumorfismo) */
-            'neumorph': '8px 8px 16px #0b0c16, -8px -8px 16px #1d1e36',
+            'neumorph': '8px 8px 16px #05060b, -8px -8px 16px #111221',
             /* Sombra hacia adentro para inputs hundidos */
-            'neumorph-inset': 'inset 4px 4px 8px #0b0c16, inset -4px -4px 8px #1d1e36',
+            'neumorph-inset': 'inset 4px 4px 8px #05060b, inset -4px -4px 8px #111221',
             /* Brillos de luz neón */
             'glow-cyan': '0 0 15px rgba(0, 229, 255, 0.4)',
             'glow-magenta': '0 0 15px rgba(255, 0, 122, 0.4)',
+            'glow-amber': '0 0 15px rgba(251, 191, 36, 0.4)',
           }
         }
       }
@@ -58,12 +59,12 @@
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
 </head>
-<body class="bg-appbg text-slate-200 font-sans antialiased selection:bg-neoncyan selection:text-appbg">
+<body class="bg-appbg text-slate-200 font-sans antialiased selection:bg-neoncyan selection:text-appbg" style="background-color: #0b0c16;">
   
   <div id="root">
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:'Outfit', sans-serif;">
-      <div style="width:40px;height:40px;border:4px solid #1c1e32;border-top:4px solid #00E5FF;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px;box-shadow: 0 0 15px rgba(0,229,255,0.4);"></div>
-      <p style="color:#00E5FF;font-size:16px;font-weight:600;letter-spacing:1px;">Iniciando FinanzasFamilia...</p>
+      <div style="width:40px;height:40px;border:4px solid #111222;border-top:4px solid #00E5FF;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px;box-shadow: 0 0 15px rgba(0,229,255,0.4);"></div>
+      <p style="color:#00E5FF;font-size:16px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Iniciando Sistema...</p>
       <style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
     </div>
   </div>
