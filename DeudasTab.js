@@ -149,155 +149,253 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
     e.target.value = '';
   };
 
+  // Estilos UI Base para Neumorfismo Oscuro
+  const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta focus:shadow-glow-magenta transition-all duration-300 placeholder:text-slate-600";
+  const labelBaseClass = "text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block";
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      
       <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><ShieldAlert className="text-rose-500 w-6 h-6 md:w-8 md:h-8"/> Tarjetas y Créditos</h1>
-          <p className="text-sm md:text-base text-slate-400 mt-1">Estrategia Avalancha y detalle de tus deudas y préstamos.</p>
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neonmagenta to-rose-600 flex items-center justify-center shadow-glow-magenta">
+               <ShieldAlert className="text-[#0b0c16] w-5 h-5"/>
+            </div>
+            Tarjetas y Créditos
+          </h1>
+          <p className="text-sm md:text-base text-[#8A92A6] mt-2 font-medium tracking-wide">
+            Estrategia Avalancha y detalle de tus deudas y préstamos.
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => {setShowNewCard(!showNewCard); setShowNewLoan(false);}} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-            <Plus size={16}/> {showNewCard ? 'Ocultar' : 'Tarjeta'}
+        
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => {setShowNewCard(!showNewCard); setShowNewLoan(false);}} className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95">
+            <Plus size={16} strokeWidth="3"/> {showNewCard ? 'Ocultar' : 'Tarjeta'}
           </button>
-          <button onClick={() => {setShowNewLoan(!showNewLoan); setShowNewCard(false);}} className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-            <Plus size={16}/> {showNewLoan ? 'Ocultar' : 'Préstamo'}
+          <button onClick={() => {setShowNewLoan(!showNewLoan); setShowNewCard(false);}} className="bg-neonmagenta hover:bg-[#ff1a8c] text-[#0b0c16] px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-glow-magenta active:scale-95">
+            <Plus size={16} strokeWidth="3"/> {showNewLoan ? 'Ocultar' : 'Préstamo'}
           </button>
+          
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-          <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Upload size={14}/> Importar</button>
-          <button onClick={handleExport} className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-rose-500/30"><Download size={14}/> Exportar</button>
+          <button onClick={() => fileInputRef.current.click()} className="bg-[#111222] hover:bg-[#1c1e32] text-rose-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-rose-500/30 shadow-neumorph hover:shadow-glow-magenta">
+            <Upload size={14}/> Importar
+          </button>
+          <button onClick={handleExport} className="bg-[#111222] hover:bg-[#1c1e32] text-rose-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-rose-500/30 shadow-neumorph hover:shadow-glow-magenta">
+            <Download size={14}/> Exportar
+          </button>
         </div>
       </header>
 
+      {/* FORMULARIO NUEVA TARJETA DE CRÉDITO */}
       {showNewCard && (
-        <div className="bg-slate-950 border border-indigo-500/50 p-4 rounded-xl mb-4 animate-in slide-in-from-top-2">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-bold text-indigo-400">Nueva Tarjeta de Crédito</h3>
-            <button onClick={() => setShowNewCard(false)} className="text-xs text-slate-400 hover:text-slate-200">Cerrar</button>
+        <Card className="!border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] mb-4 animate-in slide-in-from-top-4">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+               <CreditCard size={16}/> Nueva Tarjeta de Crédito
+            </h3>
+            <button onClick={() => setShowNewCard(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg">
+              Cerrar
+            </button>
           </div>
-          <form onSubmit={handleAddCard} className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
-            <Input label="Nombre de Tarjeta" value={newCardData.name} onChange={e=>setNewCardData({...newCardData, name: e.target.value})} className="col-span-2" />
-            <Input type="number" label="Cupo Total ($)" value={newCardData.limit} onChange={e=>setNewCardData({...newCardData, limit: e.target.value})} className="col-span-1" />
-            <Input type="number" label="Deuda Actual ($)" value={newCardData.initialDebt} onChange={e=>setNewCardData({...newCardData, initialDebt: e.target.value})} className="col-span-1" />
-            <Input type="number" label="Tasa E.A. (%)" value={newCardData.tasaEA} onChange={e=>setNewCardData({...newCardData, tasaEA: e.target.value})} step="0.01" className="col-span-1" />
-            <Input type="number" label="Cuota Mín. Estimada" value={newCardData.cuotaMinima} onChange={e=>setNewCardData({...newCardData, cuotaMinima: e.target.value})} className="col-span-1" />
-            <div className="col-span-2 md:col-span-6 mt-1 flex justify-end">
-              <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded transition-colors">Crear Tarjeta</button>
+          
+          <form onSubmit={handleAddCard} className="grid grid-cols-2 md:grid-cols-6 gap-5 items-end">
+            <div className="col-span-2">
+              <label className={labelBaseClass}>Nombre de Tarjeta</label>
+              <input type="text" required value={newCardData.name} onChange={e=>setNewCardData({...newCardData, name: e.target.value})} className={inputBaseClass} placeholder="Ej. Visa Bancolombia" />
+            </div>
+            <div className="col-span-1 relative">
+              <label className={labelBaseClass}>Cupo Total ($)</label>
+              <input type="number" value={newCardData.limit} onChange={e=>setNewCardData({...newCardData, limit: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="0" />
+              <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+            </div>
+            <div className="col-span-1 relative">
+              <label className={labelBaseClass}>Deuda Actual ($)</label>
+              <input type="number" value={newCardData.initialDebt} onChange={e=>setNewCardData({...newCardData, initialDebt: e.target.value})} className={`${inputBaseClass} pl-8 text-rose-400 font-bold`} placeholder="0" />
+              <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+            </div>
+            <div className="col-span-1 relative">
+              <label className={labelBaseClass}>Tasa E.A. (%)</label>
+              <input type="number" value={newCardData.tasaEA} onChange={e=>setNewCardData({...newCardData, tasaEA: e.target.value})} step="0.01" className={`${inputBaseClass} pr-8 font-bold text-amber-400`} placeholder="0.0" />
+              <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
+            </div>
+            <div className="col-span-1 relative">
+              <label className={labelBaseClass}>Cuota Mín. Estimada</label>
+              <input type="number" value={newCardData.cuotaMinima} onChange={e=>setNewCardData({...newCardData, cuotaMinima: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="0" />
+              <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+            </div>
+            
+            <div className="col-span-2 md:col-span-6 mt-2 flex justify-end">
+              <button type="submit" className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-widest px-8 py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95">
+                CREAR TARJETA
+              </button>
             </div>
           </form>
-        </div>
+        </Card>
       )}
 
+      {/* FORMULARIO NUEVO PRÉSTAMO */}
       {showNewLoan && (
-        <div className="bg-slate-950 border border-rose-500/50 p-4 md:p-6 rounded-xl mb-4 animate-in slide-in-from-top-2">
-          <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-            <h3 className="text-base font-bold text-rose-400">Nuevo Préstamo / Crédito</h3>
-            <button onClick={() => setShowNewLoan(false)} className="text-xs text-slate-400 hover:text-slate-200">Cerrar</button>
+        <Card className="!border-neonmagenta/30 shadow-[0_0_20px_rgba(255,0,122,0.2)] mb-4 animate-in slide-in-from-top-4">
+          <div className="flex justify-between items-center mb-6 border-b border-white/[0.05] pb-4">
+            <h3 className="text-sm font-black text-neonmagenta uppercase tracking-widest flex items-center gap-2">
+               <Landmark size={16}/> Nuevo Préstamo / Crédito
+            </h3>
+            <button onClick={() => setShowNewLoan(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg">
+              Cerrar
+            </button>
           </div>
-          <form onSubmit={handleAddLoan} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-            <Input label="Banco / Entidad (Nombre)" value={newLoanData.name} onChange={e=>setNewLoanData({...newLoanData, name: e.target.value})} className="sm:col-span-2" />
-            <Input type="number" label="Monto Inicial Prestado ($)" value={newLoanData.montoPrestado} onChange={e=>setNewLoanData({...newLoanData, montoPrestado: e.target.value})} className="sm:col-span-1" />
-            <Input type="number" label="Deuda Restante Actual ($)" value={newLoanData.initialDebt} onChange={e=>setNewLoanData({...newLoanData, initialDebt: e.target.value})} className="sm:col-span-1" />
+          
+          <form onSubmit={handleAddLoan} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 items-end">
+            <div className="sm:col-span-2">
+              <label className={labelBaseClass}>Banco / Entidad (Nombre)</label>
+              <input type="text" required value={newLoanData.name} onChange={e=>setNewLoanData({...newLoanData, name: e.target.value})} className={inputBaseClass} placeholder="Ej. Crédito Vehículo BBVA" />
+            </div>
             
-            <Input type="number" label="Total Pagado Previo ($)" placeholder="Dinero abonado antes de usar la app" value={newLoanData.totalPagadoPrevio} onChange={e=>setNewLoanData({...newLoanData, totalPagadoPrevio: e.target.value})} className="sm:col-span-1" />
-            <Input type="number" label="Valor Cuota Fija ($)" value={newLoanData.cuotaMinima} onChange={e=>setNewLoanData({...newLoanData, cuotaMinima: e.target.value})} className="sm:col-span-1" />
-            <div className="sm:col-span-2 flex gap-4 bg-slate-900/50 p-2 rounded-lg border border-slate-800">
-               <Input type="number" label="Cuotas Pagadas" value={newLoanData.cuotasPagadas} onChange={e=>setNewLoanData({...newLoanData, cuotasPagadas: e.target.value})} className="w-full" />
-               <Input type="number" label="Cuotas Totales" value={newLoanData.cuotasTotales} onChange={e=>setNewLoanData({...newLoanData, cuotasTotales: e.target.value})} className="w-full" />
+            <div className="sm:col-span-1 relative">
+              <label className={labelBaseClass}>Monto Inicial Prestado</label>
+              <input type="number" value={newLoanData.montoPrestado} onChange={e=>setNewLoanData({...newLoanData, montoPrestado: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="0" />
+              <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+            </div>
+            
+            <div className="sm:col-span-1 relative">
+              <label className={labelBaseClass}>Deuda Restante Actual</label>
+              <input type="number" required value={newLoanData.initialDebt} onChange={e=>setNewLoanData({...newLoanData, initialDebt: e.target.value})} className={`${inputBaseClass} pl-8 font-black text-rose-400`} placeholder="0" />
+              <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+            </div>
+            
+            <div className="sm:col-span-1 relative">
+              <label className={labelBaseClass}>Total Pagado Previo</label>
+              <input type="number" value={newLoanData.totalPagadoPrevio} onChange={e=>setNewLoanData({...newLoanData, totalPagadoPrevio: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="Abonado antes de usar la app" />
+              <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+            </div>
+            
+            <div className="sm:col-span-1 relative">
+              <label className={labelBaseClass}>Valor Cuota Fija Mensual</label>
+              <input type="number" required value={newLoanData.cuotaMinima} onChange={e=>setNewLoanData({...newLoanData, cuotaMinima: e.target.value})} className={`${inputBaseClass} pl-8 font-bold text-white`} placeholder="0" />
+              <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+            </div>
+            
+            <div className="sm:col-span-2 flex gap-4 bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
+               <div className="w-full">
+                  <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1 block">Cuotas Pagadas</label>
+                  <input type="number" value={newLoanData.cuotasPagadas} onChange={e=>setNewLoanData({...newLoanData, cuotasPagadas: e.target.value})} className="w-full bg-transparent text-white font-bold text-sm outline-none px-2 py-1 placeholder:text-slate-700" placeholder="Ej. 12" />
+               </div>
+               <div className="w-px bg-white/10 h-10 self-center"></div>
+               <div className="w-full">
+                  <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1 block">Cuotas Totales</label>
+                  <input type="number" value={newLoanData.cuotasTotales} onChange={e=>setNewLoanData({...newLoanData, cuotasTotales: e.target.value})} className="w-full bg-transparent text-white font-bold text-sm outline-none px-2 py-1 placeholder:text-slate-700" placeholder="Ej. 60" />
+               </div>
             </div>
 
-            <div className="sm:col-span-4 bg-indigo-950/20 p-4 rounded-lg border border-indigo-500/30 flex flex-col md:flex-row gap-4 items-center">
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-indigo-300 w-full md:w-auto">
-                <input type="checkbox" checked={newLoanData.hasIBR} onChange={(e) => setNewLoanData({...newLoanData, hasIBR: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
+            <div className="sm:col-span-4 bg-appcard border border-white/[0.05] p-5 rounded-2xl flex flex-col md:flex-row gap-6 items-center shadow-neumorph">
+              <label className="flex items-center gap-3 cursor-pointer text-xs font-black uppercase tracking-widest text-indigo-400 w-full md:w-auto">
+                <input type="checkbox" checked={newLoanData.hasIBR} onChange={(e) => setNewLoanData({...newLoanData, hasIBR: e.target.checked})} className="form-checkbox w-5 h-5 text-indigo-500 rounded bg-[#111222] border-transparent shadow-neumorph-inset focus:ring-0 focus:ring-offset-0" />
                 ¿Tiene Tasa Variable (IBR)?
               </label>
+              
               {newLoanData.hasIBR ? (
-                <div className="flex w-full gap-3">
-                  <Input type="number" step="0.01" label="IBR Actual (%)" value={newLoanData.ibrValue} onChange={e=>setNewLoanData({...newLoanData, ibrValue: e.target.value})} className="flex-1" />
-                  <Input type="number" step="0.01" label="Puntos Adicionales" value={newLoanData.ibrPuntos} onChange={e=>setNewLoanData({...newLoanData, ibrPuntos: e.target.value})} className="flex-1" />
+                <div className="flex w-full gap-4">
+                  <div className="flex-1 relative">
+                    <label className={labelBaseClass}>IBR Actual (%)</label>
+                    <input type="number" step="0.01" value={newLoanData.ibrValue} onChange={e=>setNewLoanData({...newLoanData, ibrValue: e.target.value})} className={`${inputBaseClass} pr-8 font-bold text-amber-400`} placeholder="0.0" />
+                    <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
+                  </div>
+                  <div className="flex-1">
+                    <label className={labelBaseClass}>Puntos Adicionales</label>
+                    <input type="number" step="0.01" value={newLoanData.ibrPuntos} onChange={e=>setNewLoanData({...newLoanData, ibrPuntos: e.target.value})} className={inputBaseClass} placeholder="+ Pts" />
+                  </div>
                 </div>
               ) : (
-                <Input type="number" step="0.01" label="Tasa de Interés (E.A. %)" value={newLoanData.tasaEA} onChange={e=>setNewLoanData({...newLoanData, tasaEA: e.target.value})} className="w-full md:w-1/3" />
+                <div className="w-full md:w-1/3 relative">
+                  <label className={labelBaseClass}>Tasa Interés (E.A. %)</label>
+                  <input type="number" step="0.01" value={newLoanData.tasaEA} onChange={e=>setNewLoanData({...newLoanData, tasaEA: e.target.value})} className={`${inputBaseClass} pr-8 font-bold text-amber-400`} placeholder="0.0" />
+                  <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
+                </div>
               )}
             </div>
 
-            <div className="sm:col-span-4 mt-2 flex justify-end">
-              <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-8 py-3 rounded-lg transition-colors w-full md:w-auto">Crear Préstamo</button>
+            <div className="sm:col-span-4 mt-4 flex justify-end pt-4 border-t border-white/[0.05]">
+              <button type="submit" className="w-full md:w-auto bg-neonmagenta hover:bg-[#ff1a8c] text-[#0b0c16] font-black uppercase tracking-widest px-10 py-4 rounded-xl transition-all shadow-glow-magenta active:scale-95">
+                CREAR PRÉSTAMO
+              </button>
             </div>
           </form>
-        </div>
+        </Card>
       )}
 
-      <Card className="border-t-4 border-t-indigo-500">
-        <h2 className="text-lg font-bold text-white mb-4">Tarjetas de Crédito Registradas</h2>
-        <div className="overflow-x-auto">
+      {/* TABLA TARJETAS DE CRÉDITO */}
+      <Card className="!border-transparent flex flex-col">
+        <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+          <CreditCard size={18} className="text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]"/> 
+          Tarjetas de Crédito
+        </h2>
+        
+        <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent">
           <table className="w-full text-sm text-left min-w-[700px]">
-            <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50">
+            <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
               <tr>
-                <th className="px-3 py-3 rounded-tl-lg">Tarjeta</th>
-                <th className="px-3 py-3 text-right">Cupo Total</th>
-                <th className="px-3 py-3 text-right">Cupo Disp.</th>
-                <th className="px-3 py-3 text-right">Deuda Base Actual</th>
-                <th className="px-3 py-3 text-center">Tasa M.V.</th>
-                <th className="px-3 py-3 text-center">Tasa E.A.</th>
-                <th className="px-3 py-3 text-center rounded-tr-lg">Acciones</th>
+                <th className="px-5 py-4">Tarjeta</th>
+                <th className="px-5 py-4 text-right">Cupo Total</th>
+                <th className="px-5 py-4 text-right">Cupo Disp.</th>
+                <th className="px-5 py-4 text-right">Deuda Base Actual</th>
+                <th className="px-5 py-4 text-center">Tasa M.V.</th>
+                <th className="px-5 py-4 text-center">Tasa E.A.</th>
+                <th className="px-5 py-4 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-white/[0.02]">
               {todasLasTC.map(d => {
                 const isEditing = editId === d.id;
                 const tasaMV = getTasaMensual(d.tasaEA) * 100;
                 
                 if (isEditing) {
                    return (
-                     <tr key={d.id} className="bg-indigo-950/40">
-                       <td className="px-2 py-2"><input type="text" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="w-full bg-slate-900 border border-indigo-500 rounded px-2 py-1 text-xs text-white outline-none" placeholder="Nombre" /></td>
-                       <td className="px-2 py-2"><input type="number" value={editData.limit} onChange={e=>setEditData({...editData, limit: e.target.value})} className="w-full bg-slate-900 border border-indigo-500 rounded px-2 py-1 text-xs text-white outline-none text-right" placeholder="Cupo" /></td>
+                     <tr key={d.id} className="bg-indigo-950/20">
+                       <td className="px-2 py-2"><input type="text" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none shadow-neumorph-inset focus:border-indigo-500" placeholder="Nombre" /></td>
+                       <td className="px-2 py-2"><input type="number" value={editData.limit} onChange={e=>setEditData({...editData, limit: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none text-right shadow-neumorph-inset" placeholder="Cupo" /></td>
                        <td className="px-2 py-2 text-right text-slate-500">-</td>
-                       <td className="px-2 py-2"><input type="number" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="w-full bg-slate-900 border border-rose-500 rounded px-2 py-1 text-xs text-white outline-none text-right" placeholder="Deuda" title="Ajusta la deuda base" /></td>
+                       <td className="px-2 py-2"><input type="number" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="w-full bg-[#111222] border border-rose-500/50 rounded-lg px-3 py-2 text-xs text-rose-400 font-bold outline-none text-right shadow-neumorph-inset" placeholder="Deuda" title="Ajusta la deuda base" /></td>
                        <td className="px-2 py-2 text-center text-slate-500">-</td>
                        <td className="px-2 py-2">
-                         <div className="flex gap-1 items-center">
-                            <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-16 bg-slate-900 border border-indigo-500 rounded px-2 py-1 text-xs text-white outline-none text-center" title="Tasa E.A." />
-                            <input type="number" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} className="hidden" />
+                         <div className="flex justify-center">
+                            <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-20 bg-[#111222] border border-amber-500/50 rounded-lg px-3 py-2 text-xs text-amber-400 font-bold outline-none text-center shadow-neumorph-inset" title="Tasa E.A." />
                          </div>
                        </td>
-                       <td className="px-2 py-2 text-center flex justify-center gap-1">
-                         <button onClick={saveInlineEdit} className="text-emerald-400 p-1.5 bg-slate-900 rounded border border-slate-700 hover:border-emerald-500/50" title="Guardar Cambios"><Check size={14}/></button>
-                         <button onClick={() => setEditId(null)} className="text-rose-400 p-1.5 bg-slate-900 rounded border border-slate-700 hover:border-rose-500/50" title="Cancelar"><Minus size={14}/></button>
+                       <td className="px-2 py-2 text-center flex justify-center gap-2">
+                         <button onClick={saveInlineEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-glow-cyan" title="Guardar Cambios"><Check size={14} strokeWidth="3"/></button>
+                         <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14} strokeWidth="3"/></button>
                        </td>
                      </tr>
                    )
                 }
 
                 return (
-                  <tr key={d.id} className="hover:bg-slate-800/20 transition-colors">
-                    <td className="px-3 py-3 font-medium text-slate-200">{d.name}</td>
-                    <td className="px-3 py-3 text-right text-slate-300">{formatCOP(d.limit)}</td>
-                    <td className="px-3 py-3 text-right font-bold text-emerald-400">{formatCOP(Math.max(0, d.limit - d.currentDebt))}</td>
-                    <td className="px-3 py-3 text-right font-bold text-rose-400">{formatCOP(d.currentDebt)}</td>
-                    <td className="px-3 py-3 text-center text-amber-400">{tasaMV.toFixed(2)}%</td>
-                    <td className="px-3 py-3 text-center text-slate-300">{d.tasaEA}%</td>
-                    <td className="px-3 py-3 text-center flex justify-center gap-2">
-                      <button onClick={() => startEdit(d)} className="text-slate-400 hover:text-indigo-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-indigo-500/50 transition-colors"><Edit3 size={14}/></button>
-                      <button onClick={() => {removeCuenta(d.id); showToast("Tarjeta eliminada");}} className="text-slate-400 hover:text-rose-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-rose-500/50 transition-colors"><Trash2 size={14}/></button>
+                  <tr key={d.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-4 font-bold text-white tracking-wide">{d.name}</td>
+                    <td className="px-5 py-4 text-right text-[#8A92A6] tabular-nums">{formatCOP(d.limit)}</td>
+                    <td className="px-5 py-4 text-right font-black text-emerald-400 tabular-nums drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">{formatCOP(Math.max(0, d.limit - d.currentDebt))}</td>
+                    <td className="px-5 py-4 text-right font-black text-neonmagenta tabular-nums drop-shadow-[0_0_5px_rgba(255,0,122,0.3)]">{formatCOP(d.currentDebt)}</td>
+                    <td className="px-5 py-4 text-center text-amber-400 font-bold tabular-nums">{tasaMV.toFixed(2)}%</td>
+                    <td className="px-5 py-4 text-center text-white font-bold tabular-nums">{d.tasaEA}%</td>
+                    <td className="px-5 py-4 text-center flex justify-center gap-3">
+                      <button onClick={() => startEdit(d)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
+                      <button onClick={() => {removeCuenta(d.id); showToast("Tarjeta eliminada");}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
                     </td>
                   </tr>
                 )
               })}
               {todasLasTC.length === 0 && (
-                <tr><td colSpan="7" className="px-3 py-6 text-center text-slate-500">No hay tarjetas de crédito registradas.</td></tr>
+                <tr><td colSpan="7" className="px-5 py-10 text-center text-[#8A92A6] font-bold italic">No hay tarjetas de crédito registradas.</td></tr>
               )}
               {/* ✨ NUEVO: FILA DE TOTALES PARA TARJETAS DE CRÉDITO */}
               {todasLasTC.length > 0 && (
-                <tr className="bg-slate-950 font-bold text-white border-t-2 border-slate-800">
-                  <td className="px-3 py-4">TOTAL</td>
-                  <td className="px-3 py-4 text-right">{formatCOP(totalCupoTC)}</td>
-                  <td className="px-3 py-4 text-right text-emerald-400">{formatCOP(totalDispTC)}</td>
-                  <td className="px-3 py-4 text-right text-rose-400">{formatCOP(totalDeudaTC)}</td>
-                  <td className="px-3 py-4 text-center">-</td>
-                  <td className="px-3 py-4 text-center">-</td>
-                  <td className="px-3 py-4 text-center"></td>
+                <tr className="bg-[#0b0c16]/50 font-black text-white border-t border-white/[0.05]">
+                  <td className="px-5 py-5 uppercase tracking-widest text-[11px] text-[#8A92A6]">TOTAL TC</td>
+                  <td className="px-5 py-5 text-right tabular-nums">{formatCOP(totalCupoTC)}</td>
+                  <td className="px-5 py-5 text-right text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)] tabular-nums">{formatCOP(totalDispTC)}</td>
+                  <td className="px-5 py-5 text-right text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)] tabular-nums">{formatCOP(totalDeudaTC)}</td>
+                  <td colSpan="3" className="px-5 py-5 text-center"></td>
                 </tr>
               )}
             </tbody>
@@ -305,47 +403,80 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
         </div>
       </Card>
 
-      <Card className="border-t-4 border-t-rose-500">
-        <h2 className="text-lg font-bold text-white mb-6">Créditos y Préstamos Detallados</h2>
+      {/* LISTA DE PRÉSTAMOS DETALLADOS */}
+      <Card className="!border-transparent flex flex-col">
+        <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+          <Landmark size={18} className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]"/> 
+          Créditos y Préstamos Detallados
+        </h2>
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {deudasAnalizadas.filter(d=>d.type==='loan').map(d => {
             const isEditing = editId === d.id;
 
             if (isEditing) {
                return (
-                  <div key={d.id} className="bg-slate-950 p-5 rounded-xl border border-indigo-500 shadow-xl flex flex-col gap-4">
-                     <div className="flex justify-between items-center mb-2 border-b border-indigo-500/30 pb-3">
-                       <h3 className="font-bold text-indigo-400 flex items-center gap-2"><Edit3 size={16}/> Editando Préstamo</h3>
+                  <div key={d.id} className="bg-[#111222] shadow-neumorph-inset p-5 rounded-2xl border border-rose-500/50 flex flex-col gap-4 animate-in zoom-in-95">
+                     <div className="flex justify-between items-center mb-2 border-b border-rose-500/30 pb-4">
+                       <h3 className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                         <Edit3 size={16}/> Editando Préstamo
+                       </h3>
                        <div className="flex gap-2">
-                         <button onClick={saveInlineEdit} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Guardar</button>
-                         <button onClick={() => setEditId(null)} className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 px-3 py-1.5 rounded text-xs font-bold transition-colors">Cancelar</button>
+                         <button onClick={saveInlineEdit} className="bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-glow-cyan">Guardar</button>
+                         <button onClick={() => setEditId(null)} className="bg-appcard hover:bg-white/[0.05] text-[#8A92A6] border border-white/[0.02] shadow-neumorph px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all">Cancelar</button>
                        </div>
                      </div>
+                     
                      <Input label="Banco / Entidad (Nombre)" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} />
+                     
                      <div className="grid grid-cols-2 gap-4">
-                       <Input type="number" label="Préstamo Inicial ($)" value={editData.montoPrestado} onChange={e=>setEditData({...editData, montoPrestado: e.target.value})} />
-                       <Input type="number" label="Deuda Restante Base ($)" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} />
+                       <div className="relative">
+                         <Input type="number" label="Préstamo Inicial" value={editData.montoPrestado} onChange={e=>setEditData({...editData, montoPrestado: e.target.value})} className="pl-8" />
+                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                       </div>
+                       <div className="relative">
+                         <Input type="number" label="Deuda Restante Base" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="pl-8 font-black text-rose-400" />
+                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                       </div>
                      </div>
+                     
                      <div className="grid grid-cols-2 gap-4">
-                       <Input type="number" label="Total Pagado Previo ($)" value={editData.totalPagadoPrevio} onChange={e=>setEditData({...editData, totalPagadoPrevio: e.target.value})} />
-                       <Input type="number" label="Valor Cuota Fija ($)" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} />
+                       <div className="relative">
+                         <Input type="number" label="Total Pagado Previo" value={editData.totalPagadoPrevio} onChange={e=>setEditData({...editData, totalPagadoPrevio: e.target.value})} className="pl-8" />
+                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                       </div>
+                       <div className="relative">
+                         <Input type="number" label="Valor Cuota Fija" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} className="pl-8 font-bold" />
+                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                       </div>
                      </div>
-                     <div className="grid grid-cols-2 gap-4">
+                     
+                     <div className="grid grid-cols-2 gap-4 bg-appcard p-3 rounded-xl shadow-neumorph border border-white/[0.02]">
                         <Input type="number" label="Cuotas Pagadas" value={editData.cuotasPagadas} onChange={e=>setEditData({...editData, cuotasPagadas: e.target.value})} />
                         <Input type="number" label="Cuotas Totales" value={editData.cuotasTotales} onChange={e=>setEditData({...editData, cuotasTotales: e.target.value})} />
                      </div>
-                     <div className="bg-indigo-950/30 p-3 rounded-lg border border-indigo-500/30 mt-2">
-                       <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-indigo-300 mb-3">
-                         <input type="checkbox" checked={editData.hasIBR} onChange={(e) => setEditData({...editData, hasIBR: e.target.checked})} className="form-checkbox text-indigo-500 rounded border-slate-700 bg-slate-900" />
+                     
+                     <div className="bg-appcard p-4 rounded-xl shadow-neumorph border border-white/[0.02] mt-2">
+                       <label className="flex items-center gap-3 cursor-pointer text-xs font-black uppercase tracking-widest text-indigo-400 mb-4">
+                         <input type="checkbox" checked={editData.hasIBR} onChange={(e) => setEditData({...editData, hasIBR: e.target.checked})} className="form-checkbox w-5 h-5 text-indigo-500 rounded bg-[#111222] border-transparent shadow-neumorph-inset focus:ring-0 focus:ring-offset-0" />
                          ¿Tiene Tasa Variable (IBR)?
                        </label>
+                       
                        {editData.hasIBR ? (
-                         <div className="flex w-full gap-3">
-                           <Input type="number" step="0.01" label="IBR Actual (%)" value={editData.ibrValue} onChange={e=>setEditData({...editData, ibrValue: e.target.value})} className="flex-1" />
-                           <Input type="number" step="0.01" label="Puntos Adicionales" value={editData.ibrPuntos} onChange={e=>setEditData({...editData, ibrPuntos: e.target.value})} className="flex-1" />
+                         <div className="flex w-full gap-4">
+                           <div className="flex-1 relative">
+                             <Input type="number" step="0.01" label="IBR Actual (%)" value={editData.ibrValue} onChange={e=>setEditData({...editData, ibrValue: e.target.value})} className="pr-8 font-bold text-amber-400" />
+                             <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
+                           </div>
+                           <div className="flex-1">
+                             <Input type="number" step="0.01" label="Puntos Adicionales" value={editData.ibrPuntos} onChange={e=>setEditData({...editData, ibrPuntos: e.target.value})} placeholder="+ Pts" />
+                           </div>
                          </div>
                        ) : (
-                         <Input type="number" step="0.01" label="Tasa de Interés (E.A. %)" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} className="w-1/2" />
+                         <div className="w-1/2 relative">
+                           <Input type="number" step="0.01" label="Tasa Interés (E.A. %)" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} className="pr-8 font-bold text-amber-400" />
+                           <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
+                         </div>
                        )}
                      </div>
                   </div>
@@ -356,95 +487,102 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
             const totalIntereses = (d.totalPagado || 0) - capitalPagado;
 
             return (
-              <div key={d.id} className="bg-slate-950 p-5 rounded-xl border border-slate-800 shadow-md flex flex-col gap-4">
-                <div className="flex justify-between items-start border-b border-slate-800 pb-3">
+              <div key={d.id} className="bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent flex flex-col gap-5 p-5 md:p-6 hover:border-rose-500/20 transition-all">
+                <div className="flex justify-between items-start border-b border-white/[0.05] pb-4">
                   <div>
-                    <p className="font-bold text-slate-200 text-lg md:text-xl">{d.name}</p>
-                    <p className="text-xs text-slate-500 uppercase font-medium">Banco / Entidad</p>
-                    {d.hasIBR && <span className="mt-2 inline-block text-[9px] text-indigo-400 font-bold uppercase tracking-wider bg-indigo-400/10 px-2 py-1 rounded border border-indigo-500/20">Tasa Variable (IBR)</span>}
+                    <p className="font-black text-white text-lg tracking-wide">{d.name}</p>
+                    <p className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest mt-1">Banco / Entidad</p>
+                    {d.hasIBR && <span className="mt-3 inline-block text-[9px] text-[#0b0c16] bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.6)] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg">Tasa Variable (IBR)</span>}
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => startEdit(d)} className="text-slate-400 hover:text-indigo-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-indigo-500/50 transition-colors" title="Editar préstamo"><Edit3 size={16}/></button>
-                    <button onClick={() => {removeCuenta(d.id); showToast("Préstamo eliminado");}} className="text-slate-400 hover:text-rose-400 p-1.5 bg-slate-900 rounded border border-slate-800 hover:border-rose-500/50 transition-colors"><Trash2 size={16}/></button>
+                  <div className="flex gap-3">
+                    <button onClick={() => startEdit(d)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar préstamo"><Edit3 size={18}/></button>
+                    <button onClick={() => {removeCuenta(d.id); showToast("Préstamo eliminado");}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={18}/></button>
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4 pt-1">
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Préstamo Inicial</p>
-                    <p className="text-base md:text-lg font-bold text-slate-300">{formatCOP(d.montoPrestado)}</p>
+                    <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Préstamo</p>
+                    <p className="text-sm md:text-base font-bold text-white tabular-nums">{formatCOP(d.montoPrestado)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Deuda Restante</p>
-                    <p className="text-lg md:text-xl font-black text-rose-400">{formatCOP(d.currentDebt)}</p>
+                    <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Deuda Restante</p>
+                    <p className="text-base md:text-xl font-black text-rose-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.4)] tabular-nums">{formatCOP(d.currentDebt)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Valor Cuota</p>
-                    <p className="text-base md:text-lg font-bold text-slate-200">{formatCOP(d.cuotaMinima)}</p>
+                    <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Cuota Mes</p>
+                    <p className="text-sm md:text-base font-bold text-white tabular-nums">{formatCOP(d.cuotaMinima)}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-2 bg-slate-900 p-4 rounded-lg border border-slate-800/50">
+                <div className="grid grid-cols-2 gap-5 mt-2 bg-appcard p-5 rounded-xl shadow-neumorph border border-white/[0.02]">
                   <div>
-                    <p className="text-[10px] text-emerald-500/80 uppercase font-bold mb-1" title="Monto Original - Deuda Restante">Total Pago a Capital</p>
-                    <p className="text-base font-bold text-emerald-400">{formatCOP(Math.max(0, capitalPagado))}</p>
+                    <p className="text-[10px] text-emerald-400 uppercase font-black tracking-widest mb-1.5" title="Monto Original - Deuda Restante">Pago a Capital</p>
+                    <p className="text-base font-black text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)] tabular-nums">{formatCOP(Math.max(0, capitalPagado))}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-amber-500/80 uppercase font-bold mb-1" title="Total Histórico Pagado - Capital Pago">Total Pago Intereses y Otros</p>
-                    <p className="text-base font-bold text-amber-400">{formatCOP(Math.max(0, totalIntereses))}</p>
+                  <div className="text-right border-l border-white/[0.05] pl-5">
+                    <p className="text-[10px] text-amber-400 uppercase font-black tracking-widest mb-1.5" title="Total Histórico Pagado - Capital Pago">Pago Intereses</p>
+                    <p className="text-base font-black text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.3)] tabular-nums">{formatCOP(Math.max(0, totalIntereses))}</p>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center mt-3 pt-4 border-t border-slate-800">
-                   <div className="flex flex-col gap-1 w-1/2">
-                     <span className="text-[10px] text-slate-500 uppercase font-bold">Progreso Cuotas</span>
-                     <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-2 rounded-lg border border-slate-700 w-max">
-                       <input type="number" value={d.cuotasPagadas || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasPagadas', e.target.value)} className="w-10 bg-transparent text-emerald-400 text-sm font-bold outline-none text-right" title="Edición rápida" />
-                       <span className="text-slate-500 text-[10px]">/</span>
-                       <input type="number" value={d.cuotasTotales || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasTotales', e.target.value)} className="w-10 bg-transparent text-slate-300 text-sm font-bold outline-none" title="Edición rápida" />
+                <div className="flex flex-col md:flex-row justify-between md:items-end gap-5 mt-3 pt-5 border-t border-white/[0.05]">
+                   
+                   {/* Progreso Cuotas */}
+                   <div className="flex flex-col gap-2 flex-1 w-full">
+                     <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest">Progreso Cuotas</span>
+                     
+                     <div className="flex items-center gap-2 bg-appcard px-3 py-2 rounded-xl shadow-neumorph border border-white/[0.02] w-max mb-1">
+                       <input type="number" value={d.cuotasPagadas || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasPagadas', e.target.value)} className="w-10 bg-transparent text-emerald-400 text-sm font-black outline-none text-right placeholder:text-slate-700" placeholder="0" title="Edición rápida" />
+                       <span className="text-[#8A92A6] text-[10px] font-black">/</span>
+                       <input type="number" value={d.cuotasTotales || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasTotales', e.target.value)} className="w-10 bg-transparent text-white text-sm font-black outline-none placeholder:text-slate-700" placeholder="0" title="Edición rápida" />
                      </div>
-                     {/* ✨ BARRA DE PROGRESO DE DEUDA */}
-                     {d.cuotasTotales > 0 && (
-                       <div className="mt-1.5 w-full max-w-[160px]">
-                         <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                           <div
-                             className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                             style={{ width: `${Math.min(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100, 100)}%` }}
-                           ></div>
+                     
+                     {/* ✨ BARRAS DE PROGRESO */}
+                     <div className="flex flex-col gap-3 mt-1 w-full pr-4">
+                       {d.cuotasTotales > 0 && (
+                         <div className="w-full">
+                           <div className="flex justify-between mb-1.5">
+                             <span className="text-[9px] text-[#8A92A6] uppercase font-bold tracking-wider">Tiempo</span>
+                             <span className="text-[9px] text-emerald-400 font-black">{Math.round(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100)}%</span>
+                           </div>
+                           <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 overflow-hidden">
+                             <div className="h-full rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${Math.min(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100, 100)}%` }}></div>
+                           </div>
                          </div>
-                         <p className="text-[9px] text-slate-500 mt-0.5">{Math.round(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100)}% pagado</p>
-                       </div>
-                     )}
-                     {/* ✨ BARRA DE PROGRESO POR CAPITAL cuando hay montoPrestado */}
-                     {d.montoPrestado > 0 && (
-                       <div className="mt-1.5 w-full max-w-[160px]">
-                         <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                           <div
-                             className="h-full rounded-full bg-indigo-500 transition-all duration-700"
-                             style={{ width: `${Math.min((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100, 100)}%` }}
-                           ></div>
+                       )}
+                       
+                       {d.montoPrestado > 0 && (
+                         <div className="w-full">
+                           <div className="flex justify-between mb-1.5">
+                             <span className="text-[9px] text-[#8A92A6] uppercase font-bold tracking-wider">Capital</span>
+                             <span className="text-[9px] text-indigo-400 font-black">{Math.round((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100)}%</span>
+                           </div>
+                           <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 overflow-hidden">
+                             <div className="h-full rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] transition-all duration-1000" style={{ width: `${Math.min((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100, 100)}%` }}></div>
+                           </div>
                          </div>
-                         <p className="text-[9px] text-slate-500 mt-0.5">{Math.round((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100)}% capital pagado</p>
-                       </div>
-                     )}
+                       )}
+                     </div>
                    </div>
                    
-                   <div className="text-right w-1/2">
+                   {/* Tasas (Edición en línea) */}
+                   <div className="flex-1 w-full flex justify-start md:justify-end">
                       {d.hasIBR ? (
-                         <div className="flex flex-col items-end">
-                           <span className="text-[10px] text-slate-500 uppercase font-bold">IBR Actual (%) + Puntos</span>
-                           <div className="flex items-center gap-1 mt-1">
-                             <input type="number" step="0.01" value={d.ibrValue} onChange={(e)=>actualizarIBR(d.id, e.target.value, d.ibrPuntos)} className="w-16 bg-slate-950 border border-slate-700 text-white text-sm font-bold px-2 py-1.5 rounded outline-none text-center focus:border-indigo-500" title="Edición rápida" />
-                             <span className="text-sm text-slate-400 font-bold">+{d.ibrPuntos}</span>
+                         <div className="flex flex-col md:items-end">
+                           <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-2">IBR Actual (%) + Puntos</span>
+                           <div className="flex items-center gap-2">
+                             <input type="number" step="0.01" value={d.ibrValue} onChange={(e)=>actualizarIBR(d.id, e.target.value, d.ibrPuntos)} className="w-20 bg-appcard shadow-neumorph border border-white/[0.02] text-amber-400 text-sm font-black px-3 py-2 rounded-xl outline-none text-center focus:border-amber-500/50 transition-colors" title="Editar IBR" />
+                             <span className="text-sm text-[#8A92A6] font-black uppercase tracking-wider">+{d.ibrPuntos}</span>
                            </div>
-                           <span className="text-[10px] text-indigo-400 mt-2 block font-medium">Tasa E.A: {d.tasaEA.toFixed(2)}%</span>
+                           <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-3 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">Tasa E.A: {d.tasaEA.toFixed(2)}%</span>
                          </div>
                       ) : (
-                         <div className="flex flex-col items-end">
-                           <span className="text-[10px] text-slate-500 uppercase font-bold">Tasa Interés (E.A.)</span>
-                           <div className="flex items-center gap-1 mt-1">
-                              <input type="number" step="0.1" value={d.tasaEA.toFixed(2)} onChange={(e)=>actualizarCampo(d.id, 'tasaEA', e.target.value)} className="w-20 bg-slate-950 border border-slate-700 text-white text-sm font-bold px-2 py-1.5 rounded outline-none text-center focus:border-indigo-500" title="Edición rápida" />
-                              <span className="text-slate-400 font-bold">%</span>
+                         <div className="flex flex-col md:items-end">
+                           <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-2">Tasa Interés (E.A.)</span>
+                           <div className="flex items-center gap-2">
+                              <input type="number" step="0.1" value={d.tasaEA.toFixed(2)} onChange={(e)=>actualizarCampo(d.id, 'tasaEA', e.target.value)} className="w-24 bg-appcard shadow-neumorph border border-white/[0.02] text-amber-400 text-sm font-black px-3 py-2 rounded-xl outline-none text-center focus:border-amber-500/50 transition-colors" title="Editar Tasa" />
+                              <span className="text-[#8A92A6] font-black">%</span>
                            </div>
                          </div>
                       )}
@@ -453,7 +591,11 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
               </div>
             )
           })}
-          {deudasAnalizadas.filter(d=>d.type==='loan').length === 0 && <p className="text-slate-500 text-sm col-span-1 lg:col-span-2 text-center py-6">No hay préstamos configurados.</p>}
+          {deudasAnalizadas.filter(d=>d.type==='loan').length === 0 && (
+            <div className="col-span-1 lg:col-span-2 text-center py-12 bg-[#111222] shadow-neumorph-inset rounded-3xl border border-transparent">
+              <p className="text-[#8A92A6] text-sm font-bold uppercase tracking-widest">No hay préstamos configurados.</p>
+            </div>
+          )}
         </div>
       </Card>
     </div>
