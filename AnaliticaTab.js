@@ -1,4 +1,4 @@
-const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, scoreHistory }) => {
+const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, scoreHistory, proyeccionLiquidez }) => {
   const { useMemo } = React;
 
   // --- ÍCONOS NATIVOS ---
@@ -72,11 +72,11 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     return (
       <div className="relative flex items-center justify-center">
         <svg viewBox="0 0 120 120" className="w-32 h-32 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#00E5FF" strokeWidth="12" />
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="#00E5FF" strokeWidth="12" /> {/* Cyan (Variables) */}
           <circle cx="60" cy="60" r={radius} fill="none" stroke="#fbbf24" strokeWidth="12" strokeLinecap="round"
             strokeDasharray={circum} strokeDashoffset={fijosOffset} transform="rotate(-90 60 60)"
             style={{ transition: 'stroke-dashoffset 1.5s ease-in-out' }}
-          />
+          /> {/* Amber (Fijos) */}
         </svg>
         <div className="absolute flex flex-col items-center justify-center text-center mt-1">
           <span className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">Fijos</span>
@@ -85,56 +85,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </div>
     );
   };
-
-  const AreaChart = ({ data }) => {
-    if (!data || data.length === 0) return null;
-    const maxVal = Math.max(...data.map(d => Math.max(d.ingresos, d.egresos)), 1);
-    const width = 1000;
-    const height = 240;
-
-    const getPath = (key) => {
-      // Fix division by 0 si solo hay un mes (data.length === 1)
-      if (data.length === 1) {
-         const y = height - ((data[0][key] / maxVal) * height);
-         return `M 0,${y} L ${width},${y}`;
-      }
-      return data.map((d, i) => {
-        const x = (i / (data.length - 1)) * width;
-        const y = height - ((d[key] / maxVal) * height);
-        return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
-      }).join(' ');
-    };
-
-    const ingPath = getPath('ingresos');
-    const egrPath = getPath('egresos');
-
-    const ingArea = `${ingPath} L ${width},${height} L 0,${height} Z`;
-    const egrArea = `${egrPath} L ${width},${height} L 0,${height} Z`;
-
-    return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="gradIng" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#00E5FF" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#00E5FF" stopOpacity="0.0" />
-          </linearGradient>
-          <linearGradient id="gradEgr" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#FF007A" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#FF007A" stopOpacity="0.0" />
-          </linearGradient>
-          <filter id="glowIng"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          <filter id="glowEgr"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        </defs>
-        
-        <path d={ingArea} fill="url(#gradIng)" className="transition-all duration-1000" />
-        <path d={egrArea} fill="url(#gradEgr)" className="transition-all duration-1000" />
-        
-        <path d={ingPath} fill="none" stroke="#00E5FF" strokeWidth="4" filter="url(#glowIng)" strokeLinejoin="round" />
-        <path d={egrPath} fill="none" stroke="#FF007A" strokeWidth="4" filter="url(#glowEgr)" strokeLinejoin="round" />
-      </svg>
-    );
-  };
-
 
   // ============================================================================
   // LÓGICA DE DATOS
@@ -246,12 +196,18 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </p>
       </header>
 
+      {/* ---------------------------------------------------- */}
+      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA              */}
+      {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Gráfica Circular de Score */}
         <Card className="flex flex-col items-center justify-center p-6 !border-t-0 shadow-neumorph-inset bg-[#111222]">
           <p className="text-[10px] md:text-xs text-[#8A92A6] uppercase font-black tracking-widest mb-4">Salud Financiera</p>
           <ScoreGauge score={scoreData.score} />
         </Card>
 
+        {/* Tarjetas de KPI */}
         <div className="flex flex-col gap-4 lg:col-span-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
             <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-magenta transition-all">
@@ -277,44 +233,43 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Card className="xl:col-span-2 overflow-visible">
-          <h2 className="text-lg font-black text-white mb-6 tracking-wide">Comparativo Histórico ({historialMensual.length} Meses)</h2>
-          
-          <div className="relative h-64 mt-4 border-b border-white/[0.05] pb-2">
-            <div className="absolute inset-0 z-0 px-4">
-               <AreaChart data={historialMensual} />
-            </div>
-
-            <div className="absolute inset-0 z-10 flex items-end justify-between px-4">
-              {historialMensual.map((m, i) => (
-                <div key={i} className="h-full flex-1 group relative flex flex-col justify-end items-center cursor-crosshair">
-                  <div className="absolute h-full w-px bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <span className="text-[9px] md:text-[10px] text-[#8A92A6] mt-2 font-black uppercase tracking-widest translate-y-6">{m.label}</span>
-                  
-                  <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-4 bg-appcard/95 backdrop-blur-xl border border-white/[0.05] p-4 rounded-xl shadow-neumorph z-20 pointer-events-none transition-all duration-200 text-[11px] min-w-[160px]">
-                    <p className="text-white font-black uppercase tracking-widest mb-3 border-b border-white/10 pb-2">{m.label}</p>
-                    <div className="flex justify-between mb-1.5"><span className="text-neoncyan font-bold tracking-wide">Ingresos:</span> <span className="text-white font-black tabular-nums">{formatCOP(m.ingresos)}</span></div>
-                    <div className="flex justify-between mb-1.5"><span className="text-neonmagenta font-bold tracking-wide">Egresos:</span> <span className="text-white font-black tabular-nums">{formatCOP(m.egresos)}</span></div>
-                    <div className="border-t border-white/10 my-2"></div>
-                    <div className="flex justify-between font-black">
-                      <span className={m.neto >= 0 ? 'text-neoncyan' : 'text-amber-400'}>Neto:</span> 
-                      <span className={`${m.neto >= 0 ? 'text-neoncyan' : 'text-amber-400'} tabular-nums`}>{formatCOP(m.neto)}</span>
-                    </div>
+        
+        {/* ---------------------------------------------------- */}
+        {/* SECCIÓN 2: PROYECCIÓN DE LIQUIDEZ (MOVIDA DE DASHBOARD)*/}
+        {/* ---------------------------------------------------- */}
+        {proyeccionLiquidez ? (
+          <Card className="xl:col-span-2 flex flex-col justify-center">
+            <h2 className="text-lg font-black text-white mb-6 tracking-wide flex items-center gap-2">
+              <TrendingUp size={20} className="text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"/> 
+              Proyección de Liquidez (90 Días)
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {[
+                { label: '30 días', val: proyeccionLiquidez.liq30 },
+                { label: '60 días', val: proyeccionLiquidez.liq60 },
+                { label: '90 días', val: proyeccionLiquidez.liq90 },
+              ].map(({ label, val }) => (
+                <div key={label} className="bg-[#111222] shadow-neumorph-inset border border-transparent rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 hover:border-white/[0.05] transition-colors">
+                  <p className="text-[11px] text-[#8A92A6] uppercase font-black tracking-widest">{label}</p>
+                  <p className={`text-3xl font-black tabular-nums ${val >= 0 ? 'text-neoncyan drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]'}`}>
+                    {formatCOP(val)}
+                  </p>
+                  <div className={`text-[10px] font-black px-4 py-1.5 rounded-lg uppercase tracking-widest ${val >= 0 ? 'bg-neoncyan/10 text-neoncyan border border-neoncyan/20' : 'bg-neonmagenta/10 text-neonmagenta border border-neonmagenta/20'}`}>
+                    {val >= 0 ? '✓ Flujo Positivo' : '⚠ Déficit'}
                   </div>
                 </div>
               ))}
-              {historialMensual.length === 0 && (
-                <div className="w-full flex items-center justify-center h-full text-slate-500 font-bold text-sm">Esperando datos...</div>
-              )}
             </div>
-          </div>
-          
-          <div className="flex justify-center gap-8 mt-10 text-xs font-black uppercase tracking-widest text-[#8A92A6]">
-             <span className="flex items-center gap-2"><div className="w-4 h-1.5 bg-neoncyan shadow-glow-cyan rounded-full"></div> Ingresos</span>
-             <span className="flex items-center gap-2"><div className="w-4 h-1.5 bg-neonmagenta shadow-glow-magenta rounded-full"></div> Egresos</span>
-          </div>
-        </Card>
+          </Card>
+        ) : (
+          <Card className="xl:col-span-2 flex items-center justify-center">
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Calculando proyección de liquidez...</p>
+          </Card>
+        )}
 
+        {/* ---------------------------------------------------- */}
+        {/* SECCIÓN 3: RECOMENDACIONES                           */}
+        {/* ---------------------------------------------------- */}
         <Card className="flex flex-col">
            <div className="flex items-center gap-2 mb-6">
               <Zap className="text-amber-400 w-5 h-5 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/>
@@ -343,6 +298,10 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* ---------------------------------------------------- */}
+        {/* TARJETA 1: ESTRATEGIA AVALANCHA                      */}
+        {/* ---------------------------------------------------- */}
         <Card className="flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-black tracking-wide text-white flex items-center gap-2">Estrategia Avalancha</h2>
@@ -384,6 +343,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </Card>
 
         <div className="flex flex-col gap-6">
+          {/* ---------------------------------------------------- */}
+          {/* TARJETA 2: EXTREMOS DEL AÑO                          */}
+          {/* ---------------------------------------------------- */}
           <Card className="flex flex-col justify-center gap-4">
             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-2">Extremos de tu Historial</h3>
             
@@ -408,6 +370,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
             </div>
           </Card>
 
+          {/* ---------------------------------------------------- */}
+          {/* TARJETA 3: TOP 5 FUGAS                               */}
+          {/* ---------------------------------------------------- */}
           <Card className="flex flex-col flex-1">
             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Top Fugas ({topCategoriasAnual.length > 0 ? topCategoriasAnual.length : 0})</h3>
             <div className="space-y-5 flex-1 flex flex-col justify-center">
@@ -435,6 +400,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
           </Card>
         </div>
 
+        {/* ---------------------------------------------------- */}
+        {/* TARJETA 4: ESTRUCTURA DE GASTO CON DONA SVG          */}
+        {/* ---------------------------------------------------- */}
         <Card className="lg:col-span-2 flex flex-col justify-center">
           <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Estructura de Gasto Real</h3>
           
