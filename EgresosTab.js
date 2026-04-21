@@ -37,89 +37,19 @@ const EgresosTab = ({
   // ÍCONOS SVG NATIVOS 
   // ============================================================================
   const CheckIcon = ({ size = 16, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="3" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
   );
-  
   const XIcon = ({ size = 16, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
   );
-
   const ChevronDownIcon = ({ size = 20, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <polyline points="6 9 12 15 18 9"></polyline>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>
   );
-
   const ChevronUpIcon = ({ size = 20, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <polyline points="18 15 12 9 6 15"></polyline>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"></polyline></svg>
   );
-
   const ListIcon = ({ size = 18, className = "" }) => (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <line x1="8" y1="6" x2="21" y2="6"></line>
-      <line x1="8" y1="12" x2="21" y2="12"></line>
-      <line x1="8" y1="18" x2="21" y2="18"></line>
-      <line x1="3" y1="6" x2="3.01" y2="6"></line>
-      <line x1="3" y1="12" x2="3.01" y2="12"></line>
-      <line x1="3" y1="18" x2="3.01" y2="18"></line>
-    </svg>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
   );
 
   // ============================================================================
@@ -129,10 +59,10 @@ const EgresosTab = ({
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
   const [categoria, setCategoria] = useState('');
-  const [metodoPago, setMetodoPago] = useState(''); // NUEVO: cash, bank, credit
+  const [metodoPago, setMetodoPago] = useState('');
   const [cuentaId, setCuentaId] = useState('');
   const [deudaId, setDeudaId] = useState('');
-  const [interesesOtros, setInteresesOtros] = useState(''); // NUEVO: Valor de intereses
+  const [interesesOtros, setInteresesOtros] = useState('');
   const [tipo, setTipo] = useState('Variable');
 
   // ============================================================================
@@ -152,47 +82,28 @@ const EgresosTab = ({
   });
 
   // ============================================================================
-  // 4. ESTADOS PARA COMPRAS A CUOTAS
-  // ============================================================================
-  const [showModalCuotas, setShowModalCuotas] = useState(false);
-  const [cuotaData, setCuotaData] = useState({
-    fecha: getLocalToday(),
-    descripcion: '',
-    categoria: '',
-    montoTotal: '',
-    numeroCuotas: '',
-    tarjetaId: '',
-    tasaMensual: ''
-  });
-
-  // ============================================================================
-  // 5. ESTADOS PARA LOS ACORDEONES
+  // 4. ESTADOS PARA LOS ACORDEONES
   // ============================================================================
   const [openSections, setOpenSections] = useState({
     form: true,
-    cuotas: false,
-    fijos: true,
+    fijos: false, // ✨ CERRADO POR DEFECTO
     historial: false
   });
 
   const toggleSection = (sec) => {
-    setOpenSections(prev => ({ 
-      ...prev, 
-      [sec]: !prev[sec] 
-    }));
+    setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
   };
 
   // ============================================================================
-  // 6. ESTADOS PARA EDICIÓN RÁPIDA DE PAGOS FIJOS
+  // 5. ESTADOS PARA EDICIÓN RÁPIDA DE PAGOS FIJOS
   // ============================================================================
   const [pfState, setPfState] = useState({});
 
   // Listas de Cuentas Filtradas Globales
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
-  const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
 
-  // NUEVO: Filtro dinámico de cuentas según el método de pago elegido
+  // Filtro dinámico de cuentas según el método de pago elegido
   const cuentasFiltradas = useMemo(() => {
     if (!metodoPago) return [];
     if (metodoPago === 'cash') return cuentasActivas.filter(c => c.type === 'cash');
@@ -211,14 +122,8 @@ const EgresosTab = ({
   }, [egresos, selectedMonth]);
 
   const totalMes = egresosMes.reduce((s, e) => s + Number(e.monto), 0);
-  
-  const totalFijos = egresosMes
-    .filter(e => e.tipo === 'Fijo')
-    .reduce((s, e) => s + Number(e.monto), 0);
-    
-  const totalVariables = egresosMes
-    .filter(e => e.tipo !== 'Fijo')
-    .reduce((s, e) => s + Number(e.monto), 0);
+  const totalFijos = egresosMes.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
+  const totalVariables = egresosMes.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
 
   // ============================================================================
   // FILTRADO DEL HISTORIAL COMPLETO
@@ -229,7 +134,6 @@ const EgresosTab = ({
       const matchTipo = filters.tipo === 'Ambos' || egreso.tipo === filters.tipo;
       const matchCat = filters.categoria === '' || egreso.categoria === filters.categoria;
       const matchCuenta = filters.cuenta === '' || egreso.cuentaId === filters.cuenta;
-      
       return matchDesc && matchTipo && matchCat && matchCuenta;
     });
   }, [egresosMes, filters]);
@@ -239,7 +143,6 @@ const EgresosTab = ({
   // ============================================================================
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (!descripcion || !monto || !categoria || !cuentaId) {
       showToast('Por favor completa todos los campos requeridos.', 'error');
       return;
@@ -251,13 +154,12 @@ const EgresosTab = ({
       descripcion,
       categoria,
       monto: Number(monto),
-      interesesOtros: Number(interesesOtros) || 0, // NUEVO: Guardamos el interés
+      interesesOtros: Number(interesesOtros) || 0,
       cuentaId,
       tipo,
       deudaId: deudaId || null
     });
     
-    // Limpiamos los campos
     setDescripcion('');
     setMonto('');
     setInteresesOtros('');
@@ -275,12 +177,7 @@ const EgresosTab = ({
       showToast('Faltan datos en la edición', 'error');
       return;
     }
-    
-    await updateEgreso(editingId, { 
-      ...editData, 
-      monto: Number(editData.monto) 
-    });
-    
+    await updateEgreso(editingId, { ...editData, monto: Number(editData.monto) });
     setEditingId(null);
     showToast('Gasto actualizado.');
   };
@@ -293,12 +190,7 @@ const EgresosTab = ({
   };
 
   const limpiarFiltros = () => {
-    setFilters({ 
-      descripcion: '', 
-      tipo: 'Ambos', 
-      categoria: '', 
-      cuenta: '' 
-    });
+    setFilters({ descripcion: '', tipo: 'Ambos', categoria: '', cuenta: '' });
   };
 
   // ============================================================================
@@ -325,13 +217,7 @@ const EgresosTab = ({
     : '';
 
   const handlePfChange = (id, field, value) => {
-    setPfState(prev => ({
-      ...prev,
-      [id]: { 
-        ...prev[id], 
-        [field]: value 
-      }
-    }));
+    setPfState(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   };
 
   const registrarPagoFijo = (pf) => {
@@ -339,14 +225,8 @@ const EgresosTab = ({
     const montoFinal = Number(getPfMonto(pf));
     const deudaFinal = getPfDeuda(pf) || null;
     
-    if (!cuentaFinal) {
-      showToast('Selecciona una cuenta para registrar el pago.', 'error');
-      return;
-    }
-    if (montoFinal <= 0) {
-      showToast('El monto del pago debe ser mayor a 0.', 'error');
-      return;
-    }
+    if (!cuentaFinal) return showToast('Selecciona una cuenta para registrar el pago.', 'error');
+    if (montoFinal <= 0) return showToast('El monto del pago debe ser mayor a 0.', 'error');
 
     addEgreso({
       id: generateId(),
@@ -374,55 +254,6 @@ const EgresosTab = ({
   }, [pagosFijos, egresosMes]);
 
   // ============================================================================
-  // FUNCIONES PARA COMPRAS A CUOTAS
-  // ============================================================================
-  const handleAddCuotas = (e) => {
-    e.preventDefault();
-    if (!cuotaData.descripcion || !cuotaData.montoTotal || !cuotaData.numeroCuotas || !cuotaData.tarjetaId || !cuotaData.categoria) {
-      showToast('Faltan datos de la compra a cuotas', 'error');
-      return;
-    }
-    const montoTotal = Number(cuotaData.montoTotal);
-    const numeroCuotas = Number(cuotaData.numeroCuotas);
-    const tasaMes = Number(cuotaData.tasaMensual) || 0;
-    let valorCuota;
-    if (tasaMes > 0) {
-      const tm = tasaMes / 100;
-      valorCuota = Math.round(montoTotal * (tm * Math.pow(1 + tm, numeroCuotas)) / (Math.pow(1 + tm, numeroCuotas) - 1));
-    } else {
-      valorCuota = Math.round(montoTotal / numeroCuotas);
-    }
-    addComprasCuotas({
-      id: generateId(),
-      fecha: cuotaData.fecha,
-      descripcion: cuotaData.descripcion,
-      categoria: cuotaData.categoria,
-      montoTotal,
-      numeroCuotas,
-      tarjetaId: cuotaData.tarjetaId,
-      tasaMensual: tasaMes,
-      valorCuota,
-      cuotasPagadas: 1,
-      estado: 'Activa'
-    });
-    // Solo la primera cuota va al historial de egresos
-    addEgreso({
-      id: generateId(),
-      fecha: cuotaData.fecha,
-      descripcion: `Cuota 1/${numeroCuotas}: ${cuotaData.descripcion}`,
-      categoria: cuotaData.categoria,
-      monto: valorCuota,
-      cuentaId: cuotaData.tarjetaId,
-      tipo: 'Variable',
-      esCuota: true,
-      deudaId: null
-    });
-    setShowModalCuotas(false);
-    setCuotaData({ fecha: getLocalToday(), descripcion: '', categoria: '', montoTotal: '', numeroCuotas: '', tarjetaId: '', tasaMensual: '' });
-    showToast(`Compra registrada. Cuota mensual: ${formatCOP(valorCuota)}`);
-  };
-
-  // ============================================================================
   // ESTILOS BASE UI NEON & NEUMORPHISM
   // ============================================================================
   const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta focus:shadow-glow-magenta transition-all duration-300 placeholder:text-slate-600";
@@ -438,12 +269,12 @@ const EgresosTab = ({
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neonmagenta to-purple-600 flex items-center justify-center shadow-glow-magenta">
-             <Receipt size={20} className="text-[#0b0c16]"/> 
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0b0c16" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
           </div>
           Gestión de Egresos
         </h1>
         <p className="text-sm md:text-base text-[#8A92A6] mt-2 font-medium tracking-wide">
-          Registra tus gastos diarios, abonos a deudas, pagos fijos y compras a cuotas.
+          Registra tus gastos diarios, abonos a deudas y pagos fijos.
         </p>
       </header>
 
@@ -451,7 +282,7 @@ const EgresosTab = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
           <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">
-            Total Gastado/Pagado (Mes)
+            Total Gastado (Mes)
           </p>
           <p className="text-xl md:text-3xl font-black text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]">
             {formatCOP(totalMes)}
@@ -460,7 +291,7 @@ const EgresosTab = ({
         
         <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
           <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">
-            Gastos/Pagos Fijos
+            Gastos Fijos
           </p>
           <p className="text-xl md:text-3xl font-black text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
             {formatCOP(totalFijos)}
@@ -501,9 +332,7 @@ const EgresosTab = ({
           >
             {/* Fila 1 */}
             <div>
-              <label className={labelBaseClass}>
-                Fecha
-              </label>
+              <label className={labelBaseClass}>Fecha</label>
               <input 
                 type="date" 
                 required 
@@ -515,9 +344,7 @@ const EgresosTab = ({
             </div>
             
             <div>
-              <label className={labelBaseClass}>
-                Descripción
-              </label>
+              <label className={labelBaseClass}>Descripción</label>
               <input 
                 type="text" 
                 required 
@@ -529,9 +356,7 @@ const EgresosTab = ({
             </div>
             
             <div>
-              <label className={labelBaseClass}>
-                Categoría
-              </label>
+              <label className={labelBaseClass}>Categoría</label>
               <select 
                 required 
                 value={categoria} 
@@ -550,9 +375,7 @@ const EgresosTab = ({
 
             {/* Fila 2 */}
             <div>
-              <label className={labelBaseClass}>
-                Método de Pago
-              </label>
+              <label className={labelBaseClass}>Método de Pago</label>
               <select 
                 required 
                 value={metodoPago} 
@@ -570,9 +393,7 @@ const EgresosTab = ({
             </div>
 
             <div>
-              <label className={labelBaseClass}>
-                De dónde sale la plata
-              </label>
+              <label className={labelBaseClass}>De dónde sale la plata</label>
               <select 
                 required 
                 disabled={!metodoPago}
@@ -591,7 +412,7 @@ const EgresosTab = ({
 
             <div>
               <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-1 mb-1.5 flex items-center gap-1">
-                <ShieldAlert size={12}/> Abonar a Deuda (Opcional)
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Abonar a Deuda (Opcional)
               </label>
               <select 
                 value={deudaId} 
@@ -600,18 +421,14 @@ const EgresosTab = ({
               >
                 <option value="" className="bg-[#111222]">No es pago a deuda</option>
                 {todasLasDeudas.map(d => (
-                  <option key={d.id} value={d.id} className="bg-[#111222]">
-                    Pagar: {d.name}
-                  </option>
+                  <option key={d.id} value={d.id} className="bg-[#111222]">Pagar: {d.name}</option>
                 ))}
               </select>
             </div>
             
             {/* Fila 3: Montos */}
             <div className="md:col-span-2 relative">
-              <label className={labelBaseClass}>
-                Monto Total Pagado
-              </label>
+              <label className={labelBaseClass}>Monto Total Pagado</label>
               <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
               <input 
                 type="number" 
@@ -658,144 +475,61 @@ const EgresosTab = ({
                
               <button 
                 type="submit" 
-                className="w-full md:w-auto bg-neonmagenta hover:bg-[#ff1a8c] text-[#0b0c16] font-black py-3.5 px-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-glow-magenta hover:scale-105 active:scale-95 tracking-wide"
+                className="w-full md:w-auto bg-neonmagenta hover:bg-[#ff1a8c] text-[#0b0c16] font-black py-3.5 px-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-glow-magenta hover:scale-105 active:scale-95 tracking-wide uppercase"
               >
-                <Plus size={20} strokeWidth={3} /> GUARDAR MOVIMIENTO
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14"/><path d="M12 5v14"/></svg> GUARDAR MOVIMIENTO
               </button>
             </div>
           </form>
         )}
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* ============================================================================ */}
-        {/* 2. COMPRAS A CUOTAS (ACORDEÓN) */}
-        {/* ============================================================================ */}
-        <Card>
-          <div 
-            className="flex justify-between items-center cursor-pointer select-none"
-            onClick={() => toggleSection('cuotas')}
-          >
-            <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
-               <span className="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">2</span>
-               Compras a Cuotas
-            </h2>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setShowModalCuotas(true); 
-                }} 
-                className="bg-[#111222] border border-indigo-500/30 hover:border-indigo-500 hover:shadow-[0_0_15px_rgba(99,102,241,0.4)] text-indigo-400 text-xs font-black py-1.5 px-4 rounded-lg flex items-center gap-1 transition-all uppercase tracking-widest"
-              >
-                <Plus size={14}/> Nueva
-              </button>
-              <button className="text-slate-500 hover:text-white transition-colors">
-                {openSections.cuotas ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              </button>
-            </div>
+      {/* ============================================================================ */}
+      {/* 2. PAGOS FIJOS (CHECKLIST - AHORA A UNA SOLA COLUMNA) */}
+      {/* ============================================================================ */}
+      <Card>
+        <div 
+          className="flex justify-between items-center cursor-pointer select-none"
+          onClick={() => toggleSection('fijos')}
+        >
+          <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
+             <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">2</span>
+             Checklist de Pagos Fijos
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 uppercase tracking-widest">
+               {pagosFijos.filter(pf => checkPagoRealizado(pf)).length} / {pagosFijos.length} Listo
+            </span>
+            <button className="text-slate-500 hover:text-white transition-colors">
+              {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            </button>
           </div>
+        </div>
 
-          {openSections.cuotas && (
-            <div className="mt-6 flex-1 overflow-y-auto max-h-[350px] pr-2 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32]">
-              
-              {comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).length === 0 ? (
-                <p className="text-sm text-[#8A92A6] font-bold text-center py-10">
-                  No tienes compras a cuotas activas.
-                </p>
-              ) : (
-                comprasCuotas.filter(c => c.estado === 'Activa' || !c.estado).map(cuota => {
-                  
-                  const tarjetaAsociada = tarjetasCredito.find(t => t.id === cuota.tarjetaId);
-                  const numCuotasSeguro = Number(cuota.numeroCuotas) || 1;
-                  const montoTotalSeguro = Number(cuota.montoTotal) || Number(cuota.monto) || 0;
-                  const valorCuotaAprox = montoTotalSeguro / numCuotasSeguro;
-
-                  return (
-                    <div 
-                      key={cuota.id} 
-                      className="bg-[#111222] shadow-neumorph-inset rounded-xl p-4 flex justify-between items-center relative overflow-hidden group border border-transparent hover:border-indigo-500/30 transition-colors"
-                    >
-                      <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]"></div>
-                      
-                      <div className="pl-3">
-                         <p className="text-sm font-bold text-white">
-                           {cuota.descripcion}
-                         </p>
-                         <p className="text-[10px] text-[#8A92A6] font-bold mt-1 tracking-wider uppercase">
-                           {tarjetaAsociada?.name || 'Tarjeta'} • <span className="text-indigo-400">{cuota.cuotasPagadas || 0}/{cuota.numeroCuotas || '?'}</span> Pagadas
-                         </p>
-                      </div>
-                      
-                      <div className="text-right pr-2 group-hover:pr-10 transition-all">
-                         <p className="text-sm font-black text-indigo-400">
-                           {formatCOP(valorCuotaAprox)} 
-                           <span className="text-[9px] text-[#8A92A6] font-bold uppercase">/mes</span>
-                         </p>
-                         <p className="text-[10px] text-[#8A92A6] font-bold mt-1 uppercase tracking-wider">
-                           Total: {formatCOP(montoTotalSeguro)}
-                         </p>
-                      </div>
-                      
-                      <button 
-                        onClick={() => removeComprasCuotas(cuota.id)} 
-                        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-2 rounded-lg shadow-glow-magenta transition-all hover:bg-rose-400"
-                      >
-                        <Trash2 size={16}/>
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* ============================================================================ */}
-        {/* 3. PAGOS FIJOS (ACORDEÓN + EDICIÓN + CONEXIÓN A DEUDAS) */}
-        {/* ============================================================================ */}
-        <Card>
-          <div 
-            className="flex justify-between items-center cursor-pointer select-none"
-            onClick={() => toggleSection('fijos')}
-          >
-            <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
-               <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">3</span>
-               Checklist de Pagos
-            </h2>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 uppercase tracking-widest">
-                 {pagosFijos.filter(pf => checkPagoRealizado(pf)).length} / {pagosFijos.length} Listo
-              </span>
-              <button className="text-slate-500 hover:text-white transition-colors">
-                {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              </button>
-            </div>
-          </div>
-
-          {openSections.fijos && (
-            <div className="mt-6 flex-1 overflow-y-auto max-h-[350px] pr-2 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32]">
-              
-              {pagosFijosOrdenados.length === 0 ? (
-                <p className="text-sm text-[#8A92A6] font-bold text-center py-10">
-                  No has configurado pagos fijos en Presupuestos.
-                </p>
-              ) : (
-                pagosFijosOrdenados.map(pf => {
+        {openSections.fijos && (
+          <div className="mt-6">
+            {pagosFijosOrdenados.length === 0 ? (
+              <div className="bg-[#111222] shadow-neumorph-inset rounded-2xl p-10 text-center border border-transparent">
+                <p className="text-sm text-[#8A92A6] font-bold uppercase tracking-widest">No has configurado pagos fijos en Presupuestos.</p>
+              </div>
+            ) : (
+              /* ✨ NUEVO: Grid responsivo que usa 1 columna en móvil y hasta 2 o 3 en PC para aprovechar el ancho completo */
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
+                {pagosFijosOrdenados.map(pf => {
                   const isPaid = checkPagoRealizado(pf);
                   
                   return (
                     <div 
                       key={pf.id} 
-                      className={`p-4 rounded-xl flex flex-col transition-all gap-4 border ${
+                      className={`p-5 rounded-2xl flex flex-col transition-all gap-4 border ${
                         isPaid 
-                          ? 'bg-emerald-500/5 border-emerald-500/20' 
-                          : 'bg-[#111222] shadow-neumorph-inset border-transparent hover:border-amber-500/30'
+                          ? 'bg-emerald-500/5 border-emerald-500/20 opacity-70' 
+                          : 'bg-[#111222] shadow-neumorph-inset border-transparent hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(251,191,36,0.1)]'
                       }`}
                     >
                       {/* Fila 1: Botón y Título */}
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 overflow-hidden">
                           <button 
                             onClick={() => !isPaid && registrarPagoFijo(pf)} 
                             disabled={isPaid} 
@@ -808,8 +542,8 @@ const EgresosTab = ({
                             <CheckIcon size={14} />
                           </button>
                           
-                          <div>
-                            <p className={`text-sm font-bold tracking-wide ${isPaid ? 'text-emerald-500/70 line-through' : 'text-white'}`}>
+                          <div className="truncate">
+                            <p className={`text-sm font-bold tracking-wide truncate ${isPaid ? 'text-emerald-500/70 line-through' : 'text-white'}`}>
                               {pf.descripcion}
                             </p>
                             <p className="text-[10px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5">
@@ -820,7 +554,7 @@ const EgresosTab = ({
 
                         {/* Monto pagado si ya está checkeado */}
                         {isPaid && (
-                          <p className="text-sm font-black text-emerald-500/50 text-right">
+                          <p className="text-sm font-black text-emerald-500/50 text-right shrink-0 pl-2">
                             {formatCOP(Number(pf.monto || pf.montoEstimado || 0))}
                           </p>
                         )}
@@ -828,55 +562,56 @@ const EgresosTab = ({
                       
                       {/* Fila 2: Controles de edición ANTES de pagar */}
                       {!isPaid && (
-                        <div className="flex flex-col md:flex-row items-center gap-2 pl-9 pt-3 border-t border-white/[0.05]">
-                          
-                          {/* Origen del dinero */}
-                          <select 
-                            value={getPfCuenta(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)}
-                            title="Cuenta desde la que pagas"
-                            className="bg-appcard border border-white/[0.05] text-[10px] font-bold uppercase tracking-wider text-slate-300 rounded-lg p-2 outline-none focus:border-amber-500 flex-1 w-full appearance-none cursor-pointer shadow-sm"
-                          >
-                            <option value="">De dónde sale...</option>
-                            {cuentasActivas.map(c => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
+                        <div className="flex flex-col gap-2 pt-3 border-t border-white/[0.05]">
+                          <div className="flex gap-2">
+                            {/* Origen del dinero */}
+                            <select 
+                              value={getPfCuenta(pf)} 
+                              onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)}
+                              title="Cuenta desde la que pagas"
+                              className="bg-appcard border border-white/[0.02] text-[10px] font-bold uppercase tracking-wider text-slate-300 rounded-lg p-2.5 outline-none focus:border-amber-500 flex-1 w-full appearance-none cursor-pointer shadow-neumorph"
+                            >
+                              <option value="">De dónde sale...</option>
+                              {cuentasActivas.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
 
+                            {/* Monto exacto */}
+                            <input 
+                              type="number" 
+                              value={getPfMonto(pf)} 
+                              onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)}
+                              title="Monto exacto a pagar"
+                              className="bg-appcard border border-white/[0.02] text-[11px] font-black text-amber-400 rounded-lg p-2.5 outline-none focus:border-amber-500 w-[100px] text-right shadow-neumorph"
+                            />
+                          </div>
+                          
                           {/* Selector de Abono a Deuda en Pagos Fijos */}
                           <select 
                             value={getPfDeuda(pf)} 
                             onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)}
                             title="Deuda a la que vas a abonar (Opcional)"
-                            className="bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-bold uppercase tracking-wider text-indigo-300 rounded-lg p-2 outline-none focus:border-indigo-500 flex-1 w-full appearance-none cursor-pointer"
+                            className="bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-bold uppercase tracking-wider text-indigo-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 w-full appearance-none cursor-pointer"
                           >
-                            <option value="">No es pago a deuda</option>
+                            <option value="">No es pago a deuda (Opcional)</option>
                             {todasLasDeudas.map(d => (
-                              <option key={d.id} value={d.id}>Pagar: {d.name}</option>
+                              <option key={d.id} value={d.id}>Abonar a: {d.name}</option>
                             ))}
                           </select>
-                          
-                          {/* Monto exacto */}
-                          <input 
-                            type="number" 
-                            value={getPfMonto(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)}
-                            title="Monto exacto a pagar"
-                            className="bg-appcard border border-white/[0.05] text-[11px] font-black text-amber-400 rounded-lg p-2 outline-none focus:border-amber-500 w-full md:w-28 text-right shadow-sm"
-                          />
                         </div>
                       )}
                     </div>
                   );
-                })
-              )}
-            </div>
-          )}
-        </Card>
-      </div>
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
 
       {/* ============================================================================ */}
-      {/* 4. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
+      {/* 3. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
       {/* ============================================================================ */}
       <Card>
         <div 
@@ -885,7 +620,7 @@ const EgresosTab = ({
         >
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
             <span className="w-6 h-6 rounded-md bg-slate-800 text-slate-400 flex items-center justify-center text-xs"><ListIcon size={14}/></span>
-            Historial Completo de Egresos
+            3. Historial Completo de Egresos
           </h2>
           <div className="flex items-center gap-3">
             <span className="bg-[#111222] shadow-neumorph-inset text-[#8A92A6] text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
@@ -1111,14 +846,14 @@ const EgresosTab = ({
                                 className="text-[#8A92A6] hover:text-neoncyan transition-colors" 
                                 title="Editar"
                               >
-                                <Edit3 size={16}/>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                               </button>
                               <button 
                                 onClick={() => handleDelete(egreso.id)} 
                                 className="text-[#8A92A6] hover:text-rose-500 transition-colors" 
                                 title="Eliminar"
                               >
-                                <Trash2 size={16}/>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                               </button>
                             </div>
                           )}
@@ -1132,131 +867,6 @@ const EgresosTab = ({
           </div>
         )}
       </Card>
-
-      {/* ============================================================================ */}
-      {/* MODAL PARA AGREGAR NUEVA COMPRA A CUOTAS */}
-      {/* ============================================================================ */}
-      {showModalCuotas && (
-        <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-appcard w-full max-w-md rounded-[30px] border border-white/[0.05] p-6 md:p-8 animate-in zoom-in-95 duration-300 shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden">
-            
-            <div className="absolute -top-32 -left-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-            
-            <div className="flex justify-between items-center mb-8 relative z-10">
-              <h3 className="text-xl font-black text-white tracking-wide">
-                Nueva Compra a Cuotas
-              </h3>
-              <button 
-                onClick={() => setShowModalCuotas(false)} 
-                className="text-slate-500 hover:text-rose-400 bg-[#111222] p-2 rounded-full transition-all hover:shadow-glow-magenta"
-              >
-                <XIcon size={20}/>
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddCuotas} className="space-y-5 relative z-10">
-              <div>
-                <label className={labelBaseClass}>
-                  Fecha de compra
-                </label>
-                <input 
-                  type="date" 
-                  required 
-                  value={cuotaData.fecha} 
-                  onChange={e => setCuotaData({...cuotaData, fecha: e.target.value})} 
-                  className={`${inputBaseClass} [&::-webkit-calendar-picker-indicator]:invert-[0.8]`}
-                />
-              </div>
-              
-              <div>
-                <label className={labelBaseClass}>
-                  Descripción
-                </label>
-                <input 
-                  type="text" 
-                  required 
-                  value={cuotaData.descripcion} 
-                  onChange={e => setCuotaData({...cuotaData, descripcion: e.target.value})} 
-                  placeholder="Ej. Computador, Viaje..." 
-                  className={inputBaseClass}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelBaseClass}>
-                    Categoría
-                  </label>
-                  <select 
-                    required 
-                    value={cuotaData.categoria} 
-                    onChange={e => setCuotaData({...cuotaData, categoria: e.target.value})} 
-                    className={`${inputBaseClass} appearance-none`}
-                  >
-                    <option value="" className="bg-[#111222]">Sel...</option>
-                    {categoriasMaestras.map(c => (
-                      <option key={c} value={c} className="bg-[#111222]">{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelBaseClass}>
-                    Tarjeta de Crédito
-                  </label>
-                  <select 
-                    required 
-                    value={cuotaData.tarjetaId} 
-                    onChange={e => setCuotaData({...cuotaData, tarjetaId: e.target.value})} 
-                    className={`${inputBaseClass} appearance-none`}
-                  >
-                    <option value="" className="bg-[#111222]">Sel...</option>
-                    {tarjetasCredito.map(c => (
-                      <option key={c.id} value={c.id} className="bg-[#111222]">{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelBaseClass}>
-                    Monto Total
-                  </label>
-                  <input 
-                    type="number" 
-                    required 
-                    value={cuotaData.montoTotal} 
-                    onChange={e => setCuotaData({...cuotaData, montoTotal: e.target.value})} 
-                    placeholder="$ 0" 
-                    className={`${inputBaseClass} font-black text-indigo-400`}
-                  />
-                </div>
-                <div>
-                  <label className={labelBaseClass}>
-                    Número de Cuotas
-                  </label>
-                  <input 
-                    type="number" 
-                    required 
-                    min="1" 
-                    value={cuotaData.numeroCuotas} 
-                    onChange={e => setCuotaData({...cuotaData, numeroCuotas: e.target.value})} 
-                    placeholder="Ej. 12" 
-                    className={inputBaseClass}
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit" 
-                className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-black py-4 rounded-xl mt-4 transition-all shadow-[0_0_15px_rgba(99,102,241,0.5)] active:scale-95 tracking-widest uppercase"
-              >
-                Guardar Compra a Cuotas
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
