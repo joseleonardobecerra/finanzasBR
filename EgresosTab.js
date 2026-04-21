@@ -86,7 +86,7 @@ const EgresosTab = ({
   // ============================================================================
   const [openSections, setOpenSections] = useState({
     form: true,
-    fijos: false, // ✨ CERRADO POR DEFECTO
+    fijos: false,
     historial: false
   });
 
@@ -241,6 +241,21 @@ const EgresosTab = ({
     });
     
     showToast(`Pago de ${pf.descripcion} registrado.`);
+  };
+
+  // ✨ NUEVA FUNCIÓN: DESHACER PAGO FIJO
+  const deshacerPagoFijo = (pf) => {
+    // Buscar el egreso exacto que corresponde a este pago fijo en este mes
+    const egresoAEliminar = egresosMes.find(e => {
+      if (e.tipo !== 'Fijo') return false;
+      if (e.pagoFijoId) return e.pagoFijoId === pf.id;
+      return e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
+    });
+
+    if (egresoAEliminar) {
+      removeEgreso(egresoAEliminar.id);
+      showToast(`Se ha revertido el pago de ${pf.descripcion}.`, 'error');
+    }
   };
 
   const pagosFijosOrdenados = useMemo(() => {
@@ -513,7 +528,6 @@ const EgresosTab = ({
                 <p className="text-sm text-[#8A92A6] font-bold uppercase tracking-widest">No has configurado pagos fijos en Presupuestos.</p>
               </div>
             ) : (
-              /* ✨ NUEVO: Grid responsivo que usa 1 columna en móvil y hasta 2 o 3 en PC para aprovechar el ancho completo */
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
                 {pagosFijosOrdenados.map(pf => {
                   const isPaid = checkPagoRealizado(pf);
@@ -531,15 +545,18 @@ const EgresosTab = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <button 
-                            onClick={() => !isPaid && registrarPagoFijo(pf)} 
-                            disabled={isPaid} 
+                            // ✨ AQUÍ ESTÁ EL CAMBIO: Si está pagado, ejecuta deshacer. Si no, registra.
+                            onClick={() => isPaid ? deshacerPagoFijo(pf) : registrarPagoFijo(pf)} 
+                            title={isPaid ? "Desmarcar y eliminar registro de este mes" : "Registrar pago de este mes"}
                             className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all shrink-0 ${
                               isPaid 
-                                ? 'bg-emerald-500 border-emerald-500 text-[#0b0c16] shadow-[0_0_10px_rgba(16,185,129,0.5)]' 
-                                : 'bg-[#111222] border-slate-600 text-transparent hover:border-amber-500'
+                                ? 'bg-emerald-500 border-emerald-500 text-[#0b0c16] shadow-[0_0_10px_rgba(16,185,129,0.5)] cursor-pointer hover:bg-rose-500 hover:border-rose-500 hover:shadow-[0_0_10px_rgba(244,63,94,0.5)]' 
+                                : 'bg-[#111222] border-slate-600 text-transparent hover:border-amber-500 cursor-pointer'
                             }`}
                           >
-                            <CheckIcon size={14} />
+                            {/* Al hacer hover sobre uno ya pagado, mostramos una X temporalmente para indicar que lo va a deshacer (Opcional, pero mejora la UX) */}
+                            {isPaid ? <CheckIcon size={14} className="hover:hidden block"/> : null}
+                            {isPaid ? <XIcon size={14} className="hidden hover:block"/> : null}
                           </button>
                           
                           <div className="truncate">
