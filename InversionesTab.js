@@ -1,6 +1,7 @@
 const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                            ingresos, addIngreso,
                            egresos, transferencias, selectedMonth, showToast, getOwner }) => {
+      const { useState, useRef } = React;
       const [showForm, setShowForm] = useState(false);
       const [editId, setEditId] = useState(null);
       const [editData, setEditData] = useState({});
@@ -133,52 +134,94 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       const totalGanancia = tablaData.reduce((s, c) => s + c.ganancia, 0);
       const totalSaldoTotal = tablaData.reduce((s, c) => s + c.saldoTotal, 0);
 
+      const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-300 placeholder:text-slate-600";
+      const labelBaseClass = "text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block";
+
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
           <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><PiggyBank className="text-emerald-400 w-6 h-6 md:w-8 md:h-8"/> Inversión y ahorro</h1>
-              <p className="text-sm md:text-base text-slate-400 mt-1">Sigue el crecimiento de tus cuentas de ahorro e inversiones.</p>
+              <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.4)]">
+                   <PiggyBank className="text-[#0b0c16] w-5 h-5"/>
+                </div>
+                Inversión y ahorro
+              </h1>
+              <p className="text-sm md:text-base text-[#8A92A6] mt-2 font-medium tracking-wide">Sigue el crecimiento de tus cuentas de ahorro e inversiones.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => { setShowForm(!showForm); setEditId(null); setGananciaId(null); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-                <Plus size={16}/> {showForm ? 'Ocultar' : 'Agregar'}
+            
+            <div className="flex flex-wrap gap-3">
+              <button onClick={() => { setShowForm(!showForm); setEditId(null); setGananciaId(null); }} className="bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95">
+                <Plus size={16} strokeWidth="3"/> {showForm ? 'OCULTAR' : 'NUEVA CUENTA'}
               </button>
+              
               <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-              <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
-              <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+              <button onClick={() => fileInputRef.current.click()} className="bg-[#111222] hover:bg-[#1c1e32] text-emerald-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-emerald-500/30 shadow-neumorph hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                <Upload size={14}/> Importar
+              </button>
+              <button onClick={handleExport} className="bg-[#111222] hover:bg-[#1c1e32] text-emerald-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-emerald-500/30 shadow-neumorph hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                <Download size={14}/> Exportar
+              </button>
             </div>
           </header>
 
           {showForm && (
-            <Card className="border-t-4 border-t-emerald-500 bg-emerald-950/10">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-base font-semibold text-white">✨ Nueva Inversión o Ahorro</h2>
-                <button onClick={() => setShowForm(false)} className="text-xs text-emerald-400 hover:underline">Cancelar</button>
+            <Card className="!border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)] mb-4 animate-in slide-in-from-top-4">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                   <PiggyBank size={16}/> Nueva Inversión o Ahorro
+                </h2>
+                <button onClick={() => setShowForm(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg">
+                  Cerrar
+                </button>
               </div>
-              <form onSubmit={handleAdd} className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
-                <Input label="Nombre de la Cuenta" value={nuevo.name} onChange={e=>setNuevo({...nuevo, name: e.target.value})} className="col-span-2 md:col-span-2" />
-                <Input type="number" label="Saldo Base/Inicial ($)" value={nuevo.initialBalance} onChange={e=>setNuevo({...nuevo, initialBalance: e.target.value})} className="col-span-1 md:col-span-1" />
-                <Input type="number" step="0.01" label="Tasa E.A. (%)" value={nuevo.tasaEA} onChange={e=>setNuevo({...nuevo, tasaEA: e.target.value})} className="col-span-1 md:col-span-1" />
-                <button type="submit" className="col-span-2 md:col-span-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition-colors mt-2">Guardar Nueva Cuenta</button>
+              
+              <form onSubmit={handleAdd} className="grid grid-cols-2 md:grid-cols-4 gap-5 items-end">
+                <div className="col-span-2">
+                  <label className={labelBaseClass}>Nombre de la Cuenta</label>
+                  <input type="text" required value={nuevo.name} onChange={e=>setNuevo({...nuevo, name: e.target.value})} className={inputBaseClass} placeholder="Ej. Ficción, CDT..." />
+                </div>
+                
+                <div className="col-span-1 relative">
+                  <label className={labelBaseClass}>Saldo Base/Inicial</label>
+                  <input type="number" value={nuevo.initialBalance} onChange={e=>setNuevo({...nuevo, initialBalance: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="0" />
+                  <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                </div>
+                
+                <div className="col-span-1 relative">
+                  <label className={labelBaseClass}>Tasa E.A. (%)</label>
+                  <input type="number" step="0.01" value={nuevo.tasaEA} onChange={e=>setNuevo({...nuevo, tasaEA: e.target.value})} className={`${inputBaseClass} pr-8 font-bold text-amber-400`} placeholder="0.0" />
+                  <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
+                </div>
+                
+                <div className="col-span-2 md:col-span-4 mt-2 flex justify-end">
+                  <button type="submit" className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] font-black uppercase tracking-widest px-8 py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95">
+                    GUARDAR NUEVA CUENTA
+                  </button>
+                </div>
               </form>
             </Card>
           )}
 
-          <Card className="border-t-4 border-t-emerald-500">
-            <div className="overflow-x-auto">
+          <Card className="!border-transparent flex flex-col">
+            <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+              <TrendingUp size={18} className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]"/> 
+              Portafolio de Inversiones
+            </h2>
+            
+            <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent">
               <table className="w-full text-sm text-left min-w-[800px]">
-                <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50">
+                <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
                   <tr>
-                    <th className="px-3 py-3 rounded-tl-lg">CUENTA</th>
-                    <th className="px-3 py-3 text-right">Saldo inicial mes</th>
-                    <th className="px-3 py-3 text-right">Ganancia mes</th>
-                    <th className="px-3 py-3 text-right">Saldo Total mes</th>
-                    <th className="px-3 py-3 text-center">% E.A</th>
-                    <th className="px-3 py-3 text-center rounded-tr-lg">Acciones</th>
+                    <th className="px-5 py-4 w-[25%]">CUENTA</th>
+                    <th className="px-5 py-4 w-[20%] text-right">Saldo inicial mes</th>
+                    <th className="px-5 py-4 w-[15%] text-right">Ganancia mes</th>
+                    <th className="px-5 py-4 w-[20%] text-right">Saldo Total mes</th>
+                    <th className="px-5 py-4 w-[10%] text-center">% E.A</th>
+                    <th className="px-5 py-4 w-[10%] text-center">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/50">
+                <tbody className="divide-y divide-white/[0.02]">
                   {tablaData.map(c => {
                     const isEditing = editId === c.id;
                     const isAddingGanancia = gananciaId === c.id;
@@ -186,59 +229,66 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
 
                     if (isEditing) {
                        return (
-                         <tr key={c.id} className="bg-emerald-950/40">
-                           <td className="px-2 py-2"><input type="text" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="w-full bg-slate-900 border border-emerald-500 rounded px-2 py-1 text-xs text-white outline-none" placeholder="Nombre" /></td>
-                           <td className="px-2 py-2"><input type="number" value={editData.initialBalance} onChange={e=>setEditData({...editData, initialBalance: e.target.value})} className="w-full bg-slate-900 border border-emerald-500 rounded px-2 py-1 text-xs text-white outline-none text-right" placeholder="Saldo Inicial Fijo" title="Ajusta el saldo base original" /></td>
-                           <td className="px-2 py-2 text-right text-slate-500">-</td>
-                           <td className="px-2 py-2 text-right text-slate-500">-</td>
-                           <td className="px-2 py-2">
-                              <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-16 bg-slate-900 border border-emerald-500 rounded px-2 py-1 text-xs text-white outline-none text-center mx-auto block" title="Tasa E.A." />
+                         <tr key={c.id} className="bg-emerald-950/20">
+                           <td className="px-3 py-3"><input type="text" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="w-full bg-[#111222] border border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none shadow-neumorph-inset focus:border-emerald-500" placeholder="Nombre" /></td>
+                           <td className="px-3 py-3"><input type="number" value={editData.initialBalance} onChange={e=>setEditData({...editData, initialBalance: e.target.value})} className="w-full bg-[#111222] border border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none text-right shadow-neumorph-inset focus:border-emerald-500" placeholder="Saldo Inicial" title="Ajusta el saldo base original" /></td>
+                           <td className="px-3 py-3 text-right text-slate-500">-</td>
+                           <td className="px-3 py-3 text-right text-slate-500">-</td>
+                           <td className="px-3 py-3">
+                              <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-20 bg-[#111222] border border-amber-500/50 rounded-lg px-3 py-2 text-xs text-amber-400 font-bold outline-none text-center mx-auto block shadow-neumorph-inset focus:border-amber-500" title="Tasa E.A." />
                            </td>
-                           <td className="px-2 py-2 text-center flex justify-center gap-1">
-                             <button onClick={saveEdit} className="text-emerald-400 p-1.5 bg-slate-900 rounded border border-slate-700 hover:border-emerald-500/50" title="Guardar Cambios"><Check size={14}/></button>
-                             <button onClick={() => setEditId(null)} className="text-rose-400 p-1.5 bg-slate-900 rounded border border-slate-700 hover:border-rose-500/50" title="Cancelar"><Minus size={14}/></button>
+                           <td className="px-3 py-3 text-center flex justify-center gap-2">
+                             <button onClick={saveEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-[0_0_10px_rgba(52,211,153,0.5)]" title="Guardar Cambios"><Check size={14} strokeWidth="3"/></button>
+                             <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14} strokeWidth="3"/></button>
                            </td>
                          </tr>
                        )
                     }
 
                     return (
-                      <tr key={c.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="px-3 py-3 font-medium text-slate-200">
+                      <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-4 font-bold text-white tracking-wide">
                            {c.name}
-                           {owner !== 'Shared' && <span className="ml-2 text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">{owner}</span>}
+                           {owner !== 'Shared' && <span className="ml-2 text-[9px] bg-slate-800 text-[#8A92A6] px-2 py-0.5 rounded font-black uppercase tracking-widest">{owner}</span>}
                         </td>
-                        <td className="px-3 py-3 text-right text-slate-300">{formatCOP(c.sInicial)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-emerald-400">
+                        <td className="px-5 py-4 text-right text-[#8A92A6] tabular-nums">{formatCOP(c.sInicial)}</td>
+                        <td className="px-5 py-4 text-right font-black text-emerald-400 tabular-nums">
                            {isAddingGanancia ? (
-                             <div className="flex justify-end gap-1 items-center">
-                               <input type="number" value={gananciaMonto} onChange={e=>setGananciaMonto(e.target.value)} className="w-20 bg-slate-900 border border-emerald-500 rounded px-1 py-0.5 text-xs text-white outline-none text-right" autoFocus placeholder="Monto"/>
-                               <button onClick={() => guardarGanancia(c)} className="text-emerald-400 hover:text-emerald-300 p-0.5 bg-slate-800 rounded"><Check size={14}/></button>
-                               <button onClick={() => setGananciaId(null)} className="text-rose-400 hover:text-rose-300 p-0.5 bg-slate-800 rounded"><Minus size={14}/></button>
+                             <div className="flex justify-end gap-2 items-center">
+                               <div className="relative">
+                                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">$</span>
+                                 <input type="number" value={gananciaMonto} onChange={e=>setGananciaMonto(e.target.value)} className="w-24 bg-[#111222] border border-emerald-500/50 shadow-neumorph-inset rounded-lg pl-6 pr-2 py-1 text-xs text-white outline-none text-right focus:border-emerald-400" autoFocus placeholder="Monto"/>
+                               </div>
+                               <button onClick={() => guardarGanancia(c)} className="text-[#0b0c16] bg-emerald-400 hover:bg-emerald-300 p-1.5 rounded-md shadow-[0_0_10px_rgba(52,211,153,0.5)] transition-colors"><Check size={14} strokeWidth="3"/></button>
+                               <button onClick={() => setGananciaId(null)} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-500/10 border border-rose-500/30 rounded-md transition-colors"><XIcon size={14} strokeWidth="3"/></button>
                              </div>
                            ) : (
-                             <span className="cursor-pointer hover:underline flex items-center justify-end gap-1" onClick={()=>{setGananciaId(c.id); setEditId(null);}} title="Registrar Ganancia">
-                               {c.ganancia > 0 ? `+ ${formatCOP(c.ganancia)}` : '$ -'}
+                             <span className="cursor-pointer hover:text-white flex items-center justify-end gap-1.5 transition-colors" onClick={()=>{setGananciaId(c.id); setEditId(null);}} title="Registrar Ganancia">
+                               {c.ganancia > 0 ? <><span className="text-[10px] text-emerald-500 font-bold">+</span> {formatCOP(c.ganancia)}</> : <span className="text-slate-500 hover:text-emerald-400">+$ 0</span>}
                              </span>
                            )}
                         </td>
-                        <td className="px-3 py-3 text-right font-bold text-slate-200">{formatCOP(c.saldoTotal)}</td>
-                        <td className="px-3 py-3 text-center text-indigo-400 font-bold">{c.tasaEA}%</td>
-                        <td className="px-3 py-3 text-center flex justify-center gap-2">
-                          <button onClick={() => startEdit(c)} className="text-slate-400 hover:text-indigo-400 p-1 bg-slate-900 rounded transition-colors" title="Editar"><Edit3 size={14}/></button>
-                          <button onClick={() => {removeCuenta(c.id); showToast("Cuenta eliminada");}} className="text-slate-400 hover:text-rose-400 p-1 bg-slate-900 rounded transition-colors" title="Eliminar"><Trash2 size={14}/></button>
+                        <td className="px-5 py-4 text-right font-black text-white tabular-nums">{formatCOP(c.saldoTotal)}</td>
+                        <td className="px-5 py-4 text-center text-amber-400 font-bold tabular-nums">{c.tasaEA}%</td>
+                        <td className="px-5 py-4 text-center flex justify-center gap-3">
+                          <button onClick={() => startEdit(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
+                          <button onClick={() => {removeCuenta(c.id); showToast("Cuenta eliminada");}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
                         </td>
                       </tr>
                     );
                   })}
-                  <tr className="bg-slate-950 font-bold text-white border-t-2 border-slate-800">
-                    <td className="px-3 py-4">TOTAL</td>
-                    <td className="px-3 py-4 text-right">{formatCOP(totalSInicial)}</td>
-                    <td className="px-3 py-4 text-right text-emerald-400">+ {formatCOP(totalGanancia)}</td>
-                    <td className="px-3 py-4 text-right">{formatCOP(totalSaldoTotal)}</td>
-                    <td className="px-3 py-4 text-center">-</td>
-                    <td className="px-3 py-4 text-center"></td>
-                  </tr>
+                  {invCuentas.length === 0 && (
+                    <tr><td colSpan="6" className="px-5 py-10 text-center text-[#8A92A6] font-bold italic">No hay cuentas de inversión o bolsillos registrados.</td></tr>
+                  )}
+                  {invCuentas.length > 0 && (
+                    <tr className="bg-[#0b0c16]/50 font-black text-white border-t border-white/[0.05]">
+                      <td className="px-5 py-5 uppercase tracking-widest text-[11px] text-[#8A92A6]">TOTAL PORTAFOLIO</td>
+                      <td className="px-5 py-5 text-right tabular-nums">{formatCOP(totalSInicial)}</td>
+                      <td className="px-5 py-5 text-right text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)] tabular-nums">+ {formatCOP(totalGanancia)}</td>
+                      <td className="px-5 py-5 text-right tabular-nums">{formatCOP(totalSaldoTotal)}</td>
+                      <td colSpan="2" className="px-5 py-5 text-center"></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
