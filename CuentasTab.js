@@ -26,6 +26,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       // Listas para mostrar el detalle cuenta por cuenta
       const leoAccounts = [];
       const andreAccounts = [];
+      const sharedAccounts = [];
 
       cuentas.forEach(c => {
         if (!['bank', 'cash'].includes(c.type) || c.name.toLowerCase().includes('rappi')) return;
@@ -39,12 +40,15 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
             if (c.type === 'cash') andreCash += c.currentBalance;
             else andreBank += c.currentBalance;
             andreAccounts.push(c);
+        } else {
+            sharedAccounts.push(c);
         }
       });
 
       // Ordenar alfabéticamente para que se vea más organizado
       leoAccounts.sort((a,b) => a.name.localeCompare(b.name));
       andreAccounts.sort((a,b) => a.name.localeCompare(b.name));
+      sharedAccounts.sort((a,b) => a.name.localeCompare(b.name));
 
       const guardarCuenta = (e) => {
         e.preventDefault();
@@ -156,25 +160,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       const tipoOrigen  = cuentas.find(c=>c.id===nuevaTx.fromId)?.type;
       const tipoDestino = cuentas.find(c=>c.id===nuevaTx.toId)?.type;
       const esAvance    = tipoOrigen === 'credit' && ['bank','cash'].includes(tipoDestino);
-      
-      // Excluyendo rappicuenta de la vista principal de ahorros
-      const c_ahorros   = cuentas.filter(c => ['bank', 'cash'].includes(c.type) && !c.name.toLowerCase().includes('rappi'));
-
-      const renderCuentaCard = (c, colorClass) => (
-        <div key={c.id} className="flex justify-between items-center p-4 bg-[#111222] shadow-neumorph-inset rounded-xl border border-transparent hover:border-white/[0.05] transition-colors group">
-          <div>
-            <p className="text-sm font-black text-white tracking-wide">{c.name}</p>
-            <p className="text-[10px] text-[#8A92A6] font-bold tracking-widest uppercase mt-0.5">Saldo real: {formatCOP(c.currentBalance)}</p>
-          </div>
-          <div className="text-right flex items-center gap-3">
-            <p className={`text-base font-black tabular-nums ${colorClass}`}>{formatCOP(c.currentBalance)}</p>
-            <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-              <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
-              <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
-            </div>
-          </div>
-        </div>
-      );
 
       // ✨ Helper para colores dinámicos basados en el valor
       const getValueColor = (val) => {
@@ -213,172 +198,219 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
             </div>
           </header>
 
-          {/* ✨ ACTUALIZADO: TARJETAS DE RESUMEN DE LIQUIDEZ CON DETALLE */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* FORMULARIO CREAR/EDITAR CUENTA */}
+          {showForm && (
+            <Card className="!border-neoncyan/30 shadow-glow-cyan relative overflow-hidden" ref={formRef}>
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                  {cuentaEdit.id ? <Edit3 size={16} className="text-neoncyan"/> : <Plus size={16} className="text-neoncyan"/>} 
+                  {cuentaEdit.id ? 'Editar Cuenta' : 'Crear Nueva Cuenta'}
+                </h2>
+                {cuentaEdit.id && (
+                  <button onClick={limpiarFormCuenta} className="text-[10px] font-black uppercase tracking-widest text-rose-400 hover:text-white transition-colors bg-rose-500/10 px-3 py-1.5 rounded-lg">
+                    Cancelar Edición
+                  </button>
+                )}
+              </div>
+              
+              <form onSubmit={guardarCuenta} className="grid grid-cols-2 md:grid-cols-4 gap-5 items-end relative z-10 animate-in slide-in-from-top-4 fade-in duration-300">
+                <Input label="Nombre de la Cuenta" value={cuentaEdit.name} onChange={e=>setCuentaEdit({...cuentaEdit, name: e.target.value})} error={errors.name} className="col-span-2 md:col-span-1" placeholder="Ej. Ahorros Bancolombia" />
+                <Select label="Tipo de Cuenta" options={[{value:'bank', label:'🏦 Cuenta Ahorro'}, {value:'cash', label:'💵 Efectivo'}, {value:'pocket', label:'📈 Inversión / Bolsillo'}]} value={cuentaEdit.type} onChange={e=>setCuentaEdit({...cuentaEdit, type: e.target.value})} className="col-span-2 md:col-span-1" />
+                <div className="col-span-2 md:col-span-2 relative">
+                  <Input type="number" label="Saldo Base/Inicial ($)" value={cuentaEdit.initialBalance} onChange={e=>setCuentaEdit({...cuentaEdit, initialBalance: e.target.value})} className="pl-10" placeholder="0" />
+                  <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
+                </div>
+                <button type="submit" className="col-span-2 md:col-span-4 w-full bg-neoncyan hover:bg-[#00cce6] text-[#0b0c16] font-black py-4 rounded-xl text-sm transition-all shadow-glow-cyan active:scale-95 uppercase tracking-widest mt-2">
+                  {cuentaEdit.id ? 'ACTUALIZAR DATOS' : 'GUARDAR NUEVA CUENTA'}
+                </button>
+              </form>
+            </Card>
+          )}
+
+          {/* ✨ ACTUALIZADO: TRES COLUMNAS PRINCIPALES */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 items-start">
             
-            {/* Tarjeta Leo (Cyan Theme) */}
-            <Card className="!border-transparent flex flex-col justify-between overflow-hidden relative">
+            {/* --- COLUMNA 1: Tarjeta Leo (Cyan Theme) --- */}
+            <Card className="!border-transparent flex flex-col overflow-hidden relative h-full">
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-neoncyan/10 blur-[50px] rounded-full pointer-events-none"></div>
               <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest mb-5 flex items-center gap-2 relative z-10">
                 <Wallet size={16}/> Liquidez Leo
               </h3>
               
-              <div className="space-y-2 relative z-10">
-                 {leoAccounts.length === 0 ? (
-                   <p className="text-xs text-[#8A92A6] italic text-center py-3 bg-[#111222] shadow-neumorph-inset rounded-xl">Sin cuentas registradas</p>
-                 ) : (
-                   leoAccounts.map(c => (
-                     <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
-                        <span className="text-[#8A92A6] font-bold truncate pr-2 flex items-center gap-2">
-                          <span className="text-lg">{c.type === 'cash' ? '💵' : '🏦'}</span>
-                          {c.name}
-                        </span>
-                        <span className={`font-black tabular-nums ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
-                     </div>
-                   ))
-                 )}
+              <div className="space-y-3 relative z-10 flex-1 flex flex-col">
+                 <div className="flex-1 space-y-3">
+                   {leoAccounts.length === 0 ? (
+                     <p className="text-xs text-[#8A92A6] italic text-center py-5 bg-[#111222] shadow-neumorph-inset rounded-xl border border-transparent">Sin cuentas registradas</p>
+                   ) : (
+                     leoAccounts.map(c => (
+                       <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3.5 rounded-xl border border-transparent group transition-all hover:border-white/[0.05]">
+                          <div className="flex items-center gap-2 pr-2 overflow-hidden">
+                            <span className="text-lg shrink-0">{c.type === 'cash' ? '💵' : '🏦'}</span>
+                            <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
+                            {/* Botones de edición integrados al hover */}
+                            <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
+                              <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
+                            </div>
+                          </div>
+                       </div>
+                     ))
+                   )}
+                 </div>
                  
-                 <div className="flex justify-between items-center text-base pt-4 mt-2 px-1 border-t border-white/[0.05]">
-                    <span className="text-white font-black uppercase tracking-widest text-[11px]">Total Disponible</span>
-                    <span className={`font-black text-xl tabular-nums ${getValueColor(leoBank + leoCash)}`}>{formatCOP(leoBank + leoCash)}</span>
+                 {/* Totales consolidados de Leo */}
+                 <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
+                      <span className="font-bold text-white text-xs">{formatCOP(leoBank)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Efectivo</span>
+                      <span className="font-bold text-white text-xs">{formatCOP(leoCash)}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/[0.02]">
+                      <span className="text-white font-black uppercase tracking-widest text-[11px]">Total Disponible</span>
+                      <span className={`font-black text-xl tabular-nums ${getValueColor(leoBank + leoCash)}`}>{formatCOP(leoBank + leoCash)}</span>
+                    </div>
                  </div>
               </div>
             </Card>
 
-            {/* Tarjeta Andre (Magenta Theme) */}
-            <Card className="!border-transparent flex flex-col justify-between overflow-hidden relative">
+            {/* --- COLUMNA 2: Tarjeta Andre (Magenta Theme) --- */}
+            <Card className="!border-transparent flex flex-col overflow-hidden relative h-full">
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-neonmagenta/10 blur-[50px] rounded-full pointer-events-none"></div>
               <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest mb-5 flex items-center gap-2 relative z-10">
                 <Wallet size={16}/> Liquidez Andre
               </h3>
               
-              <div className="space-y-2 relative z-10">
-                 {andreAccounts.length === 0 ? (
-                   <p className="text-xs text-[#8A92A6] italic text-center py-3 bg-[#111222] shadow-neumorph-inset rounded-xl">Sin cuentas registradas</p>
-                 ) : (
-                   andreAccounts.map(c => (
-                     <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
-                        <span className="text-[#8A92A6] font-bold truncate pr-2 flex items-center gap-2">
-                          <span className="text-lg">{c.type === 'cash' ? '💵' : '🏦'}</span>
-                          {c.name}
-                        </span>
-                        <span className={`font-black tabular-nums ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
-                     </div>
-                   ))
-                 )}
+              <div className="space-y-3 relative z-10 flex-1 flex flex-col">
+                 <div className="flex-1 space-y-3">
+                   {andreAccounts.length === 0 ? (
+                     <p className="text-xs text-[#8A92A6] italic text-center py-5 bg-[#111222] shadow-neumorph-inset rounded-xl border border-transparent">Sin cuentas registradas</p>
+                   ) : (
+                     andreAccounts.map(c => (
+                       <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3.5 rounded-xl border border-transparent group transition-all hover:border-white/[0.05]">
+                          <div className="flex items-center gap-2 pr-2 overflow-hidden">
+                            <span className="text-lg shrink-0">{c.type === 'cash' ? '💵' : '🏦'}</span>
+                            <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
+                            {/* Botones de edición integrados al hover */}
+                            <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
+                              <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
+                            </div>
+                          </div>
+                       </div>
+                     ))
+                   )}
+                 </div>
                  
-                 <div className="flex justify-between items-center text-base pt-4 mt-2 px-1 border-t border-white/[0.05]">
-                    <span className="text-white font-black uppercase tracking-widest text-[11px]">Total Disponible</span>
-                    <span className={`font-black text-xl tabular-nums ${getValueColor(andreBank + andreCash)}`}>{formatCOP(andreBank + andreCash)}</span>
+                 {/* Totales consolidados de Andre */}
+                 <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
+                      <span className="font-bold text-white text-xs">{formatCOP(andreBank)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Efectivo</span>
+                      <span className="font-bold text-white text-xs">{formatCOP(andreCash)}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/[0.02]">
+                      <span className="text-white font-black uppercase tracking-widest text-[11px]">Total Disponible</span>
+                      <span className={`font-black text-xl tabular-nums ${getValueColor(andreBank + andreCash)}`}>{formatCOP(andreBank + andreCash)}</span>
+                    </div>
                  </div>
               </div>
             </Card>
 
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* FORMULARIO CREAR/EDITAR CUENTA */}
-            {showForm && (
-              <Card className="lg:col-span-3 !border-neoncyan/30 shadow-glow-cyan relative overflow-hidden" ref={formRef}>
-                <div className="flex justify-between items-center mb-6 relative z-10">
-                  <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                    {cuentaEdit.id ? <Edit3 size={16} className="text-neoncyan"/> : <Plus size={16} className="text-neoncyan"/>} 
-                    {cuentaEdit.id ? 'Editar Cuenta' : 'Crear Nueva Cuenta'}
-                  </h2>
-                  {cuentaEdit.id && (
-                    <button onClick={limpiarFormCuenta} className="text-[10px] font-black uppercase tracking-widest text-rose-400 hover:text-white transition-colors bg-rose-500/10 px-3 py-1.5 rounded-lg">
-                      Cancelar Edición
-                    </button>
-                  )}
+            {/* --- COLUMNA 3: FORMULARIO DE TRASLADOS --- */}
+            <Card className="!border-transparent bg-gradient-to-b from-[#111222] to-appcard h-full flex flex-col">
+              <h2 className="text-base font-black text-white mb-2 flex items-center gap-2 uppercase tracking-wide">
+                <ArrowRightLeft size={18} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]"/> 
+                Traslado de Fondos
+              </h2>
+              <p className="text-[10px] text-[#8A92A6] font-bold uppercase tracking-widest mb-6">
+                Mueve dinero sin afectar tus ingresos o egresos netos.
+              </p>
+              
+              <form onSubmit={agregarTransferencia} className="space-y-5 flex-1 flex flex-col">
+                <Select 
+                  label="Origen (Sale de)" 
+                  options={cuentas.filter(c=>['bank','cash','credit','pocket'].includes(c.type)).map(c => ({value: c.id, label: `${c.type==='credit'?'💳':c.type==='cash'?'💵':c.type==='pocket'?'📈':'🏦'} ${c.name}`}))} 
+                  value={nuevaTx.fromId} 
+                  onChange={e=>setNuevaTx({...nuevaTx, fromId: e.target.value})} 
+                  error={txErrors.fromId} 
+                />
+                <Select 
+                  label="Destino (Entra a)" 
+                  options={cuentas.filter(c=>['bank','cash'].includes(c.type)).map(c => ({value: c.id, label: `${c.type==='cash'?'💵':'🏦'} ${c.name}`}))} 
+                  value={nuevaTx.toId} 
+                  onChange={e=>setNuevaTx({...nuevaTx, toId: e.target.value})} 
+                  error={txErrors.toId} 
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative">
+                    <Input type="number" label="Monto ($)" value={nuevaTx.monto} onChange={e=>setNuevaTx({...nuevaTx, monto: e.target.value})} error={txErrors.monto} min="1" className="pl-8 font-black text-amber-400" placeholder="0" />
+                    <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                  </div>
+                  <Input type="date" label="Fecha" value={nuevaTx.fecha} onChange={e=>setNuevaTx({...nuevaTx, fecha: e.target.value})} error={txErrors.fecha} className="[&::-webkit-calendar-picker-indicator]:invert-[0.8]" />
                 </div>
                 
-                <form onSubmit={guardarCuenta} className="grid grid-cols-2 md:grid-cols-4 gap-5 items-end relative z-10 animate-in slide-in-from-top-4 fade-in duration-300">
-                  <Input label="Nombre de la Cuenta" value={cuentaEdit.name} onChange={e=>setCuentaEdit({...cuentaEdit, name: e.target.value})} error={errors.name} className="col-span-2 md:col-span-1" placeholder="Ej. Ahorros Bancolombia" />
-                  <Select label="Tipo de Cuenta" options={[{value:'bank', label:'🏦 Cuenta Ahorro'}, {value:'cash', label:'💵 Efectivo'}, {value:'pocket', label:'📈 Inversión / Bolsillo'}]} value={cuentaEdit.type} onChange={e=>setCuentaEdit({...cuentaEdit, type: e.target.value})} className="col-span-2 md:col-span-1" />
-                  <div className="col-span-2 md:col-span-2 relative">
-                    <Input type="number" label="Saldo Base/Inicial ($)" value={cuentaEdit.initialBalance} onChange={e=>setCuentaEdit({...cuentaEdit, initialBalance: e.target.value})} className="pl-10" placeholder="0" />
-                    <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
+                {esAvance && (
+                  <div className="p-4 bg-neonmagenta/5 border border-neonmagenta/30 rounded-2xl shadow-neumorph-inset mt-2 animate-in fade-in zoom-in-95">
+                    <p className="text-[10px] text-neonmagenta mb-3 font-black uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_5px_rgba(255,0,122,0.4)]">
+                      <ShieldAlert size={14} strokeWidth="3" /> Detectado Avance Tarjeta
+                    </p>
+                    <Input type="number" label="Costo de transacción ($)" value={nuevaTx.costoAvance} onChange={e=>setNuevaTx({...nuevaTx, costoAvance: e.target.value})} required min="0" placeholder="Ej. 6500" />
                   </div>
-                  <button type="submit" className="col-span-2 md:col-span-4 w-full bg-neoncyan hover:bg-[#00cce6] text-[#0b0c16] font-black py-4 rounded-xl text-sm transition-all shadow-glow-cyan active:scale-95 uppercase tracking-widest mt-2">
-                    {cuentaEdit.id ? 'ACTUALIZAR DATOS' : 'GUARDAR NUEVA CUENTA'}
-                  </button>
-                </form>
-              </Card>
-            )}
-            
-            {/* LISTA DE CUENTAS DE AHORRO */}
-            <div className="lg:col-span-2 flex flex-col">
-              <Card className="flex-1 flex flex-col !border-transparent">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <Landmark size={18} className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]"/> 
-                  Cuentas de Ahorro / Retiros
-                </h3>
-                <div className="space-y-3 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32]">
-                  {c_ahorros.map(c => renderCuentaCard(c, 'text-white'))}
-                  {c_ahorros.length === 0 && (
-                    <div className="text-center py-10 bg-[#111222] shadow-neumorph-inset rounded-2xl">
-                      <p className="text-sm text-[#8A92A6] font-bold">No hay cuentas bancarias o efectivo registrado.</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            </div>
-
-            {/* FORMULARIO DE TRASLADOS */}
-            <div className="flex flex-col">
-              <Card className="flex-1 !border-transparent bg-gradient-to-b from-[#111222] to-appcard">
-                <h2 className="text-base font-black text-white mb-2 flex items-center gap-2 uppercase tracking-wide">
-                  <ArrowRightLeft size={18} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]"/> 
-                  Traslado de Fondos
-                </h2>
-                <p className="text-[10px] text-[#8A92A6] font-bold uppercase tracking-widest mb-6">
-                  Mueve dinero sin afectar tus ingresos o egresos netos.
-                </p>
+                )}
                 
-                <form onSubmit={agregarTransferencia} className="space-y-5">
-                  <Select 
-                    label="Origen (Sale de)" 
-                    options={cuentas.filter(c=>['bank','cash','credit','pocket'].includes(c.type)).map(c => ({value: c.id, label: `${c.type==='credit'?'💳':c.type==='cash'?'💵':c.type==='pocket'?'📈':'🏦'} ${c.name}`}))} 
-                    value={nuevaTx.fromId} 
-                    onChange={e=>setNuevaTx({...nuevaTx, fromId: e.target.value})} 
-                    error={txErrors.fromId} 
-                  />
-                  <Select 
-                    label="Destino (Entra a)" 
-                    options={cuentas.filter(c=>['bank','cash'].includes(c.type)).map(c => ({value: c.id, label: `${c.type==='cash'?'💵':'🏦'} ${c.name}`}))} 
-                    value={nuevaTx.toId} 
-                    onChange={e=>setNuevaTx({...nuevaTx, toId: e.target.value})} 
-                    error={txErrors.toId} 
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="relative">
-                      <Input type="number" label="Monto ($)" value={nuevaTx.monto} onChange={e=>setNuevaTx({...nuevaTx, monto: e.target.value})} error={txErrors.monto} min="1" className="pl-8 font-black text-amber-400" placeholder="0" />
-                      <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
-                    </div>
-                    <Input type="date" label="Fecha" value={nuevaTx.fecha} onChange={e=>setNuevaTx({...nuevaTx, fecha: e.target.value})} error={txErrors.fecha} className="[&::-webkit-calendar-picker-indicator]:invert-[0.8]" />
-                  </div>
-                  
-                  {esAvance && (
-                    <div className="p-4 bg-neonmagenta/5 border border-neonmagenta/30 rounded-2xl shadow-neumorph-inset mt-2 animate-in fade-in zoom-in-95">
-                      <p className="text-[10px] text-neonmagenta mb-3 font-black uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_5px_rgba(255,0,122,0.4)]">
-                        <ShieldAlert size={14} strokeWidth="3" /> Detectado Avance Tarjeta
-                      </p>
-                      <Input type="number" label="Costo de transacción ($)" value={nuevaTx.costoAvance} onChange={e=>setNuevaTx({...nuevaTx, costoAvance: e.target.value})} required min="0" placeholder="Ej. 6500" />
-                    </div>
-                  )}
-                  
-                  <Input label="Descripción (Opcional)" placeholder="Ej: Traslado a bolsillo" value={nuevaTx.descripcion} onChange={e=>setNuevaTx({...nuevaTx, descripcion: e.target.value})} />
-                  
-                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-[#0b0c16] font-black py-4 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)] active:scale-95 tracking-widest uppercase mt-4">
+                <Input label="Descripción (Opcional)" placeholder="Ej: Traslado a bolsillo" value={nuevaTx.descripcion} onChange={e=>setNuevaTx({...nuevaTx, descripcion: e.target.value})} />
+                
+                <div className="flex-1 flex items-end mt-4">
+                  <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-[#0b0c16] font-black py-4 rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(251,191,36,0.4)] active:scale-95 tracking-widest uppercase">
                     Registrar Traslado
                   </button>
-                </form>
-              </Card>
-            </div>
-            
+                </div>
+              </form>
+            </Card>
+
           </div>
+
+          {/* Backup por si existen cuentas sin asignar (Compartidas/Otros) */}
+          {sharedAccounts.length > 0 && (
+            <Card className="!border-transparent bg-[#111222] shadow-neumorph-inset mt-6">
+               <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Wallet size={16} className="text-slate-400"/> Otras Cuentas (Compartidas)
+               </h3>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 {sharedAccounts.map(c => (
+                   <div key={c.id} className="flex justify-between items-center text-sm bg-appcard shadow-neumorph p-3.5 rounded-xl border border-white/[0.02] group transition-all hover:border-white/[0.05]">
+                      <div className="flex items-center gap-2 pr-2 overflow-hidden">
+                        <span className="text-lg shrink-0">{c.type === 'cash' ? '💵' : '🏦'}</span>
+                        <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
+                        <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
+                          <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
+                        </div>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+            </Card>
+          )}
+
         </div>
       );
     };
