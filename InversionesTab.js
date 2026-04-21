@@ -11,6 +11,16 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       
       const [nuevo, setNuevo] = useState({ name: '', initialBalance: '', tasaEA: '' });
 
+      // ============================================================================
+      // ÍCONOS SVG NATIVOS (Prevención de ReferenceError)
+      // ============================================================================
+      const CheckIcon = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
+      );
+      const XIcon = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      );
+
       const handleAdd = (e) => {
         e.preventDefault();
         if(!nuevo.name) return showToast("El nombre es obligatorio", "error");
@@ -238,8 +248,8 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                               <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-20 bg-[#111222] border border-amber-500/50 rounded-lg px-3 py-2 text-xs text-amber-400 font-bold outline-none text-center mx-auto block shadow-neumorph-inset focus:border-amber-500" title="Tasa E.A." />
                            </td>
                            <td className="px-3 py-3 text-center flex justify-center gap-2">
-                             <button onClick={saveEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-[0_0_10px_rgba(52,211,153,0.5)]" title="Guardar Cambios"><Check size={14} strokeWidth="3"/></button>
-                             <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14} strokeWidth="3"/></button>
+                             <button onClick={saveEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-[0_0_10px_rgba(52,211,153,0.5)]" title="Guardar Cambios"><CheckIcon size={14}/></button>
+                             <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14}/></button>
                            </td>
                          </tr>
                        )
@@ -259,8 +269,8 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">$</span>
                                  <input type="number" value={gananciaMonto} onChange={e=>setGananciaMonto(e.target.value)} className="w-24 bg-[#111222] border border-emerald-500/50 shadow-neumorph-inset rounded-lg pl-6 pr-2 py-1 text-xs text-white outline-none text-right focus:border-emerald-400" autoFocus placeholder="Monto"/>
                                </div>
-                               <button onClick={() => guardarGanancia(c)} className="text-[#0b0c16] bg-emerald-400 hover:bg-emerald-300 p-1.5 rounded-md shadow-[0_0_10px_rgba(52,211,153,0.5)] transition-colors"><Check size={14} strokeWidth="3"/></button>
-                               <button onClick={() => setGananciaId(null)} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-500/10 border border-rose-500/30 rounded-md transition-colors"><XIcon size={14} strokeWidth="3"/></button>
+                               <button onClick={() => guardarGanancia(c)} className="text-[#0b0c16] bg-emerald-400 hover:bg-emerald-300 p-1.5 rounded-md shadow-[0_0_10px_rgba(52,211,153,0.5)] transition-colors"><CheckIcon size={14}/></button>
+                               <button onClick={() => setGananciaId(null)} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-500/10 border border-rose-500/30 rounded-md transition-colors"><XIcon size={14}/></button>
                              </div>
                            ) : (
                              <span className="cursor-pointer hover:text-white flex items-center justify-end gap-1.5 transition-colors" onClick={()=>{setGananciaId(c.id); setEditId(null);}} title="Registrar Ganancia">
