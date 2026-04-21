@@ -3,27 +3,27 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
 
   // --- ÍCONOS NATIVOS ---
   const Zap = ({ size = 24, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
     </svg>
   );
 
   const TrendingDown = ({ size = 24, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline>
       <polyline points="16 17 22 17 22 11"></polyline>
     </svg>
   );
 
   const TrendingUp = ({ size = 24, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
       <polyline points="16 7 22 7 22 13"></polyline>
     </svg>
   );
 
   const Activity = ({ size = 24, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
     </svg>
   );
@@ -44,20 +44,21 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     const radius = 54;
     const circum = 2 * Math.PI * radius;
     const offset = circum - (score / 100) * circum;
-    const colorClass = score >= 80 ? '#34d399' : score >= 50 ? '#fbbf24' : '#fb7185'; 
+    // Cyan para >=80, Amber para >=50, Magenta para <50
+    const colorClass = score >= 80 ? '#00E5FF' : score >= 50 ? '#fbbf24' : '#FF007A'; 
 
     return (
       <div className="relative flex items-center justify-center">
-        <svg viewBox="0 0 120 120" className="w-28 h-28 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+        <svg viewBox="0 0 120 120" className="w-28 h-28" style={{ filter: `drop-shadow(0 0 10px ${colorClass}80)` }}>
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="10" />
           <circle cx="60" cy="60" r={radius} fill="none" stroke={colorClass} strokeWidth="10" strokeLinecap="round"
             strokeDasharray={circum} strokeDashoffset={offset} transform="rotate(-90 60 60)"
-            style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+            style={{ transition: 'stroke-dashoffset 1.5s ease-in-out' }}
           />
         </svg>
         <div className="absolute flex flex-col items-center justify-center mt-1">
-          <span className="text-3xl font-black text-white tabular-nums tracking-tighter" style={{ color: colorClass }}>{score}</span>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">/ 100</span>
+          <span className="text-3xl font-black tabular-nums tracking-tighter" style={{ color: colorClass, textShadow: `0 0 10px ${colorClass}80` }}>{score}</span>
+          <span className="text-[10px] font-bold text-[#8A92A6] uppercase tracking-widest">/ 100</span>
         </div>
       </div>
     );
@@ -73,16 +74,16 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
 
     return (
       <div className="relative flex items-center justify-center">
-        <svg viewBox="0 0 120 120" className="w-32 h-32 drop-shadow-[0_0_20px_rgba(249,115,22,0.2)]">
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#3b82f6" strokeWidth="12" /> {/* Azul (Variables) */}
-          <circle cx="60" cy="60" r={radius} fill="none" stroke="#f97316" strokeWidth="12" strokeLinecap="round"
+        <svg viewBox="0 0 120 120" className="w-32 h-32 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="#00E5FF" strokeWidth="12" /> {/* Cyan (Variables) */}
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="#fbbf24" strokeWidth="12" strokeLinecap="round"
             strokeDasharray={circum} strokeDashoffset={fijosOffset} transform="rotate(-90 60 60)"
-            style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-          /> {/* Naranja (Fijos) */}
+            style={{ transition: 'stroke-dashoffset 1.5s ease-in-out' }}
+          /> {/* Amber (Fijos) */}
         </svg>
         <div className="absolute flex flex-col items-center justify-center text-center mt-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fijos</span>
-          <span className="text-xl font-black text-orange-400 tabular-nums">{pFijos.toFixed(0)}%</span>
+          <span className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">Fijos</span>
+          <span className="text-xl font-black text-amber-400 tabular-nums drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]">{pFijos.toFixed(0)}%</span>
         </div>
       </div>
     );
@@ -113,15 +114,15 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
         <defs>
           <linearGradient id="gradIng" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+            <stop offset="0%" stopColor="#00E5FF" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#00E5FF" stopOpacity="0.0" />
           </linearGradient>
           <linearGradient id="gradEgr" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.0" />
+            <stop offset="0%" stopColor="#FF007A" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#FF007A" stopOpacity="0.0" />
           </linearGradient>
-          <filter id="glowIng"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          <filter id="glowEgr"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="glowIng"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="glowEgr"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         </defs>
         
         {/* Áreas con gradiente */}
@@ -129,8 +130,8 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         <path d={egrArea} fill="url(#gradEgr)" className="transition-all duration-1000" />
         
         {/* Líneas de Neón */}
-        <path d={ingPath} fill="none" stroke="#10b981" strokeWidth="4" filter="url(#glowIng)" strokeLinejoin="round" />
-        <path d={egrPath} fill="none" stroke="#f43f5e" strokeWidth="4" filter="url(#glowEgr)" strokeLinejoin="round" />
+        <path d={ingPath} fill="none" stroke="#00E5FF" strokeWidth="4" filter="url(#glowIng)" strokeLinejoin="round" />
+        <path d={egrPath} fill="none" stroke="#FF007A" strokeWidth="4" filter="url(#glowEgr)" strokeLinejoin="round" />
       </svg>
     );
   };
@@ -196,7 +197,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     return recs;
   }, [cargaDeuda, tasaAhorroAnual, scoreData.recs]);
 
-  // LA LÓGICA DE EXTREMOS Y FUGAS ESTÁ A SALVO AQUÍ
   const topCategoriasAnual = useMemo(() => {
     const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
     fechaBase.setMonth(fechaBase.getMonth() - 11);
@@ -225,11 +225,15 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
       <header>
-        <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-          <Activity className="text-indigo-400 w-8 h-8"/> 
+        <h1 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3 tracking-wide">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neoncyan to-blue-600 flex items-center justify-center shadow-glow-cyan">
+             <Activity className="text-[#0b0c16] w-6 h-6"/> 
+          </div>
           Analítica y Score Familia
         </h1>
-        <p className="text-sm text-slate-400 mt-1">El panel de control definitivo con gráficas dinámicas nativas.</p>
+        <p className="text-sm md:text-base text-[#8A92A6] mt-2 font-medium tracking-wide">
+          El panel de control definitivo con gráficas dinámicas nativas.
+        </p>
       </header>
 
       {/* ---------------------------------------------------- */}
@@ -238,27 +242,29 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Gráfica Circular de Score */}
-        <Card className="flex flex-col items-center justify-center p-6 border-t-4 border-t-indigo-500 bg-gradient-to-b from-indigo-500/10 to-transparent">
-          <p className="text-[10px] md:text-xs text-indigo-400 uppercase font-bold tracking-widest mb-4">Salud Financiera</p>
+        <Card className="flex flex-col items-center justify-center p-6 !border-t-0 shadow-neumorph-inset bg-[#111222]">
+          <p className="text-[10px] md:text-xs text-[#8A92A6] uppercase font-black tracking-widest mb-4">Salud Financiera</p>
           <ScoreGauge score={scoreData.score} />
         </Card>
 
         {/* Tarjetas de KPI */}
         <div className="flex flex-col gap-4 lg:col-span-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-            <Card className="p-5 flex flex-col justify-center border border-rose-500/20 bg-rose-500/5 hover:border-rose-500/40">
-              <p className="text-[10px] text-rose-400 uppercase font-black tracking-widest mb-1">Carga de Deuda</p>
-              <p className="text-3xl font-black text-white tabular-nums">{cargaDeuda.toFixed(1)}%</p>
+            <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-magenta transition-all">
+              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1 group-hover:text-neonmagenta transition-colors">Carga de Deuda</p>
+              <p className={`text-3xl font-black tabular-nums drop-shadow-md ${cargaDeuda > 40 ? 'text-neonmagenta drop-shadow-[0_0_10px_rgba(255,0,122,0.5)]' : 'text-white'}`}>
+                {cargaDeuda.toFixed(1)}%
+              </p>
             </Card>
 
-            <Card className="p-5 flex flex-col justify-center border border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40">
-              <p className="text-[10px] text-emerald-400 uppercase font-black tracking-widest mb-1">Tasa de Ahorro</p>
-              <p className="text-3xl font-black text-white tabular-nums">{tasaAhorroAnual.toFixed(1)}%</p>
+            <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-cyan transition-all">
+              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1 group-hover:text-neoncyan transition-colors">Tasa de Ahorro</p>
+              <p className="text-3xl font-black text-neoncyan tabular-nums drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]">{tasaAhorroAnual.toFixed(1)}%</p>
             </Card>
 
-            <Card className="p-5 flex flex-col justify-center border border-blue-500/20 bg-blue-500/5 hover:border-blue-500/40">
-              <p className="text-[10px] text-blue-400 uppercase font-black tracking-widest mb-1">Flujo Promedio</p>
-              <p className={`text-2xl font-black tabular-nums ${flujoPromedioMes >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222]">
+              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Flujo Promedio</p>
+              <p className={`text-2xl font-black tabular-nums ${flujoPromedioMes >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
                 {formatCOP(flujoPromedioMes)}
               </p>
             </Card>
@@ -270,10 +276,10 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         {/* ---------------------------------------------------- */}
         {/* SECCIÓN 2: GRÁFICA DE ÁREAS SUPERPUESTAS             */}
         {/* ---------------------------------------------------- */}
-        <Card className="xl:col-span-2 border-t-4 border-t-indigo-500 overflow-visible">
-          <h2 className="text-lg font-bold text-white mb-6">Comparativo Histórico (12 Meses)</h2>
+        <Card className="xl:col-span-2 overflow-visible">
+          <h2 className="text-lg font-black text-white mb-6 tracking-wide">Comparativo Histórico (12 Meses)</h2>
           
-          <div className="relative h-64 mt-4 border-b border-white/10 pb-2">
+          <div className="relative h-64 mt-4 border-b border-white/[0.05] pb-2">
             
             {/* Capa 1: Gráfica SVG de Áreas y Líneas */}
             <div className="absolute inset-0 z-0 px-4">
@@ -285,51 +291,54 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
               {historialMensual.map((m, i) => (
                 <div key={i} className="h-full flex-1 group relative flex flex-col justify-end items-center cursor-crosshair">
                   {/* Línea vertical de tracking invisible que aparece al hover */}
-                  <div className="absolute h-full w-px bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute h-full w-px bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   
-                  <span className="text-[9px] md:text-[10px] text-slate-500 mt-2 font-bold uppercase translate-y-6">{m.label}</span>
+                  <span className="text-[9px] md:text-[10px] text-[#8A92A6] mt-2 font-black uppercase tracking-widest translate-y-6">{m.label}</span>
                   
                   {/* Tooltip Cyberpunk */}
-                  <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-4 bg-[#0f0f11]/90 backdrop-blur-md border border-indigo-500/50 p-4 rounded-xl shadow-[0_0_30px_rgba(99,102,241,0.3)] z-20 pointer-events-none transition-all duration-200 text-[11px] min-w-[160px]">
-                    <p className="text-slate-300 font-bold uppercase mb-3 border-b border-white/10 pb-2">{m.label}</p>
-                    <div className="flex justify-between mb-1.5"><span className="text-emerald-400 font-bold">Ingresos:</span> <span className="text-white tabular-nums">{formatCOP(m.ingresos)}</span></div>
-                    <div className="flex justify-between mb-1.5"><span className="text-rose-400 font-bold">Egresos:</span> <span className="text-white tabular-nums">{formatCOP(m.egresos)}</span></div>
+                  <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-4 bg-appcard/95 backdrop-blur-xl border border-white/[0.05] p-4 rounded-xl shadow-neumorph z-20 pointer-events-none transition-all duration-200 text-[11px] min-w-[160px]">
+                    <p className="text-white font-black uppercase tracking-widest mb-3 border-b border-white/10 pb-2">{m.label}</p>
+                    <div className="flex justify-between mb-1.5"><span className="text-neoncyan font-bold tracking-wide">Ingresos:</span> <span className="text-white font-black tabular-nums">{formatCOP(m.ingresos)}</span></div>
+                    <div className="flex justify-between mb-1.5"><span className="text-neonmagenta font-bold tracking-wide">Egresos:</span> <span className="text-white font-black tabular-nums">{formatCOP(m.egresos)}</span></div>
                     <div className="border-t border-white/10 my-2"></div>
-                    <div className="flex justify-between font-black"><span className={m.neto >= 0 ? 'text-indigo-400' : 'text-amber-500'}>Neto:</span> <span className={`${m.neto >= 0 ? 'text-indigo-400' : 'text-amber-500'} tabular-nums`}>{formatCOP(m.neto)}</span></div>
+                    <div className="flex justify-between font-black">
+                      <span className={m.neto >= 0 ? 'text-neoncyan' : 'text-amber-400'}>Neto:</span> 
+                      <span className={`${m.neto >= 0 ? 'text-neoncyan' : 'text-amber-400'} tabular-nums`}>{formatCOP(m.neto)}</span>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
           
-          <div className="flex justify-center gap-8 mt-10 text-xs font-black uppercase tracking-widest text-slate-400">
-             <span className="flex items-center gap-2"><div className="w-4 h-1 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] rounded-full"></div> Ingresos</span>
-             <span className="flex items-center gap-2"><div className="w-4 h-1 bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)] rounded-full"></div> Egresos</span>
+          <div className="flex justify-center gap-8 mt-10 text-xs font-black uppercase tracking-widest text-[#8A92A6]">
+             <span className="flex items-center gap-2"><div className="w-4 h-1.5 bg-neoncyan shadow-glow-cyan rounded-full"></div> Ingresos</span>
+             <span className="flex items-center gap-2"><div className="w-4 h-1.5 bg-neonmagenta shadow-glow-magenta rounded-full"></div> Egresos</span>
           </div>
         </Card>
 
         {/* ---------------------------------------------------- */}
         {/* SECCIÓN 3: RECOMENDACIONES                           */}
         {/* ---------------------------------------------------- */}
-        <Card className="border-t-4 border-t-amber-500 flex flex-col">
+        <Card className="flex flex-col">
            <div className="flex items-center gap-2 mb-6">
-              <Zap className="text-amber-400 w-5 h-5"/>
-              <h2 className="text-lg font-bold text-white">Acciones Sugeridas</h2>
+              <Zap className="text-amber-400 w-5 h-5 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/>
+              <h2 className="text-lg font-black tracking-wide text-white">Acciones Sugeridas</h2>
            </div>
            
-           <div className="space-y-4 overflow-y-auto pr-1 flex-1 max-h-[300px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+           <div className="space-y-4 overflow-y-auto pr-1 flex-1 max-h-[300px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32]">
               {recomendaciones.map((r, i) => (
-                <div key={i} className={`p-5 rounded-2xl border backdrop-blur-sm shadow-inner transition-colors hover:bg-opacity-50 ${
-                  r.tipo === 'alerta' ? 'bg-rose-500/10 border-rose-500/30' : 
-                  r.tipo === 'precaucion' ? 'bg-amber-500/10 border-amber-500/30' : 
-                  r.tipo === 'exito' ? 'bg-emerald-500/10 border-emerald-500/30' : 
-                  'bg-white/[0.02] border-white/5 hover:border-white/10'
+                <div key={i} className={`p-4 rounded-2xl border transition-all ${
+                  r.tipo === 'alerta' ? 'bg-[#111222] shadow-neumorph-inset border-neonmagenta/50 shadow-glow-magenta' : 
+                  r.tipo === 'precaucion' ? 'bg-[#111222] shadow-neumorph-inset border-amber-500/30' : 
+                  r.tipo === 'exito' ? 'bg-[#111222] shadow-neumorph-inset border-neoncyan/30' : 
+                  'bg-[#111222] shadow-neumorph-inset border-transparent'
                 }`}>
                    <div className="flex items-center gap-3 mb-2">
                       <span className="text-xl drop-shadow-md">{r.ico}</span>
-                      <span className="font-bold text-sm text-white">{r.title}</span>
+                      <span className={`font-black tracking-wide text-sm ${r.tipo === 'alerta' ? 'text-neonmagenta' : r.tipo === 'precaucion' ? 'text-amber-400' : r.tipo === 'exito' ? 'text-neoncyan' : 'text-white'}`}>{r.title}</span>
                    </div>
-                   <p className="text-xs text-slate-400 leading-relaxed pl-8">
+                   <p className="text-xs text-[#8A92A6] font-medium leading-relaxed pl-8">
                      {r.desc}
                    </p>
                 </div>
@@ -343,124 +352,130 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         {/* ---------------------------------------------------- */}
         {/* TARJETA 1: ESTRATEGIA AVALANCHA                      */}
         {/* ---------------------------------------------------- */}
-        <Card className="border-t-4 border-t-rose-500 flex flex-col">
+        <Card className="flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">Estrategia Avalancha</h2>
-            <div className="hidden md:block px-3 py-1 bg-rose-500/10 text-rose-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-rose-500/30 shadow-inner">
+            <h2 className="text-lg font-black tracking-wide text-white flex items-center gap-2">Estrategia Avalancha</h2>
+            <div className="hidden md:block px-3 py-1.5 bg-neonmagenta/10 text-neonmagenta rounded-lg text-[10px] font-black uppercase tracking-widest border border-neonmagenta/30 shadow-[0_0_10px_rgba(255,0,122,0.2)]">
               Prioridad: Tasa EA
             </div>
           </div>
 
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1 max-h-[350px]">
+          <div className="space-y-3 flex-1 overflow-y-auto pr-2 max-h-[350px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32]">
              {deudasOrdenadas.map((d, i) => (
-               <div key={d.id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${i === 0 ? 'bg-rose-500/10 border-rose-500/40 shadow-[0_0_20px_rgba(244,63,94,0.1)]' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
+               <div key={d.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${i === 0 ? 'bg-[#111222] shadow-neumorph-inset border-neonmagenta shadow-glow-magenta' : 'bg-appcard shadow-neumorph border-transparent hover:border-white/[0.05]'}`}>
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${i === 0 ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-[#0f0f11] border border-white/10 text-slate-400'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${i === 0 ? 'bg-neonmagenta text-[#0b0c16] shadow-[0_0_15px_rgba(255,0,122,0.8)]' : 'bg-[#111222] shadow-neumorph-inset border border-transparent text-[#8A92A6]'}`}>
                       #{i+1}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-200 line-clamp-1">{d.name}</p>
-                      <p className="text-[10px] font-black tracking-widest text-slate-500 mt-1 uppercase">
-                        Tasa EA: <span className="text-rose-400">{d.tasaEA}%</span>
+                      <p className="text-sm font-bold text-white line-clamp-1 tracking-wide">{d.name}</p>
+                      <p className="text-[10px] font-black tracking-widest text-[#8A92A6] mt-1 uppercase">
+                        Tasa EA: <span className={i === 0 ? 'text-neonmagenta' : 'text-white'}>{d.tasaEA}%</span>
                       </p>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-base font-black tabular-nums ${i === 0 ? 'text-rose-400' : 'text-white'}`}>
+                    <p className={`text-base font-black tabular-nums ${i === 0 ? 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.4)]' : 'text-white'}`}>
                       {formatCOP(d.currentDebt)}
                     </p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold">Saldo</p>
+                    <p className="text-[10px] text-[#8A92A6] uppercase tracking-widest mt-1 font-black">Saldo</p>
                   </div>
                </div>
              ))}
              {deudasOrdenadas.length === 0 && (
                <div className="flex flex-col items-center justify-center h-full py-10">
-                 <p className="text-4xl mb-3">🎉</p>
-                 <p className="text-slate-300 font-bold text-sm">¡Cero Deudas Activas!</p>
-                 <p className="text-slate-500 text-xs mt-1">Eres libre de intereses bancarios.</p>
+                 <p className="text-4xl mb-4 drop-shadow-[0_0_15px_rgba(0,229,255,0.4)]">🎉</p>
+                 <p className="text-neoncyan font-black tracking-wide text-sm uppercase">¡Cero Deudas Activas!</p>
+                 <p className="text-[#8A92A6] font-bold text-xs mt-2">Eres libre de intereses bancarios.</p>
                </div>
              )}
           </div>
         </Card>
 
-        {/* ---------------------------------------------------- */}
-        {/* TARJETA 2: EXTREMOS DEL AÑO (¡RESTAURADOS!)          */}
-        {/* ---------------------------------------------------- */}
-        <Card className="flex flex-col justify-center border-t-4 border-t-emerald-500 gap-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">Extremos del Año</h3>
-          
-          <div className="bg-emerald-500/5 border border-emerald-500/20 p-5 rounded-2xl flex items-center gap-5 shadow-inner">
-            <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 flex items-center justify-center rounded-xl shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-              <TrendingUp size={24} />
+        <div className="flex flex-col gap-6">
+          {/* ---------------------------------------------------- */}
+          {/* TARJETA 2: EXTREMOS DEL AÑO                          */}
+          {/* ---------------------------------------------------- */}
+          <Card className="flex flex-col justify-center gap-4">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-2">Extremos del Año</h3>
+            
+            <div className="bg-[#111222] shadow-neumorph-inset border border-transparent p-4 rounded-2xl flex items-center gap-5">
+              <div className="w-12 h-12 bg-neoncyan/10 text-neoncyan flex items-center justify-center rounded-xl shrink-0 shadow-glow-cyan border border-neoncyan/30">
+                <TrendingUp size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] text-neoncyan font-black tracking-widest uppercase mb-1 drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">Mejor Mes ({mejorMes?.label})</p>
+                <p className="text-2xl font-black text-white tabular-nums">{formatCOP(mejorMes?.neto)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-emerald-500 font-black tracking-widest uppercase mb-1">Mejor Mes ({mejorMes?.label})</p>
-              <p className="text-2xl font-black text-white tabular-nums">{formatCOP(mejorMes?.neto)}</p>
-            </div>
-          </div>
 
-          <div className="bg-rose-500/5 border border-rose-500/20 p-5 rounded-2xl flex items-center gap-5 shadow-inner">
-            <div className="w-12 h-12 bg-rose-500/20 text-rose-400 flex items-center justify-center rounded-xl shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
-              <TrendingDown size={24} />
+            <div className="bg-[#111222] shadow-neumorph-inset border border-transparent p-4 rounded-2xl flex items-center gap-5">
+              <div className="w-12 h-12 bg-neonmagenta/10 text-neonmagenta flex items-center justify-center rounded-xl shrink-0 shadow-glow-magenta border border-neonmagenta/30">
+                <TrendingDown size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] text-neonmagenta font-black tracking-widest uppercase mb-1 drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]">Peor Mes ({peorMes?.label})</p>
+                <p className="text-2xl font-black text-white tabular-nums">{formatCOP(peorMes?.neto)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-rose-500 font-black tracking-widest uppercase mb-1">Peor Mes ({peorMes?.label})</p>
-              <p className="text-2xl font-black text-white tabular-nums">{formatCOP(peorMes?.neto)}</p>
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* ---------------------------------------------------- */}
-        {/* TARJETA 3: TOP 5 FUGAS (¡RESTAURADAS!)               */}
-        {/* ---------------------------------------------------- */}
-        <Card className="border-t-4 border-t-orange-500 flex flex-col">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6">Top 5 Fugas (12 meses)</h3>
-          <div className="space-y-5 flex-1 flex flex-col justify-center">
-            {topCategoriasAnual.map(([cat, amount], i) => {
-              const width = Math.max((amount / maxValCat) * 100, 5);
-              return (
-                <div key={cat} className="group">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-300 font-bold truncate pr-2 group-hover:text-white transition-colors">
-                      <span className="text-orange-500/60 font-black mr-2">#{i+1}</span> 
-                      {cat}
-                    </span>
-                    <span className="font-black text-orange-400 tabular-nums">{formatCOP(amount)}</span>
+          {/* ---------------------------------------------------- */}
+          {/* TARJETA 3: TOP 5 FUGAS                               */}
+          {/* ---------------------------------------------------- */}
+          <Card className="flex flex-col flex-1">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Top 5 Fugas (12 meses)</h3>
+            <div className="space-y-5 flex-1 flex flex-col justify-center">
+              {topCategoriasAnual.map(([cat, amount], i) => {
+                const width = Math.max((amount / maxValCat) * 100, 5);
+                return (
+                  <div key={cat} className="group">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-[#8A92A6] font-bold truncate pr-2 group-hover:text-white transition-colors">
+                        <span className="text-neonmagenta/60 font-black mr-2">#{i+1}</span> 
+                        {cat}
+                      </span>
+                      <span className="font-black text-neonmagenta tabular-nums">{formatCOP(amount)}</span>
+                    </div>
+                    {/* Barra Neumórfica Inset */}
+                    <div className="w-full bg-[#111222] shadow-neumorph-inset rounded-full h-[10px] border border-transparent overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-neonmagenta to-[#ff5e99] rounded-full transition-all duration-1000 shadow-glow-magenta relative" style={{ width: `${width}%` }}>
+                        <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white rounded-full opacity-60 mix-blend-screen"></div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-full bg-[#0f0f11]/80 rounded-full h-2.5 border border-white/5 shadow-inner overflow-hidden">
-                    <div className="h-full bg-orange-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(249,115,22,0.8)]" style={{ width: `${width}%` }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
+                );
+              })}
+              {topCategoriasAnual.length === 0 && <p className="text-sm text-[#8A92A6] font-bold text-center">Sin datos registrados.</p>}
+            </div>
+          </Card>
+        </div>
 
         {/* ---------------------------------------------------- */}
         {/* TARJETA 4: ESTRUCTURA DE GASTO CON DONA SVG          */}
         {/* ---------------------------------------------------- */}
-        <Card className="border-t-4 border-t-blue-500 flex flex-col justify-center">
-          <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6">Estructura de Gasto Real</h3>
+        <Card className="lg:col-span-2 flex flex-col justify-center">
+          <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Estructura de Gasto Real</h3>
           
-          <div className="flex flex-col md:flex-row items-center gap-8 bg-[#0f0f11]/40 border border-white/5 rounded-3xl p-6 shadow-inner">
+          <div className="flex flex-col md:flex-row items-center gap-8 bg-[#111222] shadow-neumorph-inset border border-transparent rounded-[30px] p-6 md:p-8">
             <DonutChart fijos={totalFijosAnual} variables={totalVariablesAnual} />
 
             <div className="flex-1 space-y-5 w-full">
-              <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-2xl flex justify-between items-center shadow-inner hover:border-orange-500/40 transition-colors">
-                <span className="text-slate-300 font-bold text-xs tracking-wide">Gastos Fijos</span>
-                <span className="text-orange-400 font-black text-lg tabular-nums">{pctFijos.toFixed(1)}%</span>
+              <div className="bg-appcard shadow-neumorph border border-white/[0.02] p-5 rounded-2xl flex justify-between items-center hover:shadow-glow-amber transition-all">
+                <span className="text-[#8A92A6] font-black text-xs tracking-widest uppercase">Gastos Fijos</span>
+                <span className="text-amber-400 font-black text-xl tabular-nums drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">{pctFijos.toFixed(1)}%</span>
               </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl flex justify-between items-center shadow-inner hover:border-blue-500/40 transition-colors">
-                <span className="text-slate-300 font-bold text-xs tracking-wide">Gastos Variables</span>
-                <span className="text-blue-400 font-black text-lg tabular-nums">{pctVariables.toFixed(1)}%</span>
+              <div className="bg-appcard shadow-neumorph border border-white/[0.02] p-5 rounded-2xl flex justify-between items-center hover:shadow-glow-cyan transition-all">
+                <span className="text-[#8A92A6] font-black text-xs tracking-widest uppercase">Gastos Variables</span>
+                <span className="text-neoncyan font-black text-xl tabular-nums drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]">{pctVariables.toFixed(1)}%</span>
               </div>
             </div>
           </div>
           
           <div className="mt-6 text-center">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Relación de Vida: <strong className="text-white text-sm">{(totalVariablesAnual > 0 ? (totalFijosAnual/totalVariablesAnual).toFixed(1) : 0)} a 1</strong> <span className="lowercase font-normal tracking-normal text-[10px] ml-1">(Fijos / Variable)</span>
+            <p className="text-xs font-black text-[#8A92A6] uppercase tracking-widest">
+              Relación de Vida: <strong className="text-white text-sm tracking-wide">{(totalVariablesAnual > 0 ? (totalFijosAnual/totalVariablesAnual).toFixed(1) : 0)} a 1</strong> <span className="lowercase font-bold tracking-normal text-[10px] ml-1">(Fijos / Variable)</span>
             </p>
           </div>
         </Card>
