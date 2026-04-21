@@ -176,8 +176,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
 
+        {/* ✨ ACTUALIZADO: Título modificado */}
         <Card className="flex flex-col justify-center">
-          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Disponible (Ing - Egr)</h3>
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Flujo del mes</h3>
           <p className={`text-xl md:text-3xl font-black mt-1 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
             {formatCOP(dineroDisponible)}
           </p>
@@ -309,8 +310,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           
           {/* LEO */}
           <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
+            {/* ✨ ACTUALIZADO: Título modificado */}
             <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-neoncyan shadow-glow-cyan"></div> 1. Finanzas Leo
+              <div className="w-2 h-2 rounded-full bg-neoncyan shadow-glow-cyan"></div> 1. Flujo mes Leo
             </h3>
             <div className="flex justify-between items-center">
               <div className="flex flex-col">
@@ -333,8 +335,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
           {/* ANDRE */}
           <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
+            {/* ✨ ACTUALIZADO: Título modificado */}
             <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-neonmagenta shadow-glow-magenta"></div> 2. Finanzas Andre
+              <div className="w-2 h-2 rounded-full bg-neonmagenta shadow-glow-magenta"></div> 2. Flujo Mes Andre
             </h3>
             <div className="flex justify-between items-center">
               <div className="flex flex-col">
