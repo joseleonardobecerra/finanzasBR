@@ -164,9 +164,9 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     pagosFijos.forEach(pf => {
       const gastado = egresosMes.filter(e => {
         if (e.tipo !== 'Fijo') return false;
-        // 1. Prioridad: Etiqueta oculta exacta (Cuando pagas desde el checklist)
-        if (e.pagoFijoId) return e.pagoFijoId === pf.id;
-        // 2. Respaldo inteligente: Coincidencia por nombre sin importar mayúsculas o espacios extra
+        // ✨ CORRECCIÓN: Si el ID coincide, es un éxito directo. 
+        if (e.pagoFijoId === pf.id) return true;
+        // ✨ CORRECCIÓN: Si el ID no coincide (ej. se borró y se recreó), verificar por descripción como respaldo fuerte.
         return (e.descripcion || '').trim().toLowerCase() === (pf.descripcion || '').trim().toLowerCase();
       }).reduce((s, e) => s + e.monto, 0);
       
@@ -174,7 +174,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     });
 
     presupuestos.forEach(p => {
-      // También blindamos las categorías variables contra espacios extra
+      // Blindamos las categorías variables contra espacios extra
       const gastado = egresosMes.filter(e => (e.categoria || '').trim().toLowerCase() === (p.categoria || '').trim().toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
       variables.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
     });
@@ -232,8 +232,12 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
           <div className="flex gap-1 shrink-0">
             <button onClick={() => cargarParaEditar(p)} className={`text-[#8A92A6] hover:${t.text} p-1.5 transition-colors`} title="Editar"><Edit3 size={14}/></button>
             <button onClick={() => {
-              if (p.tipo === 'Variable') { removePresupuesto(p.id); showToast("Presupuesto eliminado"); } 
-              else { removePagoFijo(p.id); showToast("Gasto Fijo eliminado."); }
+              // ✨ NUEVO: Confirmación de eliminación con advertencia clara
+              const isVar = p.tipo === 'Variable';
+              if (window.confirm(`¿Estás seguro de que quieres eliminar el ${isVar ? 'presupuesto' : 'gasto fijo'} "${p.nombre}"?\n\n(Esto solo borrará el límite de la lista, los pagos que ya hayas realizado se mantendrán en el historial).`)) {
+                if (isVar) { removePresupuesto(p.id); showToast("Presupuesto eliminado"); } 
+                else { removePagoFijo(p.id); showToast("Gasto Fijo eliminado."); }
+              }
             }} className="text-[#8A92A6] hover:text-neonmagenta p-1.5 transition-colors" title="Eliminar"><Trash2 size={14}/></button>
           </div>
         </div>
