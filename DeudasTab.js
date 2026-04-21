@@ -10,6 +10,17 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   const [editData, setEditData] = useState({});
   const fileInputRef = useRef(null);
 
+  // ============================================================================
+  // ÍCONOS SVG NATIVOS 
+  // ============================================================================
+  const CheckIcon = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
+  );
+  
+  const XIcon = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  );
+
   const deudasAnalizadas = cuentas
     .filter(c => ['credit', 'loan'].includes(c.type))
     .map(d => {
@@ -363,8 +374,8 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
                          </div>
                        </td>
                        <td className="px-2 py-2 text-center flex justify-center gap-2">
-                         <button onClick={saveInlineEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-glow-cyan" title="Guardar Cambios"><Check size={14} strokeWidth="3"/></button>
-                         <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14} strokeWidth="3"/></button>
+                         <button onClick={saveInlineEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-glow-cyan" title="Guardar Cambios"><CheckIcon size={14}/></button>
+                         <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14}/></button>
                        </td>
                      </tr>
                    )
