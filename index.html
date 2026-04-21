@@ -8,41 +8,62 @@
   <meta http-equiv="Expires" content="0" />
   
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f0f11">
+  <meta name="theme-color" content="#141526">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135706.png">
 
   <title>Finanzas Familia - Master Excel & Cloud</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'], // Fuerza la nueva fuente en toda la app
+          },
+          colors: {
+            appbg: '#141526',      /* Fondo principal azul oscuro profundo */
+            appcard: '#1c1e32',    /* Fondo de las tarjetas, levemente más claro */
+            neoncyan: '#00E5FF',   /* Acento principal: Cyan brillante */
+            neonmagenta: '#FF007A',/* Acento secundario: Magenta/Rosa brillante */
+          },
+          boxShadow: {
+            /* Sombra hacia afuera para dar relieve (Neumorfismo) */
+            'neumorph': '8px 8px 16px #0b0c16, -8px -8px 16px #1d1e36',
+            /* Sombra hacia adentro para inputs hundidos */
+            'neumorph-inset': 'inset 4px 4px 8px #0b0c16, inset -4px -4px 8px #1d1e36',
+            /* Brillos de luz neón */
+            'glow-cyan': '0 0 15px rgba(0, 229, 255, 0.4)',
+            'glow-magenta': '0 0 15px rgba(255, 0, 122, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
-  <script>
-    window.onerror = function(message, source, lineno, colno, error) {
-      document.getElementById('root').innerHTML = `
-        <div style="padding: 20px; color: #ff8080; font-family: sans-serif; background-color: #0f0f11; height: 100vh;">
-          <h2 style="font-weight: bold; margin-bottom: 10px;">Oops! Error al cargar:</h2>
-          <p>${message}</p>
-        </div>
-      `;
-      return true;
-    };
-  </script>
 </head>
-<body class="bg-[#0f0f11] text-slate-200">
-
+<body class="bg-appbg text-slate-200 font-sans antialiased selection:bg-neoncyan selection:text-appbg">
+  
   <div id="root">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
-      <div style="width:40px;height:40px;border:4px solid #333;border-top:4px solid #4f46e5;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px;"></div>
-      <p style="color:#94a3b8;font-size:14px;font-weight:500;">Conectando FinanzasFamilia...</p>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:'Outfit', sans-serif;">
+      <div style="width:40px;height:40px;border:4px solid #1c1e32;border-top:4px solid #00E5FF;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px;box-shadow: 0 0 15px rgba(0,229,255,0.4);"></div>
+      <p style="color:#00E5FF;font-size:16px;font-weight:600;letter-spacing:1px;">Iniciando FinanzasFamilia...</p>
       <style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
     </div>
   </div>
@@ -63,12 +84,11 @@
   <script type="text/babel" src="CuentasTab.js"></script>
   <script type="text/babel" src="IngresosTab.js"></script>
   <script type="text/babel" src="EgresosTab.js"></script>
+  <script type="text/babel" src="DeudasTab.js"></script>
   <script type="text/babel" src="InversionesTab.js"></script>
   <script type="text/babel" src="PresupuestosTab.js"></script>
-  <script type="text/babel" src="DeudasTab.js"></script>
   <script type="text/babel" src="SimuladorTab.js"></script>
   <script type="text/babel" src="SettingsTab.js"></script>
   <script type="text/babel" src="App.js"></script>
-
 </body>
 </html>
