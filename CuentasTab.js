@@ -22,18 +22,29 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
 
       let leoBank = 0, leoCash = 0;
       let andreBank = 0, andreCash = 0;
+      
+      // Listas para mostrar el detalle cuenta por cuenta
+      const leoAccounts = [];
+      const andreAccounts = [];
 
       cuentas.forEach(c => {
         if (!['bank', 'cash'].includes(c.type) || c.name.toLowerCase().includes('rappi')) return;
         const owner = identifyOwner(c.name);
+        
         if (owner === 'Leo') {
             if (c.type === 'cash') leoCash += c.currentBalance;
             else leoBank += c.currentBalance;
+            leoAccounts.push(c);
         } else if (owner === 'Andre') {
             if (c.type === 'cash') andreCash += c.currentBalance;
             else andreBank += c.currentBalance;
+            andreAccounts.push(c);
         }
       });
+
+      // Ordenar alfabéticamente para que se vea más organizado
+      leoAccounts.sort((a,b) => a.name.localeCompare(b.name));
+      andreAccounts.sort((a,b) => a.name.localeCompare(b.name));
 
       const guardarCuenta = (e) => {
         e.preventDefault();
@@ -202,7 +213,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
             </div>
           </header>
 
-          {/* ✨ ACTUALIZADO: TARJETAS DE RESUMEN DE LIQUIDEZ */}
+          {/* ✨ ACTUALIZADO: TARJETAS DE RESUMEN DE LIQUIDEZ CON DETALLE */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             
             {/* Tarjeta Leo (Cyan Theme) */}
@@ -211,18 +222,25 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
               <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest mb-5 flex items-center gap-2 relative z-10">
                 <Wallet size={16}/> Liquidez Leo
               </h3>
-              <div className="space-y-4 relative z-10">
-                 <div className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
-                    <span className="text-[#8A92A6] font-bold">Cuentas (Bancos)</span>
-                    <span className={`font-black tabular-nums ${getValueColor(leoBank)}`}>{formatCOP(leoBank)}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
-                    <span className="text-[#8A92A6] font-bold">Efectivo</span>
-                    <span className={`font-black tabular-nums ${getValueColor(leoCash)}`}>{formatCOP(leoCash)}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-base pt-3 mt-1 px-1">
+              
+              <div className="space-y-2 relative z-10">
+                 {leoAccounts.length === 0 ? (
+                   <p className="text-xs text-[#8A92A6] italic text-center py-3 bg-[#111222] shadow-neumorph-inset rounded-xl">Sin cuentas registradas</p>
+                 ) : (
+                   leoAccounts.map(c => (
+                     <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
+                        <span className="text-[#8A92A6] font-bold truncate pr-2 flex items-center gap-2">
+                          <span className="text-lg">{c.type === 'cash' ? '💵' : '🏦'}</span>
+                          {c.name}
+                        </span>
+                        <span className={`font-black tabular-nums ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
+                     </div>
+                   ))
+                 )}
+                 
+                 <div className="flex justify-between items-center text-base pt-4 mt-2 px-1 border-t border-white/[0.05]">
                     <span className="text-white font-black uppercase tracking-widest text-[11px]">Total Disponible</span>
-                    <span className={`font-black text-lg tabular-nums ${getValueColor(leoBank + leoCash)}`}>{formatCOP(leoBank + leoCash)}</span>
+                    <span className={`font-black text-xl tabular-nums ${getValueColor(leoBank + leoCash)}`}>{formatCOP(leoBank + leoCash)}</span>
                  </div>
               </div>
             </Card>
@@ -233,18 +251,25 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
               <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest mb-5 flex items-center gap-2 relative z-10">
                 <Wallet size={16}/> Liquidez Andre
               </h3>
-              <div className="space-y-4 relative z-10">
-                 <div className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
-                    <span className="text-[#8A92A6] font-bold">Cuentas (Bancos)</span>
-                    <span className={`font-black tabular-nums ${getValueColor(andreBank)}`}>{formatCOP(andreBank)}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
-                    <span className="text-[#8A92A6] font-bold">Efectivo</span>
-                    <span className={`font-black tabular-nums ${getValueColor(andreCash)}`}>{formatCOP(andreCash)}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-base pt-3 mt-1 px-1">
+              
+              <div className="space-y-2 relative z-10">
+                 {andreAccounts.length === 0 ? (
+                   <p className="text-xs text-[#8A92A6] italic text-center py-3 bg-[#111222] shadow-neumorph-inset rounded-xl">Sin cuentas registradas</p>
+                 ) : (
+                   andreAccounts.map(c => (
+                     <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3 rounded-xl border border-transparent">
+                        <span className="text-[#8A92A6] font-bold truncate pr-2 flex items-center gap-2">
+                          <span className="text-lg">{c.type === 'cash' ? '💵' : '🏦'}</span>
+                          {c.name}
+                        </span>
+                        <span className={`font-black tabular-nums ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
+                     </div>
+                   ))
+                 )}
+                 
+                 <div className="flex justify-between items-center text-base pt-4 mt-2 px-1 border-t border-white/[0.05]">
                     <span className="text-white font-black uppercase tracking-widest text-[11px]">Total Disponible</span>
-                    <span className={`font-black text-lg tabular-nums ${getValueColor(andreBank + andreCash)}`}>{formatCOP(andreBank + andreCash)}</span>
+                    <span className={`font-black text-xl tabular-nums ${getValueColor(andreBank + andreCash)}`}>{formatCOP(andreBank + andreCash)}</span>
                  </div>
               </div>
             </Card>
@@ -292,7 +317,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                 <div className="space-y-3 flex-1 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32]">
                   {c_ahorros.map(c => renderCuentaCard(c, 'text-white'))}
                   {c_ahorros.length === 0 && (
-                    <div className="text-center py-10">
+                    <div className="text-center py-10 bg-[#111222] shadow-neumorph-inset rounded-2xl">
                       <p className="text-sm text-[#8A92A6] font-bold">No hay cuentas bancarias o efectivo registrado.</p>
                     </div>
                   )}
