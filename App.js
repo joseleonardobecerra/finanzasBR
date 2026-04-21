@@ -74,7 +74,6 @@ function App() {
   const [pagosFijos, setPagosFijos] = useState([]);
   const [ingresosFijos, setIngresosFijos] = useState([]);
 
-  // FIX: loadedRef resetea en cada login (evita condición de carrera)
   const loadedRef = useRef(0);
   const TOTAL_COL = 9;
   const markLoaded = () => { loadedRef.current += 1; if (loadedRef.current >= TOTAL_COL) setAppCargando(false); };
@@ -202,7 +201,6 @@ function App() {
   const activeEgresos = useMemo(() => egresos.filter(e => { const ownerAcc = cuentas.find(c => c.id === e.cuentaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (e.ownerId || getOwnerFallback(e.descripcion + ' ' + e.categoria))); }), [egresos, cuentas, filtroPersona]);
   const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(pf.ownerId || getOwnerFallback(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
 
-  // FIX: mesEspecifico field + texto fallback para compatibilidad con datos previos
   const activeIngresosFijos = useMemo(() => {
     const currentMonthNum = selectedMonth.split('-')[1];
     return ingresosFijos.filter(inf => {
@@ -226,7 +224,6 @@ function App() {
   const isThisMonth = (f) => f && f.startsWith(selectedMonth);
   const ingresosMesTotal = useMemo(() => activeIngresos.filter(i => isThisMonth(i.fecha)).reduce((s, i) => s + Number(i.monto), 0), [activeIngresos, selectedMonth]);
   const egresosMesTotal = useMemo(() => activeEgresos.filter(e => isThisMonth(e.fecha)).reduce((s, e) => s + Number(e.monto), 0), [activeEgresos, selectedMonth]);
-  // FIX: egresosMes en useMemo
   const egresosMes = useMemo(() => activeEgresos.filter(e => e.fecha.startsWith(selectedMonth)), [activeEgresos, selectedMonth]);
   const cuotasMesTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).reduce((s, c) => s + Number(c.cuotaMinima), 0), [activeCalculatedAccounts]);
   const pagosDeCuotasEsteMes = useMemo(() => egresosMes.filter(e => e.tipo === 'Fijo' && (e.categoria.toLowerCase().includes('tarjeta') || e.categoria.toLowerCase().includes('crédito') || e.categoria.toLowerCase().includes('vehículo') || e.categoria.toLowerCase().includes('davibank'))).reduce((sum, e) => sum + e.monto, 0), [egresosMes]);
@@ -235,7 +232,6 @@ function App() {
   const liquidezTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['bank', 'cash', 'pocket'].includes(c.type)).reduce((s, c) => s + c.currentBalance, 0), [activeCalculatedAccounts]);
   const deudaTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type)).reduce((s, c) => s + c.currentDebt, 0), [activeCalculatedAccounts]);
 
-  // ✨ PROYECCIÓN DE LIQUIDEZ 30/60/90 días (usa datos ya calculados, sin Firebase extra)
   const proyeccionLiquidez = useMemo(() => {
     const isPagoFijoRealizadoMes = (pf) => egresosMes.some(e => {
       if (e.tipo !== 'Fijo') return false;
@@ -279,6 +275,7 @@ function App() {
     setQeCategoria(''); setQeMethod(''); setQeCuenta('');
     setQuickEntryOpen(true);
   };
+  
   const handleQuickSave = () => {
     if (!qeMonto || !qeCategoria || !qeCuenta) return;
     const today = getLocalToday();
@@ -294,9 +291,20 @@ function App() {
     setQuickEntryOpen(false);
   };
 
-  if (authChecking) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Validando seguridad...</p></div>;
+  // PANTALLAS DE CARGA REDISEÑADAS AL ESTILO NEON
+  if (authChecking) return (
+    <div className="flex flex-col items-center justify-center h-screen bg-appbg">
+      <div className="w-12 h-12 border-4 border-appcard border-t-neoncyan rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(0,229,255,0.4)]"></div>
+      <p className="text-neoncyan font-bold tracking-widest text-sm uppercase">Validando Acceso...</p>
+    </div>
+  );
   if (!authUser) return <Login />;
-  if (appCargando) return <div className="flex flex-col items-center justify-center h-screen bg-[#0f0f11]"><div className="w-10 h-10 border-4 border-[#333] border-t-indigo-500 rounded-full animate-spin mb-4"></div><p className="text-slate-400 font-medium">Descargando datos de la nube...</p></div>;
+  if (appCargando) return (
+    <div className="flex flex-col items-center justify-center h-screen bg-appbg">
+      <div className="w-12 h-12 border-4 border-appcard border-t-neonmagenta rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(255,0,122,0.4)]"></div>
+      <p className="text-neonmagenta font-bold tracking-widest text-sm uppercase">Sincronizando Nube...</p>
+    </div>
+  );
 
   const navItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -312,86 +320,106 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0f0f11] text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
+    <div className="min-h-screen bg-appbg text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
 
-      {/* ✨ TOAST CON BOTÓN DESHACER */}
-      {toast && (
-        <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'} text-white max-w-sm`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18}/> : <AlertCircle size={18}/>}
-          <span className="text-sm font-medium flex-1">{toast.msg}</span>
-          {toast.undoData && (
-            <button onClick={handleUndo} className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors border border-white/30 whitespace-nowrap">
-              DESHACER
-            </button>
-          )}
-          <button onClick={() => setToast(null)} className="opacity-70 hover:opacity-100 text-xs ml-1">✕</button>
+      {/* TOAST GLOBAL (Importado desde globals.js) */}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+
+      {/* BARRA LATERAL (PC) - ESTILO NEÓN NEUMÓRFICO */}
+      <aside className="hidden md:flex w-64 bg-appcard flex-shrink-0 flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.3)]">
+        <div className="p-6 border-b border-white/[0.02]">
+          <h1 className="text-xl font-bold text-white flex items-center gap-3 tracking-wide">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-neoncyan to-blue-600 flex items-center justify-center shadow-glow-cyan">
+              <span className="text-[#0b0c16] font-black text-lg">F</span>
+            </div>
+            FinanzasFamilia
+          </h1>
         </div>
-      )}
-
-      {/* BARRA LATERAL (PC) */}
-      <aside className="hidden md:flex w-64 bg-[#17171a] border-r border-slate-800 flex-shrink-0 flex-col z-20">
-        <div className="p-6 border-b border-slate-800"><h1 className="text-xl font-bold text-white flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">F</div>FinanzasFamilia</h1></div>
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mb-2">Diario</div>
+        
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-800">
+          <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mb-3 tracking-widest mt-2">Diario</div>
           {navItems.slice(0, 7).map(i => (
-            <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}>
+            <button key={i.id} onClick={() => setActiveTab(i.id)} 
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                activeTab === i.id 
+                ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+              }`}>
               <i.icon size={18}/> {i.label}
             </button>
           ))}
-          <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Estrategia</div>
+          
+          <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Estrategia</div>
           {navItems.slice(7, 9).map(i => (
-            <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}>
+            <button key={i.id} onClick={() => setActiveTab(i.id)} 
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                activeTab === i.id 
+                ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+              }`}>
               <i.icon size={18}/> {i.label}
             </button>
           ))}
-          <div className="text-[10px] font-bold text-slate-500 uppercase px-4 mt-6 mb-2">Sistema</div>
+          
+          <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Sistema</div>
           {navItems.slice(9).map(i => (
-            <button key={i.id} onClick={() => setActiveTab(i.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${activeTab === i.id ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:bg-slate-800/50'}`}>
+            <button key={i.id} onClick={() => setActiveTab(i.id)} 
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                activeTab === i.id 
+                ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+              }`}>
               <i.icon size={18}/> {i.label}
             </button>
           ))}
-          <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-rose-500/80 hover:bg-rose-500/10 hover:text-rose-400 transition-all mt-4 border border-rose-500/20">Cerrar Sesión</button>
+          
+          <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neonmagenta hover:shadow-glow-magenta hover:-translate-y-0.5 transition-all mt-6 border border-neonmagenta/30 font-bold text-sm bg-[#111222]">
+            Cerrar Sesión
+          </button>
         </nav>
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
-        <div className="bg-[#17171a] border-b border-slate-800 p-3 md:p-4 flex justify-between items-center gap-4">
-          <button onClick={() => auth.signOut()} className="md:hidden text-rose-500/80 hover:text-rose-400 p-2">
+        
+        {/* TOP BAR - NEUMORFISMO INSET */}
+        <div className="bg-appcard border-b border-white/[0.02] p-3 md:p-4 flex justify-between items-center gap-4 z-10">
+          <button onClick={() => auth.signOut()} className="md:hidden text-neonmagenta p-2 hover:shadow-glow-magenta rounded-full transition-all">
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
+          
           {['ingresos', 'cuentas', 'deudas'].includes(activeTab) && (
-            <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 text-xs font-bold w-full md:w-auto">
-              <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Total' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>TOTAL</button>
-              <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Andre' ? 'bg-violet-600 text-white' : 'text-slate-400'}`}>ANDRE</button>
-              <button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-md ${filtroPersona === 'Leo' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>LEO</button>
+            <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto border border-transparent">
+              <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Total' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-slate-500 hover:text-slate-300'}`}>TOTAL</button>
+              <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Andre' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-slate-500 hover:text-slate-300'}`}>ANDRE</button>
+              <button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Leo' ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}>LEO</button>
             </div>
           )}
+          
           <div className="flex-1 flex justify-end w-full md:w-auto">
-            <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 w-full md:max-w-[240px] justify-between">
-              <button onClick={() => changeMonth(-1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronLeft size={18}/></button>
-              <span className="font-bold text-white capitalize text-sm">{getMonthName(selectedMonth)}</span>
-              <button onClick={() => changeMonth(1)} className="p-2 text-slate-400 hover:text-indigo-400"><ChevronRight size={18}/></button>
+            <div className="flex items-center bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:max-w-[240px] justify-between">
+              <button onClick={() => changeMonth(-1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronLeft size={18}/></button>
+              <span className="font-bold text-white capitalize text-sm tracking-wide">{getMonthName(selectedMonth)}</span>
+              <button onClick={() => changeMonth(1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronRight size={18}/></button>
             </div>
           </div>
         </div>
 
-        {/* ✨ BANNER MES HISTÓRICO */}
+        {/* BANNER MES HISTÓRICO */}
         {isHistoricalMonth && (
-          <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 text-amber-400 text-xs font-bold">
+          <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 text-amber-400 text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)]">
             <AlertCircle size={14}/>
-            Estás viendo un mes histórico — los nuevos registros se guardarán con la fecha de hoy
-            <button onClick={() => setSelectedMonth(currentRealMonth)} className="ml-auto bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1 rounded text-amber-300 transition-colors font-bold">
-              Ir al mes actual →
+            Estás viendo un mes histórico — nuevos registros van a la fecha de hoy
+            <button onClick={() => setSelectedMonth(currentRealMonth)} className="ml-auto bg-[#111222] border border-amber-500/30 hover:shadow-glow-amber px-3 py-1 rounded-lg text-amber-300 transition-all font-bold">
+              Ir al actual →
             </button>
           </div>
         )}
 
-        <div className="p-4 md:p-8 overflow-y-auto flex-1 relative">
+        <div className="p-4 md:p-8 overflow-y-auto flex-1 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
           <div className="max-w-6xl mx-auto">
             <ErrorBoundary>
               {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} />}
-              {/* FIX: AnaliticaTab recibe datos filtrados por persona */}
               {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} />}
               {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} addEgreso={addEgreso} showToast={showToast} />}
               {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
@@ -406,68 +434,76 @@ function App() {
         </div>
       </main>
 
-      {/* BARRA INFERIOR (CELULAR) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#17171a] border-t border-slate-800 z-30 flex overflow-x-auto h-[72px]">
-        <div className="flex px-1 min-w-max w-full">
+      {/* BARRA INFERIOR (CELULAR) - GLASSMORPHISM OSCURO */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-appcard/90 backdrop-blur-xl border-t border-white/[0.02] z-30 flex overflow-x-auto h-[72px] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        <div className="flex px-2 min-w-max w-full">
           {navItems.map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-[76px] flex flex-col items-center justify-center p-2 transition-colors ${activeTab === item.id ? 'text-indigo-400' : 'text-slate-500'}`}>
-              <item.icon size={24} className={activeTab === item.id ? 'mb-1 text-indigo-400' : 'mb-1 opacity-70'}/>
-              <span className={`text-[10px] font-medium truncate w-full text-center ${activeTab === item.id ? 'font-bold' : ''}`}>{item.label}</span>
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className="w-[76px] flex flex-col items-center justify-center p-2 relative group">
+              {/* Luz activa indicadora superior */}
+              {activeTab === item.id && <div className="absolute top-0 w-8 h-1 bg-neoncyan rounded-b-full shadow-glow-cyan"></div>}
+              <item.icon size={22} className={`transition-all duration-300 ${activeTab === item.id ? 'mb-1 text-neoncyan' : 'mb-1 text-slate-500 group-hover:text-slate-300'}`}/>
+              <span className={`text-[9px] font-bold tracking-wide truncate w-full text-center transition-colors ${activeTab === item.id ? 'text-white' : 'text-slate-500'}`}>{item.label}</span>
             </button>
           ))}
         </div>
       </nav>
 
-      {/* FAB REGISTRO RÁPIDO */}
-      <button onClick={handleOpenWizard} className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center justify-center z-40 transition-transform hover:scale-105 border-4 border-[#0f0f11]">
-        <Plus size={28} />
+      {/* FAB REGISTRO RÁPIDO - GLOW MAGENTA/CYAN */}
+      <button onClick={handleOpenWizard} className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-neoncyan text-[#0b0c16] rounded-full shadow-glow-cyan flex items-center justify-center z-40 transition-all hover:scale-110 active:scale-95">
+        <Plus size={28} strokeWidth="3" />
       </button>
 
-      {/* MODAL WIZARD */}
+      {/* MODAL WIZARD - ESTILO APP (Oscuro y Neon) */}
       {quickEntryOpen && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-end md:items-center justify-center animate-in fade-in duration-200">
-          <div className="bg-[#17171a] w-full md:w-[400px] md:rounded-3xl rounded-t-3xl p-6 border border-slate-800 shadow-2xl animate-in slide-in-from-bottom-10 min-h-[400px] flex flex-col relative">
-            <div className="flex justify-between items-center mb-6 shrink-0">
-              <div className="flex items-center gap-3">
-                {qeStep > 1 && <button onClick={() => setQeStep(qeStep - 1)} className="text-slate-400 hover:text-white p-1 bg-slate-800 rounded-full transition-colors"><ArrowLeftIcon size={18}/></button>}
+        <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center animate-in fade-in duration-300">
+          <div className="bg-appcard w-full md:w-[420px] md:rounded-[30px] rounded-t-[30px] p-6 border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-10 min-h-[420px] flex flex-col relative overflow-hidden">
+            {/* Brillos de fondo modal */}
+            <div className="absolute -top-32 -left-32 w-64 h-64 bg-neoncyan/10 rounded-full blur-[100px] pointer-events-none"></div>
+            
+            <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
+              <div className="flex items-center gap-4">
+                {qeStep > 1 && <button onClick={() => setQeStep(qeStep - 1)} className="text-slate-400 hover:text-neoncyan transition-colors"><ArrowLeftIcon size={20}/></button>}
                 <div>
-                  <h3 className="text-lg font-black text-white tracking-tight">Registro Rápido</h3>
-                  <div className="flex gap-1 mt-1.5">{[1,2,3,4,5].map(s => <div key={s} className={`h-1 w-[18px] rounded-full transition-all duration-500 ${s <= qeStep ? 'bg-indigo-500' : 'bg-slate-800'}`}></div>)}</div>
+                  <h3 className="text-lg font-black text-white tracking-wide">Acción Rápida</h3>
+                  <div className="flex gap-1.5 mt-2">
+                    {[1,2,3,4,5].map(s => <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${s === qeStep ? 'bg-neoncyan w-6 shadow-glow-cyan' : s < qeStep ? 'bg-neoncyan/40 w-3' : 'bg-[#111222] w-3'}`}></div>)}
+                  </div>
                 </div>
               </div>
-              <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-rose-400 bg-slate-900 p-2 rounded-full transition-colors"><XIcon size={18}/></button>
+              <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-rose-400 bg-[#111222] p-2.5 rounded-full transition-all hover:shadow-glow-magenta"><XIcon size={18}/></button>
             </div>
-            <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-right-4 duration-300">
+
+            <div className="flex-1 flex flex-col justify-center relative z-10 animate-in fade-in slide-in-from-right-4 duration-300">
               {qeStep === 1 && (
                 <div className="space-y-4">
-                  <h4 className="text-center text-slate-400 font-bold mb-6">¿Qué vas a registrar?</h4>
-                  <button onClick={() => { setQeType('egreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-6 bg-rose-500/10 border-2 border-rose-500/30 hover:border-rose-500 rounded-2xl text-rose-400 font-black text-xl transition-all hover:scale-[1.02]">📉 Es un Gasto</button>
-                  <button onClick={() => { setQeType('ingreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-6 bg-emerald-500/10 border-2 border-emerald-500/30 hover:border-emerald-500 rounded-2xl text-emerald-400 font-black text-xl transition-all hover:scale-[1.02]">📈 Es un Ingreso</button>
+                  <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">Selecciona el tipo de movimiento</h4>
+                  <button onClick={() => { setQeType('egreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-rose-500/20 hover:border-rose-500 hover:shadow-glow-magenta rounded-2xl text-rose-400 font-black text-lg transition-all hover:-translate-y-1">📉 Registrar Gasto</button>
+                  <button onClick={() => { setQeType('ingreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-emerald-500/20 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] rounded-2xl text-emerald-400 font-black text-lg transition-all hover:-translate-y-1">📈 Registrar Ingreso</button>
                 </div>
               )}
               {qeStep === 2 && (
                 <div className="space-y-6">
                   <div>
-                    <label className={`text-xs font-bold uppercase tracking-wider block mb-2 ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>Monto exacto</label>
+                    <label className={`text-[10px] font-black uppercase tracking-widest block mb-2 ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>Monto exacto</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-500">$</span>
-                      <input type="number" value={qeMonto} onChange={e=>setQeMonto(e.target.value)} className="w-full bg-slate-950 border-2 border-slate-800 focus:border-indigo-500 text-white rounded-2xl pl-10 pr-4 py-4 text-3xl font-black outline-none transition-colors" placeholder="0" autoFocus />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-600">$</span>
+                      <input type="number" value={qeMonto} onChange={e=>setQeMonto(e.target.value)} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent ${qeType === 'egreso' ? 'focus:border-rose-500 focus:shadow-glow-magenta text-rose-400' : 'focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(16,185,129,0.4)] text-emerald-400'} rounded-2xl pl-10 pr-4 py-5 text-3xl font-black outline-none transition-all placeholder:text-slate-700`} placeholder="0" autoFocus />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Descripción corta (Opcional)</label>
-                    <input type="text" value={qeDescripcion} onChange={e=>setQeDescripcion(e.target.value)} className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 text-white rounded-xl px-4 py-3 text-sm font-medium outline-none transition-colors" placeholder="Ej. Almuerzo KFC" />
+                    <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest block mb-2">Descripción (Opcional)</label>
+                    <input type="text" value={qeDescripcion} onChange={e=>setQeDescripcion(e.target.value)} className="w-full bg-[#111222] shadow-neumorph-inset border border-transparent focus:border-neoncyan text-white rounded-xl px-4 py-3.5 text-sm font-medium outline-none transition-all placeholder:text-slate-600" placeholder="¿En qué fue?" />
                   </div>
-                  <button disabled={!qeMonto} onClick={() => setQeStep(3)} className="w-full py-4 rounded-xl font-black text-white text-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all">Siguiente</button>
+                  <button disabled={!qeMonto} onClick={() => setQeStep(3)} className="w-full py-4 rounded-xl font-black text-[#0b0c16] text-lg bg-neoncyan shadow-glow-cyan disabled:opacity-20 disabled:shadow-none transition-all">Siguiente Paso</button>
                 </div>
               )}
               {qeStep === 3 && (
                 <div className="h-full flex flex-col">
-                  <h4 className="text-center text-slate-400 font-bold mb-4">Selecciona la categoría</h4>
-                  <div className="flex-1 overflow-y-auto pr-2 pb-4">
-                    <div className="grid grid-cols-2 gap-2">
+                  <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">Selecciona la categoría</h4>
+                  <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {(qeType === 'egreso' ? categoriasMaestras : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
-                        <button key={cat} onClick={() => { setQeCategoria(cat); setQeStep(4); }} className="p-3 rounded-xl text-xs font-bold text-left transition-all border bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10 active:scale-95">{cat}</button>
+                        <button key={cat} onClick={() => { setQeCategoria(cat); setQeStep(4); }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">{cat}</button>
                       ))}
                     </div>
                   </div>
@@ -475,25 +511,25 @@ function App() {
               )}
               {qeStep === 4 && (
                 <div className="space-y-4">
-                  <h4 className="text-center text-slate-400 font-bold mb-6">{qeType === 'egreso' ? '¿Cómo lo pagaste?' : '¿A dónde entró el dinero?'}</h4>
-                  <button onClick={() => { setQeMethod('cash'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border flex items-center gap-3 bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10"><span className="text-xl">💵</span> Efectivo</button>
-                  <button onClick={() => { setQeMethod('bank'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border flex items-center gap-3 bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10"><span className="text-xl">🏦</span> Cuenta Débito / Ahorros</button>
-                  {qeType === 'egreso' && <button onClick={() => { setQeMethod('credit'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border flex items-center gap-3 bg-slate-900 border-slate-800 text-slate-300 hover:border-indigo-500 hover:bg-indigo-500/10"><span className="text-xl">💳</span> Tarjeta de Crédito</button>}
+                  <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">{qeType === 'egreso' ? '¿Cómo lo pagaste?' : '¿A dónde entró el dinero?'}</h4>
+                  <button onClick={() => { setQeMethod('cash'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💵</span> Efectivo</button>
+                  <button onClick={() => { setQeMethod('bank'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">🏦</span> Cuenta Débito / Ahorros</button>
+                  {qeType === 'egreso' && <button onClick={() => { setQeMethod('credit'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💳</span> Tarjeta de Crédito</button>}
                 </div>
               )}
               {qeStep === 5 && (
                 <div className="space-y-6">
-                  <h4 className="text-center text-slate-400 font-bold mb-2">{qeType === 'egreso' ? '¿De cuál cuenta exactamente?' : '¿A qué cuenta exactamente?'}</h4>
-                  <div className="grid grid-cols-1 gap-2 overflow-y-auto max-h-[250px] pr-1">
+                  <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-2">{qeType === 'egreso' ? '¿De cuál cuenta exactamente?' : '¿A qué cuenta exactamente?'}</h4>
+                  <div className="grid grid-cols-1 gap-2.5 overflow-y-auto max-h-[250px] pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
                     {activeCalculatedAccounts.filter(c => c.type === qeMethod).map(acc => (
-                      <button key={acc.id} onClick={() => setQeCuenta(acc.id)} className={`p-4 rounded-xl text-sm font-bold text-left transition-all border flex justify-between items-center ${qeCuenta === acc.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'}`}>
+                      <button key={acc.id} onClick={() => setQeCuenta(acc.id)} className={`p-4 rounded-xl text-sm font-bold text-left transition-all border flex justify-between items-center ${qeCuenta === acc.id ? 'bg-neoncyan/10 border-neoncyan text-neoncyan shadow-glow-cyan' : 'bg-[#111222] border-white/[0.02] text-slate-300 hover:border-slate-600'}`}>
                         <span>{acc.name}</span>
-                        {qeCuenta === acc.id && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                        {qeCuenta === acc.id && <div className="w-2.5 h-2.5 bg-neoncyan rounded-full shadow-[0_0_8px_#00E5FF]"></div>}
                       </button>
                     ))}
                     {activeCalculatedAccounts.filter(c => c.type === qeMethod).length === 0 && <div className="text-center p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl"><p className="text-rose-400 text-xs font-bold">No tienes cuentas de este tipo registradas.</p></div>}
                   </div>
-                  {qeCuenta && <button onClick={handleQuickSave} className={`w-full py-4 rounded-xl font-black text-white text-lg transition-transform hover:scale-[1.02] shadow-xl ${qeType === 'egreso' ? 'bg-rose-600' : 'bg-emerald-600'}`}>¡Guardar Definitivo!</button>}
+                  {qeCuenta && <button onClick={handleQuickSave} className={`w-full py-4 rounded-xl font-black text-lg transition-all hover:scale-[1.02] active:scale-95 ${qeType === 'egreso' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-emerald-500 text-[#0b0c16] shadow-[0_0_20px_rgba(16,185,129,0.4)]'}`}>¡Confirmar y Guardar!</button>}
                 </div>
               )}
             </div>
