@@ -159,6 +159,12 @@ const IngresosTab = ({
   };
 
   // ============================================================================
+  // ESTILOS BASE UI NEON & NEUMORPHISM
+  // ============================================================================
+  const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-300 placeholder:text-slate-600";
+  const labelBaseClass = "text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block";
+
+  // ============================================================================
   // 4. ESTRUCTURA VISUAL (JSX)
   // ============================================================================
 
@@ -167,162 +173,167 @@ const IngresosTab = ({
       
       {/* --- ENCABEZADO --- */}
       <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-          <Wallet className="text-emerald-400 w-8 h-8"/> 
+        <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.4)]">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0b0c16" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+          </div>
           Gestión de Ingresos
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm md:text-base text-[#8A92A6] mt-2 font-medium tracking-wide">
           Registra y administra todo el dinero que entra a tus cuentas, bolsillos e inversiones.
         </p>
       </header>
 
-      {/* --- TARJETAS DE RESUMEN --- */}
+      {/* --- TARJETAS DE RESUMEN (Neumorfismo Inset) --- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 border-t-4 border-t-emerald-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Total Ingresado</p>
-          <p className="text-xl md:text-2xl font-black text-emerald-400">{formatCOP(totalMes)}</p>
-        </Card>
+        <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
+          <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Total Ingresado</p>
+          <p className="text-xl md:text-3xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">{formatCOP(totalMes)}</p>
+        </div>
         
-        <Card className="p-4 border-t-4 border-t-indigo-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Ingresos Fijos</p>
-          <p className="text-xl md:text-2xl font-black text-indigo-400">{formatCOP(totalFijos)}</p>
-        </Card>
+        <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
+          <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Ingresos Fijos</p>
+          <p className="text-xl md:text-3xl font-black text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.4)]">{formatCOP(totalFijos)}</p>
+        </div>
 
-        <Card className="p-4 border-t-4 border-t-blue-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Ingresos Variables</p>
-          <p className="text-xl md:text-2xl font-black text-blue-400">{formatCOP(totalVariables)}</p>
-        </Card>
+        <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
+          <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Ingresos Variables</p>
+          <p className="text-xl md:text-3xl font-black text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]">{formatCOP(totalVariables)}</p>
+        </div>
 
-        <Card className="p-4 border-t-4 border-t-amber-500 bg-slate-900/30">
-          <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Rendimientos</p>
-          <p className="text-xl md:text-2xl font-black text-amber-400">{formatCOP(totalRendimientos)}</p>
-        </Card>
+        <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
+          <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Rendimientos</p>
+          <p className="text-xl md:text-3xl font-black text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">{formatCOP(totalRendimientos)}</p>
+        </div>
       </div>
 
       {/* --- SECCIÓN 1: FORMULARIO --- */}
-      <Card className="border-t-4 border-t-emerald-500">
-        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-black">1</div>
+      <Card>
+        <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide mb-6">
+          <span className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">1</span>
           Registrar Nuevo Ingreso
         </h2>
         
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-5 animate-in slide-in-from-top-4 fade-in duration-300">
+          
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
+            <label className={labelBaseClass}>Fecha</label>
             <input 
               type="date" 
               required 
               value={fecha} 
               onChange={(e) => setFecha(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none"
+              onClick={(e) => e.target.showPicker && e.target.showPicker()} 
+              className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`}
             />
           </div>
           
           <div className="md:col-span-2">
-            <label className="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+            <label className={labelBaseClass}>Descripción</label>
             <input 
               type="text" 
               required 
               value={descripcion} 
               onChange={(e) => setDescripcion(e.target.value)} 
               placeholder="Ej. Salario, Rendimientos..." 
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none"
+              className={inputBaseClass}
             />
           </div>
           
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Tipo</label>
+            <label className={labelBaseClass}>Tipo</label>
             <select 
               value={tipo} 
               onChange={(e) => setTipo(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none"
+              className={`${inputBaseClass} appearance-none cursor-pointer`}
             >
-              <option value="Fijo">Fijo (Salario)</option>
-              <option value="Variable">Variable (Bono/Venta)</option>
-              <option value="Rendimiento">Rendimiento (Interés)</option>
+              <option value="Fijo" className="bg-[#111222]">Fijo (Salario)</option>
+              <option value="Variable" className="bg-[#111222]">Variable (Bono/Venta)</option>
+              <option value="Rendimiento" className="bg-[#111222]">Rendimiento (Interés)</option>
             </select>
           </div>
 
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Destino</label>
+            <label className={labelBaseClass}>Destino</label>
             <select 
               required 
               value={cuentaId} 
               onChange={(e) => setCuentaId(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none"
+              className={`${inputBaseClass} appearance-none cursor-pointer`}
             >
-              <option value="">Seleccione...</option>
+              <option value="" className="bg-[#111222]">Seleccione...</option>
               {cuentasActivas.map(c => (
-                <option key={c.id} value={c.id}>
+                <option key={c.id} value={c.id} className="bg-[#111222]">
                   {c.type === 'cash' ? '💵' : (c.type === 'pocket' || c.type === 'investment') ? '📈' : '🏦'} {c.name}
                 </option>
               ))}
             </select>
           </div>
           
-          <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Monto</label>
+          <div className="md:col-span-1 relative">
+            <label className={labelBaseClass}>Monto</label>
+            <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
             <input 
               type="number" 
               required 
               value={monto} 
               onChange={(e) => setMonto(e.target.value)} 
-              placeholder="$ 0" 
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-emerald-500 outline-none"
+              placeholder="0" 
+              className={`${inputBaseClass} pl-8 font-black text-lg text-emerald-400`}
             />
           </div>
 
-          <div className="md:col-span-6 flex justify-end mt-2">
+          <div className="md:col-span-6 flex justify-end mt-2 pt-4 border-t border-white/[0.05]">
             <button 
               type="submit" 
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+              className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] font-black py-3.5 px-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95 tracking-wide"
             >
-              <Plus size={18} /> Agregar Ingreso
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14"/><path d="M12 5v14"/></svg> REGISTRAR INGRESO
             </button>
           </div>
         </form>
       </Card>
 
       {/* --- SECCIÓN 2: TABLA HISTORIAL --- */}
-      <Card className="flex flex-col border-t-4 border-t-slate-600 bg-slate-900/10">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <ListIcon />
+      <Card>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
+            <span className="w-6 h-6 rounded-md bg-slate-800 text-slate-400 flex items-center justify-center text-xs"><ListIcon /></span>
             Historial Completo de Ingresos
           </h2>
-          <span className="bg-slate-900 border border-slate-800 text-slate-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+          <span className="bg-[#111222] shadow-neumorph-inset text-[#8A92A6] text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
             {ingresosFiltrados.length} Movimientos
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/50">
+        <div className="overflow-x-auto rounded-2xl border border-white/[0.05] bg-[#111222] mt-6 shadow-neumorph-inset">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               {/* Encabezados de Columna */}
-              <tr className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/80">
-                <th className="p-4 font-bold w-[12%]">Fecha</th>
-                <th className="p-4 font-bold w-[28%]">Descripción</th>
-                <th className="p-4 font-bold w-[15%]">Tipo</th>
-                <th className="p-4 font-bold w-[20%]">Destino</th>
-                <th className="p-4 font-bold w-[15%] text-right">Monto</th>
-                <th className="p-4 font-bold text-center w-[10%]">Acciones</th>
+              <tr className="border-b border-white/[0.05] text-[10px] uppercase tracking-widest text-[#8A92A6] bg-[#0b0c16]/50">
+                <th className="p-4 font-black w-[12%]">Fecha</th>
+                <th className="p-4 font-black w-[28%]">Descripción</th>
+                <th className="p-4 font-black w-[15%] text-center">Tipo</th>
+                <th className="p-4 font-black w-[20%]">Destino</th>
+                <th className="p-4 font-black w-[15%] text-right">Monto</th>
+                <th className="p-4 font-black text-center w-[10%]">Acciones</th>
               </tr>
               
-              {/* ✨ Fila de Filtros (Igual que Egresos) */}
-              <tr className="border-b-2 border-slate-800 bg-slate-900/40">
+              {/* ✨ Fila de Filtros (Estilo Inset) */}
+              <tr className="border-b-2 border-white/[0.05] bg-appcard/30">
                 <th className="p-2"></th>
                 <th className="p-2">
                   <input 
                     type="text" 
                     placeholder="Buscar descripción..." 
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-emerald-500 outline-none placeholder:text-slate-600"
+                    className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none placeholder:text-slate-600"
                     value={filters.descripcion} 
                     onChange={e => setFilters({...filters, descripcion: e.target.value})}
                   />
                 </th>
                 <th className="p-2">
                   <select 
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-emerald-500 outline-none"
+                    className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none appearance-none"
                     value={filters.tipo} 
                     onChange={e => setFilters({...filters, tipo: e.target.value})}
                   >
@@ -334,7 +345,7 @@ const IngresosTab = ({
                 </th>
                 <th className="p-2">
                   <select 
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[11px] text-white focus:border-emerald-500 outline-none"
+                    className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none appearance-none"
                     value={filters.cuenta} 
                     onChange={e => setFilters({...filters, cuenta: e.target.value})}
                   >
@@ -346,7 +357,7 @@ const IngresosTab = ({
                 <th className="p-2 text-center">
                   <button 
                     onClick={limpiarFiltros} 
-                    className="text-[10px] uppercase font-black text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-500 px-3 py-1.5 rounded-lg w-full transition-all"
+                    className="text-[10px] uppercase font-black text-emerald-400 hover:text-[#0b0c16] bg-emerald-500/10 hover:bg-emerald-500 px-3 py-1.5 rounded-lg w-full transition-all tracking-widest"
                   >
                     Limpiar
                   </button>
@@ -357,7 +368,7 @@ const IngresosTab = ({
             <tbody className="text-sm">
               {ingresosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-12 text-center text-slate-500 font-medium italic">
+                  <td colSpan="6" className="p-12 text-center text-[#8A92A6] font-bold italic">
                     No se encontraron registros que coincidan con los filtros.
                   </td>
                 </tr>
@@ -369,69 +380,69 @@ const IngresosTab = ({
                   const isPocket = cuentaObj?.type === 'pocket' || cuentaObj?.type === 'investment';
                   
                   return (
-                    <tr key={ingreso.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                    <tr key={ingreso.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
                       
                       {/* --- COLUMNA FECHA --- */}
-                      <td className="p-4 text-slate-400 text-xs font-medium">
+                      <td className="p-4 text-[#8A92A6] text-xs font-bold">
                         {isEditing ? (
                           <input 
                             type="date" 
                             value={editData.fecha} 
                             onChange={e => setEditData({...editData, fecha: e.target.value})} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none"
                           />
                         ) : ingreso.fecha}
                       </td>
 
                       {/* --- COLUMNA DESCRIPCIÓN --- */}
-                      <td className="p-4 text-slate-200 font-bold text-[13px]">
+                      <td className="p-4 text-white font-bold text-[13px]">
                         {isEditing ? (
                           <input 
                             type="text" 
                             value={editData.descripcion} 
                             onChange={e => setEditData({...editData, descripcion: e.target.value})} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none"
                           />
                         ) : ingreso.descripcion}
                       </td>
 
                       {/* --- COLUMNA TIPO --- */}
-                      <td className="p-4">
+                      <td className="p-4 text-center">
                         {isEditing ? (
                           <select 
                             value={editData.tipo} 
                             onChange={e => setEditData({...editData, tipo: e.target.value})} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none"
                           >
                             <option value="Fijo">Fijo</option>
                             <option value="Variable">Variable</option>
                             <option value="Rendimiento">Rendimiento</option>
                           </select>
                         ) : (
-                          <span className={`px-2.5 py-1 text-[9px] font-bold rounded border uppercase tracking-wider ${
-                            ingreso.tipo === 'Fijo' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' :
-                            ingreso.tipo === 'Rendimiento' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                            'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                          <span className={`px-2.5 py-1.5 text-[9px] font-black rounded-md uppercase tracking-widest ${
+                            ingreso.tipo === 'Fijo' ? 'bg-indigo-500/10 text-indigo-400' :
+                            ingreso.tipo === 'Rendimiento' ? 'bg-amber-500/10 text-amber-400' :
+                            'bg-neoncyan/10 text-neoncyan'
                           }`}>
-                            {ingreso.tipo || 'VARIABLE'}
+                            {ingreso.tipo || 'VAR'}
                           </span>
                         )}
                       </td>
 
                       {/* --- COLUMNA DESTINO --- */}
-                      <td className="p-4 text-slate-400 text-xs">
+                      <td className="p-4 text-[#8A92A6] text-xs font-bold uppercase tracking-wider">
                         {isEditing ? (
                           <select 
                             value={editData.cuentaId} 
                             onChange={e => setEditData({...editData, cuentaId: e.target.value})} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none"
                           >
                             {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full ${isPocket ? 'bg-indigo-500 shadow-[0_0_5px_rgba(99,102,241,0.5)]' : 'bg-emerald-500'}`}></div>
-                            {cuentaName}
+                            <div className={`w-2 h-2 rounded-full ${isPocket ? 'bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`}></div>
+                            {cuentaName.substring(0, 18)}
                           </div>
                         )}
                       </td>
@@ -443,7 +454,7 @@ const IngresosTab = ({
                             type="number" 
                             value={editData.monto} 
                             onChange={e => setEditData({...editData, monto: e.target.value})} 
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-right text-white outline-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-right text-emerald-400 font-black outline-none"
                           />
                         ) : formatCOP(ingreso.monto)}
                       </td>
@@ -460,12 +471,12 @@ const IngresosTab = ({
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-center gap-3">
-                            <button onClick={() => startEditing(ingreso)} className="text-slate-500 hover:text-indigo-400 transition-colors" title="Editar">
-                              <Edit3 size={14}/>
+                          <div className="flex items-center justify-center gap-4">
+                            <button onClick={() => startEditing(ingreso)} className="text-[#8A92A6] hover:text-emerald-400 transition-colors" title="Editar">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                             </button>
-                            <button onClick={() => handleDelete(ingreso.id)} className="text-slate-500 hover:text-rose-500 transition-colors" title="Eliminar">
-                              <Trash2 size={14}/>
+                            <button onClick={() => handleDelete(ingreso.id)} className="text-[#8A92A6] hover:text-rose-500 transition-colors" title="Eliminar">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                             </button>
                           </div>
                         )}
