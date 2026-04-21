@@ -50,7 +50,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const dineroDisponible = ingresosMesTotal - egresosMesTotal;
 
-  // FIX: detección de pago realizado consistente con EgresosTab (ID primero, texto exacto fallback)
   const isPagoFijoRealizado = (pf) => egresosMes.some(e => {
     if (e.tipo !== 'Fijo') return false;
     if (e.pagoFijoId) return e.pagoFijoId === pf.id;
@@ -58,7 +57,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   });
   const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => !isPagoFijoRealizado(pf)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
 
-  // ✨ ALERTAS DE PAGOS PRÓXIMOS A VENCER (próximos 7 días)
+  // ✨ ALERTAS DE PAGOS PRÓXIMOS A VENCER
   const hoy = new Date();
   const diaHoy = hoy.getDate();
   const pagosPorVencer = pagosFijos ? pagosFijos.filter(pf => {
@@ -84,7 +83,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  // ✨ MOTOR DE MACRO-CATEGORÍAS (Agrupa los datos solo para visualización)
+  // ✨ MOTOR DE MACRO-CATEGORÍAS
   const getMacroCategoria = (catName) => {
       if (!catName) return 'Otros Gastos';
       const lower = catName.toLowerCase();
@@ -99,7 +98,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
       if (lower === 'leo' || lower.includes('ropa leo')) return 'Leo';
       if (lower.includes('inversión') || lower.includes('inversion') || lower.includes('ahorro')) return 'Inversión y Ahorro';
       
-      return catName; // Si no cuadra en ninguna, muestra su nombre original
+      return catName; 
   };
 
   const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
@@ -110,7 +109,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     const interesOriginal = g.interesesOtros || 0;
     const capitalGasto = g.monto - interesOriginal;
     
-    // Aplicamos el conversor a las "Bolsas" grandes
     const macroCat = getMacroCategoria(catOriginal);
     const macroInteres = getMacroCategoria('Intereses y Cargos');
     
@@ -137,104 +135,117 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+      
       <header>
-        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Inicio y Dashboard Global</h1>
-        <p className="text-sm md:text-base text-slate-400 mt-1">Resumen de flujos, PowerBI de egresos y proyecciones.</p>
+        <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide">Dashboard Global</h1>
+        <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">Resumen de flujos, analítica de egresos y proyecciones.</p>
       </header>
 
+      {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-        <Card className="p-3 md:p-5 border-t-4 border-t-emerald-500">
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Ingresos Totales (Mes)</h3>
-          <p className="text-lg md:text-2xl font-bold text-emerald-400 mt-1">{formatCOP(ingresosMesTotal)}</p>
+        
+        <Card className="flex flex-col justify-center">
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
+          <p className="text-xl md:text-3xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]">
+            {formatCOP(ingresosMesTotal)}
+          </p>
         </Card>
         
-        <Card className={`p-3 md:p-5 border-t-4 border-t-rose-500 transition-colors ${expandedCard === 'egresos' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
-          <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('egresos')}>
-            <div className="flex flex-col justify-between">
-              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Egresos Totales</h3>
-              <p className="text-lg md:text-2xl font-bold text-rose-400 mt-1">{formatCOP(egresosMesTotal)}</p>
+        <Card onClick={() => toggleCard('egresos')} className="flex flex-col justify-center relative">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Egresos Totales</h3>
+              <p className="text-xl md:text-3xl font-black text-neonmagenta mt-1 drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]">
+                {formatCOP(egresosMesTotal)}
+              </p>
             </div>
-            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'egresos' ? '-rotate-90' : 'rotate-90'}`} />
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'egresos' ? 'rotate-90' : ''}`} />
           </div>
           {expandedCard === 'egresos' && (
-            <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2">
-              <ul className="space-y-2 text-xs">
+            <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
+              <ul className="space-y-3 text-xs">
                 {chartData.map(([cat, amount]) => (
-                  <li key={cat} className="flex justify-between items-center text-slate-300">
-                    <span className="truncate pr-2 font-medium">{cat}</span>
-                    <span className="font-bold text-rose-400">{formatCOP(amount)}</span>
+                  <li key={cat} className="flex justify-between items-center">
+                    <span className="truncate pr-2 font-bold text-white">{cat}</span>
+                    <span className="font-black text-neonmagenta">{formatCOP(amount)}</span>
                   </li>
                 ))}
-                {chartData.length === 0 && <li className="text-slate-500 text-center py-2">No hay egresos registrados</li>}
+                {chartData.length === 0 && <li className="text-slate-500 text-center py-2">Sin egresos</li>}
               </ul>
             </div>
           )}
         </Card>
 
-        <Card className={`p-3 md:p-5 border-t-4 ${dineroDisponible >= 0 ? 'border-t-indigo-500' : 'border-t-rose-500'}`}>
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero Disponible (Ing - Egr)</h3>
-          <p className={`text-lg md:text-2xl font-bold mt-1 ${dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+        <Card className="flex flex-col justify-center">
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Disponible (Ing - Egr)</h3>
+          <p className={`text-xl md:text-3xl font-black mt-1 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
             {formatCOP(dineroDisponible)}
           </p>
         </Card>
         
-        <Card className="p-3 md:p-5 border-t-4 border-t-amber-500">
-          <h3 className="text-slate-400 text-xs md:text-sm font-medium">Pagos Fijos Pendientes (Todos)</h3>
-          <p className="text-lg md:text-2xl font-bold text-amber-400 mt-1">{formatCOP(pagosFijosPendientesTotal)}</p>
+        <Card className="flex flex-col justify-center">
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Pagos Fijos Ptes.</h3>
+          <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
+            {formatCOP(pagosFijosPendientesTotal)}
+          </p>
         </Card>
         
-        <Card className={`p-3 md:p-5 border-t-4 border-t-slate-500 transition-colors ${expandedCard === 'presupuesto' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
-          <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('presupuesto')}>
-            <div className="flex flex-col justify-between">
-              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Presupuesto Configurado</h3>
-              <p className="text-lg md:text-2xl font-bold text-slate-200 mt-1">{formatCOP(presupuestoTotal)}</p>
+        <Card onClick={() => toggleCard('presupuesto')} className="flex flex-col justify-center relative">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Presupuesto Config.</h3>
+              <p className="text-xl md:text-3xl font-black text-white mt-1">
+                {formatCOP(presupuestoTotal)}
+              </p>
             </div>
-            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'presupuesto' ? '-rotate-90' : 'rotate-90'}`} />
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'presupuesto' ? 'rotate-90' : ''}`} />
           </div>
           {expandedCard === 'presupuesto' && (
-            <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2">
-              <div className="flex justify-between items-center text-xs mb-2">
-                <span className="text-slate-400">Gastos Fijos</span>
-                <span className="font-bold text-orange-400">{formatCOP(totalPresupuestadoFijo)}</span>
+            <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
+              <div className="flex justify-between items-center text-xs mb-3">
+                <span className="text-[#8A92A6] font-bold">Gastos Fijos</span>
+                <span className="font-black text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400">Gastos Variables</span>
-                <span className="font-bold text-blue-400">{formatCOP(totalPresupuestadoVar)}</span>
+                <span className="text-[#8A92A6] font-bold">Gastos Variables</span>
+                <span className="font-black text-neoncyan">{formatCOP(totalPresupuestadoVar)}</span>
               </div>
             </div>
           )}
         </Card>
         
-        <Card className={`p-3 md:p-5 border-t-4 border-t-emerald-500/50 transition-colors ${expandedCard === 'cuentas' ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}`}>
-          <div className="flex justify-between items-start cursor-pointer select-none" onClick={() => toggleCard('cuentas')}>
-            <div className="flex flex-col justify-between">
-              <h3 className="text-slate-400 text-xs md:text-sm font-medium">Dinero en Cuentas (Total)</h3>
-              <p className="text-lg md:text-2xl font-bold text-emerald-400/80 mt-1">{formatCOP(totalDineroCuentas)}</p>
+        <Card onClick={() => toggleCard('cuentas')} className="flex flex-col justify-center relative">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero en Cuentas</h3>
+              <p className="text-xl md:text-3xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">
+                {formatCOP(totalDineroCuentas)}
+              </p>
             </div>
-            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'cuentas' ? '-rotate-90' : 'rotate-90'}`} />
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'cuentas' ? 'rotate-90' : ''}`} />
           </div>
           {expandedCard === 'cuentas' && (
-            <div className="mt-4 pt-3 border-t border-slate-800 animate-in slide-in-from-top-2 grid grid-cols-2 gap-4">
+            <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2 grid grid-cols-2 gap-4">
               <div>
-                <h4 className="text-[10px] font-bold text-emerald-500 uppercase mb-1">Cuentas Leo</h4>
-                <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="text-slate-400">Bancos</span>
-                  <span className="font-bold text-slate-200">{formatCOP(liquidezLeoCuentas)}</span>
+                <h4 className="text-[10px] font-black text-neoncyan uppercase mb-2">Cuentas Leo</h4>
+                <div className="flex justify-between items-center text-xs mb-1.5">
+                  <span className="text-[#8A92A6] font-bold">Bancos</span>
+                  <span className="font-black text-white">{formatCOP(liquidezLeoCuentas)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-400">Efectivo</span>
-                  <span className="font-bold text-slate-200">{formatCOP(liquidezLeoEfectivo)}</span>
+                  <span className="text-[#8A92A6] font-bold">Efectivo</span>
+                  <span className="font-black text-white">{formatCOP(liquidezLeoEfectivo)}</span>
                 </div>
               </div>
               <div>
-                <h4 className="text-[10px] font-bold text-rose-500 uppercase mb-1">Cuentas Andre</h4>
-                <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="text-slate-400">Bancos</span>
-                  <span className="font-bold text-slate-200">{formatCOP(liquidezAndreCuentas)}</span>
+                <h4 className="text-[10px] font-black text-neonmagenta uppercase mb-2">Cuentas Andre</h4>
+                <div className="flex justify-between items-center text-xs mb-1.5">
+                  <span className="text-[#8A92A6] font-bold">Bancos</span>
+                  <span className="font-black text-white">{formatCOP(liquidezAndreCuentas)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-400">Efectivo</span>
-                  <span className="font-bold text-slate-200">{formatCOP(liquidezAndreEfectivo)}</span>
+                  <span className="text-[#8A92A6] font-bold">Efectivo</span>
+                  <span className="font-black text-white">{formatCOP(liquidezAndreEfectivo)}</span>
                 </div>
               </div>
             </div>
@@ -242,18 +253,18 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </Card>
       </div>
 
-      {/* ✨ ALERTAS: PAGOS PRÓXIMOS A VENCER (próximos 7 días) */}
+      {/* 2. ALERTAS: PAGOS PRÓXIMOS A VENCER */}
       {pagosPorVencer.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col gap-3 animate-in fade-in">
-          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-            <AlertCircle size={14}/> Pagos fijos que vencen en los próximos 7 días
+        <div className="bg-appcard border-l-4 border-amber-500 rounded-[20px] p-5 shadow-neumorph flex flex-col gap-4 animate-in fade-in">
+          <h3 className="text-xs font-black text-amber-400 uppercase tracking-widest flex items-center gap-2">
+            <AlertCircle size={16}/> Pagos fijos venciendo (Próx. 7 días)
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {pagosPorVencer.map(pf => (
-              <div key={pf.id} className="flex justify-between items-center bg-slate-950 border border-amber-500/20 rounded-lg px-3 py-2">
+              <div key={pf.id} className="flex justify-between items-center bg-[#111222] shadow-neumorph-inset rounded-xl px-4 py-3 border border-transparent hover:border-amber-500/30 transition-colors">
                 <div>
-                  <p className="text-xs font-bold text-slate-200 truncate max-w-[140px]">{pf.descripcion}</p>
-                  <p className="text-[10px] text-amber-400">Día {pf.diaPago || 1}</p>
+                  <p className="text-sm font-bold text-white truncate max-w-[140px]">{pf.descripcion}</p>
+                  <p className="text-[10px] font-bold text-amber-500 mt-0.5">Día {pf.diaPago || 1}</p>
                 </div>
                 <p className="text-sm font-black text-amber-400">{formatCOP(pf.monto)}</p>
               </div>
@@ -262,126 +273,217 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </div>
       )}
 
-      {/* ✨ PROYECCIÓN DE LIQUIDEZ 30 / 60 / 90 DÍAS */}
+      {/* 3. PROYECCIÓN DE LIQUIDEZ */}
       {proyeccionLiquidez && (
-        <Card className="border-t-4 border-t-indigo-400 bg-slate-900/60">
-          <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2 uppercase tracking-wider">
-            <TrendingUp size={16} className="text-indigo-400"/> Proyección de Liquidez
+        <Card>
+          <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2 uppercase tracking-widest">
+            <TrendingUp size={18} className="text-neoncyan"/> Proyección de Liquidez
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             {[
               { label: '30 días', val: proyeccionLiquidez.liq30 },
               { label: '60 días', val: proyeccionLiquidez.liq60 },
               { label: '90 días', val: proyeccionLiquidez.liq90 },
             ].map(({ label, val }) => (
-              <div key={label} className="bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-4 text-center flex flex-col items-center gap-1">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{label}</p>
-                <p className={`text-base md:text-lg font-black ${val >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>{formatCOP(val)}</p>
-                <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${val >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+              <div key={label} className="bg-[#111222] shadow-neumorph-inset border border-transparent rounded-2xl p-4 text-center flex flex-col items-center gap-2">
+                <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest">{label}</p>
+                <p className={`text-base md:text-xl font-black ${val >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.3)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.3)]'}`}>
+                  {formatCOP(val)}
+                </p>
+                <div className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${val >= 0 ? 'bg-neoncyan/10 text-neoncyan' : 'bg-neonmagenta/10 text-neonmagenta'}`}>
                   {val >= 0 ? '✓ Positivo' : '⚠ Déficit'}
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-slate-600 mt-3">Estimado basado en ingresos fijos proyectados menos pagos fijos y cuotas pendientes.</p>
         </Card>
       )}
 
-      <Card className="flex flex-col border-t-4 border-t-indigo-500 bg-slate-900/80">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Calculator size={18} className="text-indigo-400" /> Resumen y Realidad (En Vivo)
+      {/* 4. RESUMEN EN VIVO (LEO VS ANDRE) */}
+      <Card className="flex flex-col">
+        <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2 uppercase tracking-widest">
+          <Calculator size={18} className="text-neoncyan" /> Resumen y Realidad (En Vivo)
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-950 p-4 md:p-6 rounded-xl border border-slate-800">
-          <div className="space-y-4 lg:border-r lg:border-slate-800 lg:pr-6">
-            <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-wider border-b border-slate-800 pb-2">1. Finanzas Leo</h3>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-[#111222] shadow-neumorph-inset p-5 md:p-8 rounded-2xl border border-white/[0.02]">
+          
+          {/* LEO */}
+          <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
+            <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-neoncyan shadow-glow-cyan"></div> 1. Finanzas Leo
+            </h3>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col"><span className="text-sm text-slate-400">Total Ingresos</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(proyIngLeo)}</span></div>
-              <span className="font-bold text-emerald-400">{formatCOP(ingLeo)}</span>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span>
+                <span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(proyIngLeo)}</span>
+              </div>
+              <span className="font-black text-emerald-400">{formatCOP(ingLeo)}</span>
             </div>
-            <div className="flex justify-between items-center"><span className="text-sm text-slate-400">Total Egresos</span><span className="font-bold text-rose-400">{formatCOP(egrLeo)}</span></div>
-            <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center">
-              <span className="text-slate-200">Flujo Leo</span><span className={ingLeo - egrLeo >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(ingLeo - egrLeo)}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#8A92A6]">Total Egresos</span>
+              <span className="font-black text-neonmagenta">{formatCOP(egrLeo)}</span>
+            </div>
+            <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
+              <span className="text-white">Flujo Leo</span>
+              <span className={ingLeo - egrLeo >= 0 ? 'text-neoncyan' : 'text-neonmagenta'}>
+                {formatCOP(ingLeo - egrLeo)}
+              </span>
             </div>
           </div>
-          <div className="space-y-4 lg:border-r lg:border-slate-800 lg:pr-6">
-            <h3 className="text-xs font-bold text-rose-500 uppercase tracking-wider border-b border-slate-800 pb-2">2. Finanzas Andre</h3>
+
+          {/* ANDRE */}
+          <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
+            <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-neonmagenta shadow-glow-magenta"></div> 2. Finanzas Andre
+            </h3>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col"><span className="text-sm text-slate-400">Total Ingresos</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(proyIngAndre)}</span></div>
-              <span className="font-bold text-emerald-400">{formatCOP(ingAndre)}</span>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span>
+                <span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(proyIngAndre)}</span>
+              </div>
+              <span className="font-black text-emerald-400">{formatCOP(ingAndre)}</span>
             </div>
-            <div className="flex justify-between items-center"><span className="text-sm text-slate-400">Total Egresos</span><span className="font-bold text-rose-400">{formatCOP(egrAndre)}</span></div>
-            <div className="flex justify-between text-base font-bold pt-3 border-t border-slate-800 items-center">
-              <span className="text-slate-200">Flujo Andre</span><span className={ingAndre - egrAndre >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(ingAndre - egrAndre)}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#8A92A6]">Total Egresos</span>
+              <span className="font-black text-neonmagenta">{formatCOP(egrAndre)}</span>
+            </div>
+            <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
+              <span className="text-white">Flujo Andre</span>
+              <span className={ingAndre - egrAndre >= 0 ? 'text-neoncyan' : 'text-neonmagenta'}>
+                {formatCOP(ingAndre - egrAndre)}
+              </span>
             </div>
           </div>
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider border-b border-slate-800 pb-2">3. Consolidado Hogar</h3>
+
+          {/* HOGAR */}
+          <div className="space-y-5">
+            <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_10px_#fff]"></div> 3. Consolidado Hogar
+            </h3>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col"><span className="text-sm text-slate-400">Total Ingresos</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(proyeccionIngresosMes)}</span></div>
-              <span className="font-bold text-emerald-400">{formatCOP(ingresosMesTotal)}</span>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span>
+                <span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(proyeccionIngresosMes)}</span>
+              </div>
+              <span className="font-black text-emerald-400">{formatCOP(ingresosMesTotal)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col"><span className="text-sm text-slate-400">Pagos Fijos (Sin TC)</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(totalPresupuestadoFijo)}</span></div>
-              <span className="font-bold text-orange-400">{formatCOP(gastadoFijoSinTC)}</span>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[#8A92A6]">Fijos (Sin TC)</span>
+                <span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(totalPresupuestadoFijo)}</span>
+              </div>
+              <span className="font-black text-amber-400">{formatCOP(gastadoFijoSinTC)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <div className="flex flex-col"><span className="text-sm text-slate-400">Pagos Variables (Sin TC)</span><span className="text-[10px] text-slate-600">Proy: {formatCOP(totalPresupuestadoVar)}</span></div>
-              <span className="font-bold text-blue-400">{formatCOP(gastadoVarSinTC)}</span>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[#8A92A6]">Var. (Sin TC)</span>
+                <span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(totalPresupuestadoVar)}</span>
+              </div>
+              <span className="font-black text-neoncyan">{formatCOP(gastadoVarSinTC)}</span>
             </div>
-            <div className="flex justify-between items-center"><span className="text-sm text-slate-400">Pagos con TC (Ambos)</span><span className="font-bold text-rose-400">{formatCOP(pagosTCLeo + pagosTCAndre)}</span></div>
-            <div className="flex justify-between text-sm items-center border-t border-slate-800/50 pt-3 mt-1"><span className="text-slate-400">Total Egresos</span><span className="font-bold text-rose-400">{formatCOP(egresosMesTotal)}</span></div>
-            <div className="flex justify-between text-base font-bold pt-2 border-t border-slate-800 items-center">
-              <div className="flex flex-col"><span className="text-slate-200">TOTAL REAL</span><span className="text-[10px] text-slate-600">Esperado: {formatCOP(totalProyeccionMes)}</span></div>
-              <span className={dineroDisponible >= 0 ? 'text-indigo-400' : 'text-rose-500'}>{formatCOP(dineroDisponible)}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#8A92A6]">Tarjetas Crédito</span>
+              <span className="font-black text-neonmagenta">{formatCOP(pagosTCLeo + pagosTCAndre)}</span>
+            </div>
+            <div className="flex justify-between text-sm items-center border-t border-white/[0.05] pt-4 mt-2">
+              <span className="text-white font-bold">Total Egresos</span>
+              <span className="font-black text-neonmagenta">{formatCOP(egresosMesTotal)}</span>
+            </div>
+            <div className="flex justify-between text-lg font-black pt-3 border-t border-white/[0.05] items-center">
+              <div className="flex flex-col">
+                <span className="text-white">TOTAL REAL</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Esperado: {formatCOP(totalProyeccionMes)}</span>
+              </div>
+              <span className={dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}>
+                {formatCOP(dineroDisponible)}
+              </span>
             </div>
           </div>
         </div>
       </Card>
 
+      {/* 5. GRÁFICAS DE TENDENCIA Y DISTRIBUCIÓN */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* GRÁFICA: TENDENCIA 6 MESES */}
         <Card className="flex flex-col">
-          <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2"><BarChart size={18} className="text-emerald-400" /> Tendencia Histórica (6 Meses)</h2>
-          <div className="flex-1 flex items-end justify-between gap-2 h-48 pb-2 border-b border-slate-800">
+          <h2 className="text-sm font-black text-white mb-8 flex items-center gap-2 uppercase tracking-widest">
+            <BarChart size={18} className="text-neoncyan" /> Tendencia Histórica
+          </h2>
+          <div className="flex-1 flex items-end justify-between gap-3 h-[200px] pb-4 border-b border-white/[0.05]">
             {trendData.map((d, i) => {
               const hInc = (d.ing / maxTrendVal) * 100;
               const hExp = (d.egr / maxTrendVal) * 100;
               const flujoAnterior = d.ing - d.egr;
               return (
                 <div key={i} className="flex flex-col items-center w-full h-full justify-end group relative">
-                  <div className="flex gap-1 w-full justify-center items-end h-full">
-                    <div style={{ height: `${Math.max(hInc, 2)}%` }} className="w-1/3 max-w-[12px] bg-emerald-500/80 rounded-t-sm transition-all group-hover:bg-emerald-400"></div>
-                    <div style={{ height: `${Math.max(hExp, 2)}%` }} className="w-1/3 max-w-[12px] bg-rose-500/80 rounded-t-sm transition-all group-hover:bg-rose-400"></div>
+                  <div className="flex gap-1.5 w-full justify-center items-end h-full">
+                    <div 
+                      style={{ height: `${Math.max(hInc, 2)}%` }} 
+                      className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neoncyan rounded-t-md shadow-[0_0_10px_rgba(0,229,255,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(0,229,255,0.6)]"
+                    ></div>
+                    <div 
+                      style={{ height: `${Math.max(hExp, 2)}%` }} 
+                      className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neonmagenta rounded-t-md shadow-[0_0_10px_rgba(255,0,122,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(255,0,122,0.6)]"
+                    ></div>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 absolute -top-16 bg-slate-950 border border-slate-700 text-white text-[10px] p-2 rounded shadow-2xl whitespace-nowrap z-10 pointer-events-none transition-opacity">
-                    <p className="text-emerald-400 mb-0.5">Ing: {formatCOP(d.ing)}</p>
-                    <p className="text-rose-400 mb-0.5">Egr: {formatCOP(d.egr)}</p>
-                    <div className="border-t border-slate-800 my-1"></div>
-                    <p className={`font-bold ${flujoAnterior >= 0 ? 'text-indigo-400' : 'text-amber-500'}`}>Neto: {formatCOP(flujoAnterior)}</p>
+                  
+                  {/* Tooltip Hover Neumórfico */}
+                  <div className="opacity-0 group-hover:opacity-100 absolute -top-20 bg-appcard shadow-neumorph border border-white/[0.05] p-3 rounded-xl whitespace-nowrap z-10 pointer-events-none transition-all duration-300">
+                    <p className="text-neoncyan font-black text-xs mb-1">Ing: {formatCOP(d.ing)}</p>
+                    <p className="text-neonmagenta font-black text-xs mb-2">Egr: {formatCOP(d.egr)}</p>
+                    <div className="border-t border-white/[0.05] my-1 pt-1"></div>
+                    <p className={`font-black text-xs ${flujoAnterior >= 0 ? 'text-white' : 'text-amber-500'}`}>Neto: {formatCOP(flujoAnterior)}</p>
                   </div>
                 </div>
               )
             })}
           </div>
-          <div className="flex justify-between mt-2 px-1">
-            {trendData.map((d, i) => <span key={i} className="text-[10px] font-medium text-slate-500 uppercase">{d.label}</span>)}
+          <div className="flex justify-between mt-3 px-2">
+            {trendData.map((d, i) => <span key={i} className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">{d.label}</span>)}
           </div>
-          <div className="flex justify-center gap-4 mt-4 text-xs font-medium text-slate-400">
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-emerald-500/80"></div> Ingresos</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-rose-500/80"></div> Egresos</span>
+          <div className="flex justify-center gap-6 mt-6 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">
+            <span className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-neoncyan shadow-glow-cyan"></div> Ingresos
+            </span>
+            <span className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-neonmagenta shadow-glow-magenta"></div> Egresos
+            </span>
           </div>
         </Card>
 
+        {/* GRÁFICA: DISTRIBUCIÓN DE EGRESOS */}
         <Card className="flex flex-col">
-          <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2"><BarChart3 size={18} className="text-indigo-400" /> Distribución de Egresos</h2>
-            <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-800 text-xs font-medium w-full md:w-auto">
-              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Todos' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-              <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Fijo' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Fijos</button>
-              <button onClick={()=>setChartFilter('Variable')} className={`flex-1 md:flex-none px-4 py-2 rounded ${chartFilter==='Variable' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Variables</button>
+          <div className="flex flex-col xl:flex-row justify-between xl:items-center mb-8 gap-5">
+            <h2 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-widest">
+              <BarChart3 size={18} className="text-neonmagenta" /> Distribución
+            </h2>
+            
+            <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1.5 w-full xl:w-auto border border-transparent">
+              <button 
+                onClick={()=>setChartFilter('Todos')} 
+                className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Todos' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-[#8A92A6] hover:text-white'}`}
+              >
+                Todos
+              </button>
+              <button 
+                onClick={()=>setChartFilter('Fijo')} 
+                className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Fijo' ? 'bg-amber-500 text-[#0b0c16] shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}
+              >
+                Fijos
+              </button>
+              <button 
+                onClick={()=>setChartFilter('Variable')} 
+                className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}
+              >
+                Variables
+              </button>
             </div>
           </div>
-          <div className="flex-1 space-y-4 overflow-y-auto max-h-[250px] pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-            {chartData.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No hay egresos registrados.</p>}
+          
+          <div className="flex-1 space-y-5 overflow-y-auto max-h-[300px] pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
+            {chartData.length === 0 && <p className="text-sm text-[#8A92A6] font-bold text-center py-10">No hay egresos registrados.</p>}
+            
             {chartData.map(([name, amount]) => {
               const width = Math.max((amount / maxMonto) * 100, 2);
               
@@ -389,24 +491,32 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
               let textColorClass = '';
 
               if (chartFilter === 'Todos') {
-                barColorClass = 'bg-rose-500';
-                textColorClass = 'text-rose-400';
+                barColorClass = 'bg-gradient-to-r from-neonmagenta to-[#ff5e99] shadow-glow-magenta';
+                textColorClass = 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]';
               } else if (chartFilter === 'Fijo') {
-                barColorClass = 'bg-orange-500';
-                textColorClass = 'text-orange-400';
+                barColorClass = 'bg-gradient-to-r from-amber-500 to-[#ffd166] shadow-[0_0_10px_rgba(251,191,36,0.5)]';
+                textColorClass = 'text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]';
               } else if (chartFilter === 'Variable') {
-                barColorClass = 'bg-blue-500';
-                textColorClass = 'text-blue-400';
+                barColorClass = 'bg-gradient-to-r from-neoncyan to-[#66fcf1] shadow-glow-cyan';
+                textColorClass = 'text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]';
               }
 
               return (
                 <div key={name} className="relative group">
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-slate-300 font-medium truncate pr-4">{name}</span>
-                    <span className={`font-bold ${textColorClass}`}>{formatCOP(amount)}</span>
+                  <div className="flex justify-between items-end text-sm mb-2">
+                    <span className="text-white font-bold truncate pr-4 text-xs">{name}</span>
+                    <span className={`font-black text-sm tracking-wide ${textColorClass}`}>{formatCOP(amount)}</span>
                   </div>
-                  <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
-                    <div className={`h-full rounded-full transition-all duration-1000 ${barColorClass}`} style={{ width: `${width}%` }}></div>
+                  {/* Contenedor Hundido */}
+                  <div className="w-full bg-[#111222] shadow-neumorph-inset rounded-full h-[10px] relative border border-transparent overflow-hidden">
+                    {/* Barra de progreso de neón */}
+                    <div 
+                      className={`h-full rounded-full transition-all duration-1000 relative ${barColorClass}`} 
+                      style={{ width: `${width}%` }}
+                    >
+                      {/* Punto de luz brillante en el extremo derecho */}
+                      <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white rounded-full opacity-60 mix-blend-screen"></div>
+                    </div>
                   </div>
                 </div>
               );
