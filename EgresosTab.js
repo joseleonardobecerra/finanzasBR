@@ -129,8 +129,10 @@ const EgresosTab = ({
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
   const [categoria, setCategoria] = useState('');
+  const [metodoPago, setMetodoPago] = useState(''); // NUEVO: cash, bank, credit
   const [cuentaId, setCuentaId] = useState('');
   const [deudaId, setDeudaId] = useState('');
+  const [interesesOtros, setInteresesOtros] = useState(''); // NUEVO: Valor de intereses
   const [tipo, setTipo] = useState('Variable');
 
   // ============================================================================
@@ -185,10 +187,19 @@ const EgresosTab = ({
   // ============================================================================
   const [pfState, setPfState] = useState({});
 
-  // Listas de Cuentas Filtradas
+  // Listas de Cuentas Filtradas Globales
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
   const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
+
+  // NUEVO: Filtro dinámico de cuentas según el método de pago elegido
+  const cuentasFiltradas = useMemo(() => {
+    if (!metodoPago) return [];
+    if (metodoPago === 'cash') return cuentasActivas.filter(c => c.type === 'cash');
+    if (metodoPago === 'bank') return cuentasActivas.filter(c => c.type === 'bank' || c.type === 'pocket');
+    if (metodoPago === 'credit') return cuentasActivas.filter(c => c.type === 'credit');
+    return [];
+  }, [metodoPago, cuentasActivas]);
 
   // ============================================================================
   // CÁLCULOS PRINCIPALES DEL MES
@@ -240,13 +251,16 @@ const EgresosTab = ({
       descripcion,
       categoria,
       monto: Number(monto),
+      interesesOtros: Number(interesesOtros) || 0, // NUEVO: Guardamos el interés
       cuentaId,
       tipo,
       deudaId: deudaId || null
     });
     
+    // Limpiamos los campos
     setDescripcion('');
     setMonto('');
+    setInteresesOtros('');
     setDeudaId('');
     showToast('Gasto registrado correctamente.');
   };
@@ -290,7 +304,6 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
   // ============================================================================
-  // FIX: detección por pagoFijoId primero; fallback descripción EXACTA para registros previos.
   const checkPagoRealizado = (pf) => {
     return egresosMes.some(e => {
       if (e.tipo !== 'Fijo') return false;
@@ -344,7 +357,7 @@ const EgresosTab = ({
       cuentaId: cuentaFinal,
       tipo: 'Fijo',
       deudaId: deudaFinal,
-      pagoFijoId: pf.id,  // FIX: ID para detección segura sin depender del texto
+      pagoFijoId: pf.id,
     });
     
     showToast(`Pago de ${pf.descripcion} registrado.`);
@@ -363,8 +376,6 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES PARA COMPRAS A CUOTAS
   // ============================================================================
-  // FIX: Solo registramos la CUOTA MENSUAL como egreso, no el monto total.
-  // Registrar el total inflaba el mes de la compra con el 100% del valor.
   const handleAddCuotas = (e) => {
     e.preventDefault();
     if (!cuotaData.descripcion || !cuotaData.montoTotal || !cuotaData.numeroCuotas || !cuotaData.tarjetaId || !cuotaData.categoria) {
@@ -489,7 +500,8 @@ const EgresosTab = ({
                 required 
                 value={fecha} 
                 onChange={(e) => setFecha(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
+                onClick={(e) => e.target.showPicker && e.target.showPicker()} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none cursor-pointer"
               />
             </div>
             
@@ -521,22 +533,46 @@ const EgresosTab = ({
                 {categoriasMaestras.map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
+                {!categoriasMaestras.includes('Intereses y otros') && (
+                  <option value="Intereses y otros">Intereses y otros</option>
+                )}
               </select>
             </div>
 
             {/* Fila 2 */}
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">
+                Método de Pago
+              </label>
+              <select 
+                required 
+                value={metodoPago} 
+                onChange={(e) => {
+                  setMetodoPago(e.target.value);
+                  setCuentaId(''); 
+                }} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
+              >
+                <option value="">Seleccione...</option>
+                <option value="cash">💵 Efectivo (Leo/Andre)</option>
+                <option value="bank">🏦 Débito / Ahorro</option>
+                <option value="credit">💳 Tarjeta de Crédito</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">
                 De dónde sale la plata
               </label>
               <select 
                 required 
+                disabled={!metodoPago}
                 value={cuentaId} 
                 onChange={(e) => setCuentaId(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 mt-1 text-sm text-white focus:border-rose-500 outline-none disabled:opacity-50"
               >
-                <option value="">Seleccione cuenta...</option>
-                {cuentasActivas.map(c => (
+                <option value="">{metodoPago ? "Seleccione cuenta..." : "Elija método de pago"}</option>
+                {cuentasFiltradas.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.type === 'cash' ? '💵' : c.type === 'credit' ? '💳' : '🏦'} {c.name}
                   </option>
@@ -553,7 +589,7 @@ const EgresosTab = ({
                 onChange={(e) => setDeudaId(e.target.value)} 
                 className="w-full bg-indigo-950/20 border border-indigo-500/30 rounded-lg px-3 py-2 mt-1 text-sm text-indigo-300 focus:border-indigo-500 outline-none"
               >
-                <option value="">No es pago a deuda (Gasto normal)</option>
+                <option value="">No es pago a deuda</option>
                 {todasLasDeudas.map(d => (
                   <option key={d.id} value={d.id}>
                     Pagar: {d.name}
@@ -562,9 +598,10 @@ const EgresosTab = ({
               </select>
             </div>
             
-            <div>
+            {/* Fila 3: Montos */}
+            <div className="md:col-span-2">
               <label className="text-xs font-bold text-slate-500 uppercase">
-                Monto Total
+                Monto Total Pagado
               </label>
               <input 
                 type="number" 
@@ -576,7 +613,21 @@ const EgresosTab = ({
               />
             </div>
 
-            {/* Fila 3: Controles */}
+            <div className="md:col-span-1">
+              <label className="text-xs font-bold text-amber-500 uppercase flex items-center gap-1">
+                Pago de Intereses (Opcional)
+              </label>
+              <input 
+                type="number" 
+                value={interesesOtros} 
+                onChange={(e) => setInteresesOtros(e.target.value)} 
+                placeholder="$ 0 (Extra/Interés)" 
+                className="w-full bg-amber-950/10 border border-amber-500/30 rounded-lg px-3 py-2 mt-1 text-sm text-amber-400 focus:border-amber-500 outline-none"
+                title="Si este pago incluye intereses, digita cuánto fue."
+              />
+            </div>
+
+            {/* Fila 4: Controles */}
             <div className="md:col-span-3 flex justify-between items-center mt-2 pt-4 border-t border-slate-800/50">
                <div className="flex bg-slate-950 rounded-lg border border-slate-800 p-1">
                   <button 
