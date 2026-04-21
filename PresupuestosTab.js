@@ -194,51 +194,62 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const difTotal = (totalFijo + totalVar) - totalGastadoAmbos;
 
   const getColorDif = (val) => {
-    if (val > 0) return 'text-emerald-400';
-    if (val < 0) return 'text-rose-500';
-    return 'text-orange-400'; 
+    if (val >= 0) return 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.4)]';
+    if (val < 0) return 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.4)]';
+    return 'text-amber-400'; 
   };
 
   const RenderCardCompacta = ({ p, themeColor }) => {
     const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
     const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
     const diferencia = p.limite - p.gastado;
+    const excede = diferencia < 0;
 
     const themeMap = {
-      yellow: { bar: 'bg-yellow-400', text: 'text-yellow-400', border: 'border-yellow-500', bgEdit: 'bg-yellow-950/10' },
-      blue: { bar: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', bgEdit: 'bg-blue-950/10' }
+      yellow: { 
+         bar: excede ? 'bg-neonmagenta shadow-glow-magenta' : 'bg-amber-400 shadow-glow-amber', 
+         text: excede ? 'text-neonmagenta' : 'text-amber-400', 
+         border: 'border-amber-500/30', 
+         bgEdit: 'bg-amber-900/20 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.2)]' 
+      },
+      blue: { 
+         bar: excede ? 'bg-neonmagenta shadow-glow-magenta' : 'bg-neoncyan shadow-glow-cyan', 
+         text: excede ? 'text-neonmagenta' : 'text-neoncyan', 
+         border: 'border-neoncyan/30', 
+         bgEdit: 'bg-cyan-900/20 border-neoncyan shadow-[0_0_15px_rgba(0,229,255,0.2)]' 
+      }
     };
 
     let t = themeMap[themeColor];
 
     return (
-      <div key={p.id} className={`bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex flex-col gap-2.5 hover:border-slate-700 transition-colors ${editId === p.id ? `${t.border} ${t.bgEdit}` : ''}`}>
+      <div key={p.id} className={`bg-appcard p-4 rounded-2xl border flex flex-col gap-3 hover:border-white/[0.05] transition-all shadow-neumorph ${editId === p.id ? `${t.border} ${t.bgEdit}` : 'border-white/[0.02]'}`}>
         <div className="flex justify-between items-start">
-          <div className="flex flex-col pr-2">
-            <span className="font-bold text-slate-200 text-sm leading-tight truncate">{p.nombre}</span>
-            <span className="text-[10px] text-slate-500 mt-0.5">{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
+          <div className="flex flex-col pr-2 overflow-hidden">
+            <span className="font-black text-white text-sm leading-tight truncate tracking-wide">{p.nombre}</span>
+            <span className="text-[10px] font-bold text-[#8A92A6] mt-1 uppercase tracking-widest">{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
           </div>
-          <div className="flex gap-0.5 shrink-0">
-            <button onClick={() => cargarParaEditar(p)} className={`text-slate-600 hover:${t.text} p-1`}><Edit3 size={14}/></button>
+          <div className="flex gap-1 shrink-0">
+            <button onClick={() => cargarParaEditar(p)} className={`text-[#8A92A6] hover:${t.text} p-1.5 transition-colors`} title="Editar"><Edit3 size={14}/></button>
             <button onClick={() => {
               if (p.tipo === 'Variable') { removePresupuesto(p.id); showToast("Presupuesto eliminado"); } 
               else { removePagoFijo(p.id); showToast("Gasto Fijo eliminado."); }
-            }} className="text-slate-600 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+            }} className="text-[#8A92A6] hover:text-neonmagenta p-1.5 transition-colors" title="Eliminar"><Trash2 size={14}/></button>
           </div>
         </div>
 
-        <div className="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800 overflow-hidden">
+        <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 border border-transparent overflow-hidden">
           <div className={`h-full rounded-full transition-all duration-1000 ${t.bar}`} style={{ width: `${porcentaje}%` }}></div>
         </div>
 
         <div className="flex justify-between items-end text-[10px]">
-          <div className="flex flex-col">
-             <span className="text-slate-400">Gastado: <span className="text-white font-bold">{formatCOP(p.gastado)}</span></span>
-             <span className={`font-medium ${diferencia >= 0 ? 'text-emerald-400/80' : 'text-rose-400/80'}`}>
+          <div className="flex flex-col gap-0.5">
+             <span className="text-[#8A92A6] font-bold uppercase tracking-wider">Gastado: <span className="text-white font-black">{formatCOP(p.gastado)}</span></span>
+             <span className={`font-black uppercase tracking-wider ${diferencia >= 0 ? 'text-emerald-400' : 'text-neonmagenta'}`}>
                {diferencia >= 0 ? 'Disponible: ' : 'Excedido: '} {formatCOP(Math.abs(diferencia))}
              </span>
           </div>
-          <span className={`font-bold ${t.text} text-xs`}>{porcentajeReal.toFixed(1)}%</span>
+          <span className={`font-black ${t.text} text-xs drop-shadow-md`}>{porcentajeReal.toFixed(1)}%</span>
         </div>
       </div>
     );
@@ -248,104 +259,141 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2"><PieChart className="text-blue-400 w-8 h-8"/> Presupuestos y Ejecución</h1>
-          <p className="text-sm md:text-base text-slate-400 mt-1">Controla cómo se está gastando el dinero vs lo que tenías planificado.</p>
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neoncyan to-blue-600 flex items-center justify-center shadow-glow-cyan">
+               <PieChart className="text-[#0b0c16] w-5 h-5"/>
+            </div>
+            Presupuestos y Ejecución
+          </h1>
+          <p className="text-sm md:text-base text-[#8A92A6] mt-2 font-medium tracking-wide">
+            Controla cómo se está gastando el dinero vs lo que tenías planificado.
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-            <Plus size={16}/> {showForm ? 'Ocultar' : 'Añadir presupuesto'}
+        
+        <div className="flex flex-wrap gap-3">
+          <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-neoncyan hover:bg-[#00cce6] text-[#0b0c16] px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-glow-cyan active:scale-95">
+            <Plus size={16} strokeWidth="3"/> {showForm ? 'OCULTAR' : 'PRESUPUESTO'}
           </button>
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
-          <button onClick={() => fileInputRef.current.click()} className="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Upload size={14}/> Importar</button>
-          <button onClick={handleExport} className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-500/30"><Download size={14}/> Exportar</button>
+          <button onClick={() => fileInputRef.current.click()} className="bg-[#111222] hover:bg-[#1c1e32] text-emerald-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-emerald-500/30 shadow-neumorph hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <Upload size={14}/> Importar
+          </button>
+          <button onClick={handleExport} className="bg-[#111222] hover:bg-[#1c1e32] text-amber-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-amber-500/30 shadow-neumorph hover:shadow-[0_0_15px_rgba(251,191,36,0.3)]">
+            <Download size={14}/> Exportar
+          </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+      {/* TARJETAS RESUMEN (Neumorfismo Inset) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#111222] shadow-neumorph-inset p-5 rounded-[20px] border border-transparent flex flex-col justify-between">
           <div>
-            <p className="text-[10px] text-yellow-400 uppercase font-bold mb-1">Presupuesto Gasto Fijo</p>
-            <p className="text-lg font-bold text-slate-200">{formatCOP(totalFijo)}</p>
+            <p className="text-[10px] text-amber-400 uppercase font-black tracking-widest mb-1 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]">Presupuesto Gasto Fijo</p>
+            <p className="text-xl md:text-2xl font-black text-white">{formatCOP(totalFijo)}</p>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-col gap-1 text-xs">
+          <div className="mt-4 pt-3 border-t border-white/[0.05] flex flex-col gap-1.5 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-orange-400 font-bold">Gastado:</span>
-              <span className="font-bold text-white">{formatCOP(totalGastadoFijo)}</span>
+              <span className="text-amber-400 font-bold uppercase tracking-wider text-[10px]">Gastado:</span>
+              <span className="font-black text-white tabular-nums">{formatCOP(totalGastadoFijo)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">{difFijo >= 0 ? 'Restante:' : 'Excedido:'}</span>
-              <span className={`font-bold ${getColorDif(difFijo)}`}>{formatCOP(difFijo)}</span>
+              <span className="text-[#8A92A6] font-bold uppercase tracking-wider text-[10px]">{difFijo >= 0 ? 'Restante:' : 'Excedido:'}</span>
+              <span className={`font-black tabular-nums ${getColorDif(difFijo)}`}>{formatCOP(difFijo)}</span>
             </div>
           </div>
         </div>
         
-        <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
+        <div className="bg-[#111222] shadow-neumorph-inset p-5 rounded-[20px] border border-transparent flex flex-col justify-between">
           <div>
-            <p className="text-[10px] text-blue-400 uppercase font-bold mb-1">Presupuesto Gasto Variable</p>
-            <p className="text-lg font-bold text-slate-200">{formatCOP(totalVar)}</p>
+            <p className="text-[10px] text-neoncyan uppercase font-black tracking-widest mb-1 drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">Presupuesto Variable</p>
+            <p className="text-xl md:text-2xl font-black text-white">{formatCOP(totalVar)}</p>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-col gap-1 text-xs">
+          <div className="mt-4 pt-3 border-t border-white/[0.05] flex flex-col gap-1.5 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-blue-400 font-bold">Gastado:</span>
-              <span className="font-bold text-white">{formatCOP(totalGastadoVar)}</span>
+              <span className="text-neoncyan font-bold uppercase tracking-wider text-[10px]">Gastado:</span>
+              <span className="font-black text-white tabular-nums">{formatCOP(totalGastadoVar)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">{difVar >= 0 ? 'Restante:' : 'Excedido:'}</span>
-              <span className={`font-bold ${getColorDif(difVar)}`}>{formatCOP(difVar)}</span>
+              <span className="text-[#8A92A6] font-bold uppercase tracking-wider text-[10px]">{difVar >= 0 ? 'Restante:' : 'Excedido:'}</span>
+              <span className={`font-black tabular-nums ${getColorDif(difVar)}`}>{formatCOP(difVar)}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col justify-between">
+        <div className="bg-appcard shadow-neumorph p-5 rounded-[20px] border border-white/[0.02] flex flex-col justify-between">
           <div>
-            <p className="text-[10px] text-slate-300 uppercase font-bold mb-1">Total Presupuestado</p>
-            <p className="text-lg font-bold text-white">{formatCOP(totalFijo + totalVar)}</p>
+            <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Total Presupuestado</p>
+            <p className="text-xl md:text-2xl font-black text-white">{formatCOP(totalFijo + totalVar)}</p>
           </div>
-          <div className="mt-3 pt-2 border-t border-slate-600/50 flex flex-col gap-1 text-xs">
+          <div className="mt-4 pt-3 border-t border-white/[0.05] flex flex-col gap-1.5 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-slate-300 font-bold">Total Gastado:</span>
-              <span className="font-bold text-white">{formatCOP(totalGastadoAmbos)}</span>
+              <span className="text-[#8A92A6] font-bold uppercase tracking-wider text-[10px]">Total Gastado:</span>
+              <span className="font-black text-white tabular-nums">{formatCOP(totalGastadoAmbos)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">{difTotal >= 0 ? 'Restante:' : 'Excedido:'}</span>
-              <span className={`font-bold ${getColorDif(difTotal)}`}>{formatCOP(difTotal)}</span>
+              <span className="text-[#8A92A6] font-bold uppercase tracking-wider text-[10px]">{difTotal >= 0 ? 'Restante:' : 'Excedido:'}</span>
+              <span className={`font-black tabular-nums ${getColorDif(difTotal)}`}>{formatCOP(difTotal)}</span>
             </div>
           </div>
         </div>
       </div>
 
+      {/* FORMULARIO */}
       {showForm && (
-        <Card className={editId ? "border-t-4 border-t-yellow-500 bg-yellow-950/10" : "border-t-4 border-t-slate-500 bg-slate-900/80"}>
-          <div className="flex justify-between items-center mb-4" ref={formRef}>
-            <div className="flex gap-4">
-              <button onClick={() => setTipoForm('variable')} type="button" className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'variable' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                {editId ? (editOriginalType === 'variable' ? '✏️ Editando Límite Variable' : '🔄 Convertir a Variable') : 'Añadir Límite Variable'}
+        <Card className={`animate-in slide-in-from-top-4 ${editId ? (editOriginalType === 'variable' ? '!border-neoncyan/30 shadow-glow-cyan' : '!border-amber-500/30 shadow-glow-amber') : '!border-transparent'}`}>
+          <div className="flex justify-between items-center mb-6 relative" ref={formRef}>
+            
+            <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto">
+              <button onClick={() => setTipoForm('variable')} type="button" className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${tipoForm === 'variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>
+                {editId ? (editOriginalType === 'variable' ? '✏️ Editando Variable' : '🔄 A Variable') : 'Límite Variable'}
               </button>
-              <span className="text-slate-700">|</span>
-              <button onClick={() => setTipoForm('fijo')} type="button" className={`text-sm md:text-lg font-semibold transition-colors ${tipoForm === 'fijo' ? 'text-yellow-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                {editId ? (editOriginalType === 'fijo' ? '✏️ Editando Gasto Fijo' : '🔄 Convertir a Fijo') : 'Añadir Gasto Fijo'}
+              <button onClick={() => setTipoForm('fijo')} type="button" className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${tipoForm === 'fijo' ? 'bg-amber-400 text-[#0b0c16] shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}>
+                {editId ? (editOriginalType === 'fijo' ? '✏️ Editando Fijo' : '🔄 A Fijo') : 'Gasto Fijo'}
               </button>
             </div>
-            {editId && <button onClick={cancelarEdicion} className="text-xs text-yellow-400 hover:underline bg-slate-950 px-2 py-1 rounded">Cancelar Edición</button>}
+            
+            {editId && (
+              <button onClick={cancelarEdicion} className="text-[10px] uppercase font-black tracking-widest text-rose-400 hover:text-white transition-colors bg-rose-500/10 px-3 py-1.5 rounded-lg absolute right-0">
+                Cancelar
+              </button>
+            )}
           </div>
           
-          <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end mt-2">
+          <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end mt-4">
             {tipoForm === 'variable' ? (
               <React.Fragment>
-                <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-5" />
-                <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="sm:col-span-4" />
-                <div className="sm:col-span-3 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? (editOriginalType === 'variable' ? 'Actualizar' : 'Convertir') : 'Añadir Límite'}</button>
+                <div className="sm:col-span-5">
+                  <Input label="Categoría Variable (Libre texto)" placeholder="Ej: Gasolina, Mercado..." value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} />
+                </div>
+                <div className="sm:col-span-4 relative">
+                  <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="pl-8 font-black text-neoncyan" placeholder="0"/>
+                  <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                </div>
+                <div className="sm:col-span-3">
+                   <button type="submit" className={`w-full ${editId ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'bg-neoncyan hover:bg-[#00cce6] shadow-glow-cyan'} text-[#0b0c16] font-black tracking-widest uppercase py-3.5 rounded-xl transition-all active:scale-95`}>
+                     {editId ? (editOriginalType === 'variable' ? 'ACTUALIZAR' : 'CONVERTIR') : 'GUARDAR LÍMITE'}
+                   </button>
                 </div>
               </React.Fragment>
             ) : (
               <React.Fragment>
-                <Input label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} className="sm:col-span-4" />
-                <Select label="Categoría Fija" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} className="sm:col-span-3" />
-                <Input type="number" label="Monto Estimado ($)" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="sm:col-span-2" />
-                <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} className="sm:col-span-1" />
-                <div className="sm:col-span-2 flex gap-2">
-                   <button type="submit" className={`w-full ${editId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-yellow-500 hover:bg-yellow-600'} text-slate-900 font-bold py-2.5 md:py-2 rounded-lg transition-colors`}>{editId ? (editOriginalType === 'fijo' ? 'Actualizar' : 'Convertir') : 'Añadir Fijo'}</button>
+                <div className="sm:col-span-4">
+                  <Input label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} />
+                </div>
+                <div className="sm:col-span-3">
+                  <Select label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} />
+                </div>
+                <div className="sm:col-span-2 relative">
+                  <Input type="number" label="Monto Estimado" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="pl-8 font-black text-amber-400" placeholder="0"/>
+                  <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                </div>
+                <div className="sm:col-span-1">
+                  <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} placeholder="15" className="text-center font-bold"/>
+                </div>
+                <div className="sm:col-span-2">
+                   <button type="submit" className={`w-full ${editId ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'bg-amber-400 hover:bg-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]'} text-[#0b0c16] font-black tracking-widest uppercase py-3.5 rounded-xl transition-all active:scale-95`}>
+                     {editId ? (editOriginalType === 'fijo' ? 'ACTUALIZAR' : 'CONVERTIR') : 'GUARDAR FIJO'}
+                   </button>
                 </div>
               </React.Fragment>
             )}
@@ -353,39 +401,44 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </Card>
       )}
 
-      <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm font-medium w-full md:w-max">
-        <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Todos' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
-        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Fijos' ? 'bg-yellow-500 text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-200'}`}>Solo Fijos</button>
-        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg transition-colors ${filtroLista === 'Variables' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Solo Variables</button>
+      {/* FILTROS */}
+      <div className="flex bg-[#111222] shadow-neumorph-inset p-1.5 rounded-xl border border-transparent text-xs font-black uppercase tracking-widest w-full md:w-max mx-auto md:mx-0">
+        <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg transition-all ${filtroLista === 'Todos' ? 'bg-appcard text-white shadow-neumorph' : 'text-[#8A92A6] hover:text-white'}`}>Todos</button>
+        <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg transition-all ${filtroLista === 'Fijos' ? 'bg-amber-400 text-[#0b0c16] shadow-glow-amber' : 'text-[#8A92A6] hover:text-white'}`}>Solo Fijos</button>
+        <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg transition-all ${filtroLista === 'Variables' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>Variables</button>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-10">
         {(filtroLista === 'Todos' || filtroLista === 'Fijos') && (
-          <div className="space-y-4 animate-in fade-in">
-            <h2 className="text-sm font-bold text-yellow-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-              <CheckSquare size={16} /> Gastos Fijos Estimados
+          <div className="space-y-5 animate-in fade-in">
+            <h2 className="text-sm font-black text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)] uppercase tracking-widest flex items-center gap-2 border-b border-white/[0.05] pb-3">
+              <CheckSquare size={18} /> Gastos Fijos Estimados
             </h2>
             {fijosItems.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
                 {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="yellow" />)}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No hay gastos fijos configurados.</p>
+              <div className="bg-[#111222] shadow-neumorph-inset p-8 rounded-3xl text-center">
+                <p className="text-sm text-[#8A92A6] font-bold tracking-wide uppercase">No hay gastos fijos configurados.</p>
+              </div>
             )}
           </div>
         )}
 
         {(filtroLista === 'Todos' || filtroLista === 'Variables') && (
-          <div className="space-y-4 animate-in fade-in">
-            <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-              <PieChart size={16} /> Límites de Gasto Variable
+          <div className="space-y-5 animate-in fade-in">
+            <h2 className="text-sm font-black text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.5)] uppercase tracking-widest flex items-center gap-2 border-b border-white/[0.05] pb-3">
+              <PieChart size={18} /> Límites de Gasto Variable
             </h2>
             {varItems.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
                 {varItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="blue" />)}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No hay presupuestos variables configurados.</p>
+              <div className="bg-[#111222] shadow-neumorph-inset p-8 rounded-3xl text-center">
+                 <p className="text-sm text-[#8A92A6] font-bold tracking-wide uppercase">No hay presupuestos variables configurados.</p>
+              </div>
             )}
           </div>
         )}
