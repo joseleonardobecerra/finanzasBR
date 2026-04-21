@@ -19,45 +19,55 @@ const Login = () => {
     }
   };
 
+  // Clases base UI
+  const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-4 text-sm text-white outline-none focus:border-neoncyan focus:shadow-glow-cyan transition-all duration-300 placeholder:text-slate-600";
+  const labelBaseClass = "text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-2 block";
+
   return (
-    <div className="min-h-screen bg-[#0f0f11] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#17171a] p-8 rounded-2xl border border-slate-800 shadow-2xl animate-in zoom-in-95 duration-500">
+    <div className="min-h-screen bg-appbg flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      
+      {/* Luces Ambientales (Cyberpunk Vibe) */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-neoncyan/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-neonmagenta/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+      <div className="w-full max-w-md bg-appcard p-8 md:p-10 rounded-[30px] border border-white/[0.02] shadow-neumorph animate-in zoom-in-95 duration-500 relative z-10">
         
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-3xl font-bold text-white font-serif mb-4 shadow-lg shadow-indigo-500/30">
+        <div className="flex flex-col items-center mb-10">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-neoncyan to-blue-600 flex items-center justify-center text-3xl font-black text-[#0b0c16] mb-6 shadow-glow-cyan">
             F
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Finanzas Familia</h1>
-          <p className="text-slate-400 text-sm mt-1">Ingresa para acceder a tu panel</p>
+          <h1 className="text-2xl font-black text-white tracking-wide uppercase">Finanzas Familia</h1>
+          <p className="text-[#8A92A6] text-sm mt-2 font-bold tracking-widest uppercase">Panel de Control Global</p>
         </div>
 
         {error && (
-          <div className="bg-rose-500/10 border border-rose-500/50 text-rose-400 p-3 rounded-lg text-sm font-medium text-center mb-6">
+          <div className="bg-[#111222] shadow-neumorph-inset border border-neonmagenta/30 text-neonmagenta p-4 rounded-xl text-xs font-black tracking-widest text-center mb-6 uppercase flex items-center justify-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Correo Electrónico</label>
+            <label className={labelBaseClass}>Correo Electrónico</label>
             <input 
               type="email" 
               required
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-4 py-3 outline-none focus:border-indigo-500 transition-colors"
+              className={inputBaseClass}
               placeholder="ejemplo@familia.com"
             />
           </div>
           
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Contraseña</label>
+            <label className={labelBaseClass}>Contraseña</label>
             <input 
               type="password" 
               required
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
-              className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg px-4 py-3 outline-none focus:border-indigo-500 transition-colors"
+              className={inputBaseClass}
               placeholder="••••••••"
             />
           </div>
@@ -65,17 +75,20 @@ const Login = () => {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-lg transition-all mt-4 flex justify-center items-center gap-2"
+            className="w-full bg-neoncyan hover:bg-[#00cce6] text-[#0b0c16] font-black tracking-widest uppercase py-4 rounded-xl transition-all shadow-glow-cyan hover:scale-[1.02] active:scale-95 mt-8 flex justify-center items-center gap-2 disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none"
           >
             {loading ? (
-               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+               <div className="w-5 h-5 border-2 border-[#0b0c16]/30 border-t-[#0b0c16] rounded-full animate-spin"></div>
             ) : 'Iniciar Sesión'}
           </button>
         </form>
         
-        <p className="text-center text-xs text-slate-600 mt-8 font-medium">
-          Sistema Privado y Encriptado
-        </p>
+        <div className="mt-10 pt-6 border-t border-white/[0.05] text-center">
+           <p className="text-[9px] text-[#8A92A6] font-black uppercase tracking-widest flex items-center justify-center gap-1.5">
+             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+             Sistema Privado y Encriptado
+           </p>
+        </div>
       </div>
     </div>
   );
