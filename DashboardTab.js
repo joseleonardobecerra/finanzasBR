@@ -117,6 +117,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
   const maxMonto = chartData.length > 0 ? chartData[0][1] : 1;
 
+  // ✨ LÓGICA DE INICIO DESDE ABRIL 2026
   const trendData = useMemo(() => {
     const APP_START = '2026-04';
     const data = [];
@@ -126,6 +127,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
       d.setMonth(d.getMonth() - i);
       const mStr = d.toISOString().slice(0, 7);
       
+      // Solo incluimos meses desde Abril de 2026 en adelante
       if (mStr >= APP_START) {
         const label = d.toLocaleString('es-ES', { month: 'short' }).replace(/^\w/, c=>c.toUpperCase());
         const tIng = ingresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
@@ -156,7 +158,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </Card>
         
-        <Card onClick={() => toggleCard('egresos')} className="flex flex-col justify-center relative">
+        <Card onClick={() => toggleCard('egresos')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Egresos Totales</h3>
@@ -175,7 +177,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                     <span className="font-black text-neonmagenta">{formatCOP(amount)}</span>
                   </li>
                 ))}
-                {chartData.length === 0 && <li className="text-slate-500 text-center py-2">Sin egresos</li>}
+                {chartData.length === 0 && <li className="text-slate-500 text-center py-2 font-bold">Sin egresos</li>}
               </ul>
             </div>
           )}
@@ -195,7 +197,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </Card>
         
-        <Card onClick={() => toggleCard('presupuesto')} className="flex flex-col justify-center relative">
+        <Card onClick={() => toggleCard('presupuesto')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Presupuesto Config.</h3>
@@ -219,7 +221,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
         
-        <Card onClick={() => toggleCard('cuentas')} className="flex flex-col justify-center relative">
+        <Card onClick={() => toggleCard('cuentas')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero en Cuentas</h3>
