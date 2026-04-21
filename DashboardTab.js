@@ -57,7 +57,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   });
   const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => !isPagoFijoRealizado(pf)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
 
-  // ✨ ALERTAS DE PAGOS PRÓXIMOS A VENCER
   const hoy = new Date();
   const diaHoy = hoy.getDate();
   const pagosPorVencer = pagosFijos ? pagosFijos.filter(pf => {
@@ -83,7 +82,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  // ✨ MOTOR DE MACRO-CATEGORÍAS
   const getMacroCategoria = (catName) => {
       if (!catName) return 'Otros Gastos';
       const lower = catName.toLowerCase();
@@ -119,16 +117,24 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
   const maxMonto = chartData.length > 0 ? chartData[0][1] : 1;
 
+  // ✨ LÓGICA DE INICIO DESDE ABRIL 2026
   const trendData = useMemo(() => {
-    return Array.from({length: 6}, (_, i) => {
+    const APP_START = '2026-04';
+    const data = [];
+    
+    for (let i = 5; i >= 0; i--) {
       const d = new Date(`${selectedMonth}-01T12:00:00`);
-      d.setMonth(d.getMonth() - 5 + i);
+      d.setMonth(d.getMonth() - i);
       const mStr = d.toISOString().slice(0, 7);
-      const label = d.toLocaleString('es-ES', { month: 'short' }).replace(/^\w/, c=>c.toUpperCase());
-      const tIng = ingresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
-      const tEgr = egresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
-      return { mes: mStr, label, ing: tIng, egr: tEgr };
-    });
+      
+      if (mStr >= APP_START) {
+        const label = d.toLocaleString('es-ES', { month: 'short' }).replace(/^\w/, c=>c.toUpperCase());
+        const tIng = ingresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
+        const tEgr = egresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
+        data.push({ mes: mStr, label, ing: tIng, egr: tEgr });
+      }
+    }
+    return data;
   }, [ingresos, egresos, selectedMonth]);
 
   const maxTrendVal = Math.max(...trendData.map(d => Math.max(d.ing, d.egr)), 1);
@@ -176,7 +182,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </Card>
 
-        {/* ✨ ACTUALIZADO: Título modificado */}
         <Card className="flex flex-col justify-center">
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Flujo del mes</h3>
           <p className={`text-xl md:text-3xl font-black mt-1 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
@@ -310,7 +315,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           
           {/* LEO */}
           <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
-            {/* ✨ ACTUALIZADO: Título modificado */}
             <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-neoncyan shadow-glow-cyan"></div> 1. Flujo mes Leo
             </h3>
@@ -335,7 +339,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
           {/* ANDRE */}
           <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
-            {/* ✨ ACTUALIZADO: Título modificado */}
             <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-neonmagenta shadow-glow-magenta"></div> 2. Flujo Mes Andre
             </h3>
@@ -441,6 +444,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 </div>
               )
             })}
+            {trendData.length === 0 && (
+               <div className="w-full text-center text-slate-500 font-bold text-xs pb-10">Esperando datos...</div>
+            )}
           </div>
           <div className="flex justify-between mt-3 px-2">
             {trendData.map((d, i) => <span key={i} className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">{d.label}</span>)}
