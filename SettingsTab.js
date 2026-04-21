@@ -1,4 +1,5 @@
-    const SettingsTab = ({ stateData, importAllState, selectedMonth, showToast }) => {
+const SettingsTab = ({ stateData, importAllState, selectedMonth, showToast }) => {
+      const { useRef } = React;
       const fileInputRef = useRef(null);
       const fileExcelMasterRef = useRef(null);
 
@@ -181,34 +182,87 @@
       };
 
       return (
-        <div className="max-w-3xl mx-auto animate-in fade-in duration-500 space-y-6 pb-20 md:pb-0">
-          <header><h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2 md:gap-3"><Settings2 className="h-6 w-6 md:h-8 md:w-8 text-slate-400" /> Sistema y Ajustes</h1><p className="text-sm md:text-base text-slate-400 mt-1">Exporta toda tu base de datos a Excel, o carga una plantilla completa con todas las pestañas.</p></header>
-          
-          <h2 className="text-lg font-bold text-white mt-8 mb-2">Plantilla Maestra (Excel)</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            <Card className="border-t-4 border-t-emerald-500 flex flex-col items-start gap-4">
-              <div className="flex gap-4 items-center">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center"><FileSpreadsheet className="h-5 w-5 md:h-6 md:w-6"/></div>
-                <div><h3 className="font-bold text-white">Exportar Base Total</h3><p className="text-xs text-slate-400">Descarga un Excel con múltiples hojas para toda la app.</p></div>
+        <div className="max-w-4xl mx-auto animate-in fade-in duration-500 space-y-6 pb-20 md:pb-0">
+          <header>
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#111222] shadow-neumorph-inset flex items-center justify-center border border-white/[0.05]">
+                 <Settings2 className="h-5 w-5 md:h-6 md:w-6 text-[#8A92A6]" /> 
               </div>
-              <button onClick={handleExportExcelMaster} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition-colors">Descargar Plantilla (.XLSX)</button>
+              Sistema y Ajustes
+            </h1>
+            <p className="text-sm md:text-base text-[#8A92A6] mt-2 font-medium tracking-wide">
+              Exporta toda tu base de datos a Excel, o carga una plantilla completa con todas las pestañas.
+            </p>
+          </header>
+          
+          <h2 className="text-sm font-black text-emerald-400 mt-10 mb-4 uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]">
+            <FileSpreadsheet size={16}/> Plantilla Maestra (Excel)
+          </h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Card className="!border-transparent flex flex-col justify-between">
+              <div className="flex gap-4 items-center mb-6">
+                <div className="w-12 h-12 bg-[#111222] shadow-neumorph-inset text-emerald-400 rounded-xl flex items-center justify-center border border-transparent hover:border-emerald-500/30 transition-colors shrink-0">
+                  <Download className="h-6 w-6 drop-shadow-[0_0_5px_rgba(52,211,153,0.4)]"/>
+                </div>
+                <div>
+                  <h3 className="font-black text-white tracking-wide">Exportar Base Total</h3>
+                  <p className="text-xs font-medium text-[#8A92A6] mt-1">Descarga un Excel con múltiples hojas para toda la app.</p>
+                </div>
+              </div>
+              <button onClick={handleExportExcelMaster} className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95">
+                Descargar Plantilla (.XLSX)
+              </button>
             </Card>
-            <Card className="border-t-4 border-t-emerald-500 flex flex-col items-start gap-4">
-              <div className="flex gap-4 items-center">
-                <div className="w-10 h-10 bg-slate-800 text-emerald-400 rounded-xl flex items-center justify-center"><Upload className="h-5 w-5"/></div>
-                <div><h3 className="font-bold text-white">Importación Maestra</h3><p className="text-xs text-slate-400">Sube la plantilla de Excel. El sistema evitará duplicados.</p></div>
+
+            <Card className="!border-transparent flex flex-col justify-between">
+              <div className="flex gap-4 items-center mb-6">
+                <div className="w-12 h-12 bg-[#111222] shadow-neumorph-inset text-emerald-400 rounded-xl flex items-center justify-center border border-transparent hover:border-emerald-500/30 transition-colors shrink-0">
+                  <Upload className="h-6 w-6 drop-shadow-[0_0_5px_rgba(52,211,153,0.4)]"/>
+                </div>
+                <div>
+                  <h3 className="font-black text-white tracking-wide">Importación Maestra</h3>
+                  <p className="text-xs font-medium text-[#8A92A6] mt-1">Sube la plantilla de Excel. El sistema evitará duplicados.</p>
+                </div>
               </div>
               <input type="file" accept=".xlsx, .xls" ref={fileExcelMasterRef} onChange={handleImportExcelMaster} className="hidden" />
-              <button onClick={()=>fileExcelMasterRef.current.click()} className="w-full py-2.5 bg-slate-800 border border-emerald-500/50 text-emerald-400 hover:bg-slate-700 rounded-lg font-bold text-xs shadow-sm transition-colors">Subir Plantilla Master</button>
+              <button onClick={()=>fileExcelMasterRef.current.click()} className="w-full py-3.5 bg-[#111222] border border-emerald-500/30 text-emerald-400 hover:text-[#0b0c16] hover:bg-emerald-400 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-neumorph hover:shadow-[0_0_15px_rgba(16,185,129,0.6)]">
+                Subir Plantilla Master
+              </button>
             </Card>
           </div>
 
-          <h2 className="text-lg font-bold text-white mt-10 mb-2">Respaldo Bruto para Desarrolladores (JSON)</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-            <Card><div className="space-y-4"><div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center"><Download className="h-5 w-5"/></div><h3 className="font-bold text-white">Respaldar Sistema</h3><button onClick={handleExportJSON} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm">Descargar JSON</button></div></Card>
-            <Card><div className="space-y-4"><div className="w-10 h-10 md:w-12 md:h-12 bg-rose-500/20 text-rose-400 rounded-xl flex items-center justify-center"><Upload className="h-5 w-5"/></div><h3 className="font-bold text-white">Restaurar Sistema</h3><input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" /><button onClick={()=>fileInputRef.current.click()} className="w-full py-2.5 bg-slate-800 border border-rose-500/50 text-rose-400 hover:bg-slate-700 rounded-xl font-bold text-sm">Cargar JSON</button></div></Card>
+          <h2 className="text-sm font-black text-[#8A92A6] mt-12 mb-4 uppercase tracking-widest flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg> 
+            Respaldo para Desarrolladores (JSON)
+          </h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Card className="!border-transparent">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-10 h-10 bg-[#111222] shadow-neumorph-inset text-neoncyan rounded-xl flex items-center justify-center shrink-0 border border-neoncyan/20">
+                  <Download className="h-5 w-5 drop-shadow-[0_0_5px_rgba(0,229,255,0.4)]"/>
+                </div>
+                <h3 className="font-black text-white tracking-wide">Respaldar Sistema</h3>
+              </div>
+              <button onClick={handleExportJSON} className="w-full py-3 bg-neoncyan hover:bg-[#00cce6] text-[#0b0c16] rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-glow-cyan active:scale-95">
+                Descargar JSON
+              </button>
+            </Card>
+
+            <Card className="!border-transparent">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-10 h-10 bg-[#111222] shadow-neumorph-inset text-neonmagenta rounded-xl flex items-center justify-center shrink-0 border border-neonmagenta/20">
+                  <Upload className="h-5 w-5 drop-shadow-[0_0_5px_rgba(255,0,122,0.4)]"/>
+                </div>
+                <h3 className="font-black text-white tracking-wide">Restaurar Sistema</h3>
+              </div>
+              <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportJSON} className="hidden" />
+              <button onClick={()=>fileInputRef.current.click()} className="w-full py-3 bg-[#111222] border border-neonmagenta/30 text-neonmagenta hover:bg-neonmagenta hover:text-[#0b0c16] rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-neumorph hover:shadow-glow-magenta">
+                Cargar JSON
+              </button>
+            </Card>
           </div>
         </div>
       );
     };
-
