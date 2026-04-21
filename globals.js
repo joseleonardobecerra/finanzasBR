@@ -85,10 +85,10 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-6 bg-rose-950/30 border border-rose-500/50 rounded-2xl m-4 md:m-8 text-rose-400 backdrop-blur-md">
-          <h2 className="font-bold text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error en esta sección</h2>
+        <div className="p-6 bg-appcard shadow-neumorph-inset border-l-4 border-neonmagenta rounded-2xl m-4 md:m-8 text-neonmagenta">
+          <h2 className="font-black text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error en esta sección</h2>
           <p className="text-sm opacity-80">{this.state.error.toString()}</p>
-          <button onClick={() => this.setState({hasError: false})} className="mt-4 px-5 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-bold transition-all">Intentar cargar de nuevo</button>
+          <button onClick={() => this.setState({hasError: false})} className="mt-4 px-5 py-2.5 bg-[#111222] hover:shadow-glow-magenta text-neonmagenta rounded-xl text-sm font-bold transition-all border border-neonmagenta/30">Intentar cargar de nuevo</button>
         </div>
       );
     }
@@ -126,52 +126,58 @@ const loadSheetJS = async () => {
 };
 
 // ============================================================================
-// --- Componentes UI Base (NUEVO DISEÑO GLASSMORPHISM) ---
+// 💎 COMPONENTES UI BASE (NUEVO DISEÑO DARK NEUMORPHISM & NEON)
 // ============================================================================
 
-// ✨ 1. TARJETA BASE (Card)
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-white/[0.08] transition-all duration-500 p-4 md:p-6 relative overflow-hidden group ${className}`}>
-    {/* Brillo volumétrico superior */}
-    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
-    {/* Resplandor radial de fondo */}
-    <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-    <div className="relative z-10">
+// ✨ 1. TARJETA BASE (Card 3D)
+const Card = ({ children, className = "", onClick }) => {
+  const baseClass = "bg-appcard rounded-[20px] shadow-neumorph border border-white/[0.02] p-4 md:p-6 transition-all duration-300";
+  const interactiveClass = onClick ? "cursor-pointer hover:shadow-glow-cyan hover:-translate-y-1 active:translate-y-0 active:shadow-neumorph-inset" : "";
+  return (
+    <div onClick={onClick} className={`${baseClass} ${interactiveClass} ${className}`}>
       {children}
     </div>
-  </div>
-);
+  );
+};
 
-// ✨ 2. ENTRADA DE TEXTO (Input)
+// ✨ 2. ENTRADA DE TEXTO (Input Hundido Neón)
 const Input = ({ label, type = "text", value, onChange, placeholder, className="", min, max, step, disabled, error, title, required, autoFocus }) => (
-  <div className={`flex flex-col gap-1.5 ${className}`}>
-    {label && <label className={`text-[10px] font-black uppercase tracking-widest ${error ? 'text-rose-400' : 'text-slate-500'}`}>{label}</label>}
-    <input type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} max={max} step={step} disabled={disabled} title={title} required={required} autoFocus={autoFocus}
-      className={`bg-[#0f0f11]/60 border ${error ? 'border-rose-500/50 focus:ring-rose-500/30' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20'} rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-4 transition-all duration-300 disabled:opacity-50 backdrop-blur-sm shadow-inner placeholder:text-slate-700`} />
-    {error && <span className="text-[10px] font-bold text-rose-400 mt-0.5">{error}</span>}
+  <div className={`flex flex-col gap-1.5 w-full ${className}`}>
+    {label && (
+      <label className={`text-[10px] font-black uppercase tracking-widest pl-1 ${error ? 'text-neonmagenta' : 'text-[#8A92A6]'}`}>
+        {label}
+      </label>
+    )}
+    <input 
+      type={type} value={value} onChange={onChange} placeholder={placeholder} 
+      min={min} max={max} step={step} disabled={disabled} title={title} required={required} autoFocus={autoFocus}
+      className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-neonmagenta focus:shadow-glow-magenta' : 'border-transparent focus:border-neoncyan focus:shadow-glow-cyan'} rounded-xl px-4 py-3 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-600 disabled:opacity-50`}
+    />
+    {error && <span className="text-[10px] text-neonmagenta pl-1 font-bold tracking-wide">{error}</span>}
   </div>
 );
 
-// ✨ 3. MENÚ DESPLEGABLE (Select)
+// ✨ 3. MENÚ DESPLEGABLE (Select Hundido Neón)
 const Select = ({ label, value, onChange, options, className="", required, error, disabled, title }) => (
-  <div className={`flex flex-col gap-1.5 ${className}`}>
-    {label && <label className={`text-[10px] font-black uppercase tracking-widest ${error ? 'text-rose-400' : 'text-slate-500'}`}>{label}</label>}
+  <div className={`flex flex-col gap-1.5 w-full ${className}`}>
+    {label && <label className={`text-[10px] font-black uppercase tracking-widest pl-1 ${error ? 'text-neonmagenta' : 'text-[#8A92A6]'}`}>{label}</label>}
     <div className="relative">
-      <select value={value} onChange={onChange} required={required} disabled={disabled} title={title}
-        className={`w-full bg-[#0f0f11]/60 border ${error ? 'border-rose-500/50 focus:ring-rose-500/30' : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20'} rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-4 transition-all duration-300 disabled:opacity-50 backdrop-blur-sm shadow-inner appearance-none cursor-pointer`}>
-        <option value="" className="bg-[#17171a] text-slate-400">Seleccione...</option>
+      <select 
+        value={value} onChange={onChange} required={required} disabled={disabled} title={title}
+        className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-neonmagenta focus:shadow-glow-magenta' : 'border-transparent focus:border-neoncyan focus:shadow-glow-cyan'} rounded-xl px-4 py-3 text-sm text-white outline-none transition-all duration-300 appearance-none cursor-pointer disabled:opacity-50`}
+      >
+        <option value="" className="bg-[#111222] text-slate-500">Seleccione...</option>
         {options.map((opt, i) => {
           const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
           const lbl = typeof opt === 'object' && opt !== null ? opt.label : opt;
-          return <option key={i} value={val} className="bg-[#17171a] text-slate-200">{lbl}</option>;
+          return <option key={i} value={val} className="bg-[#111222] text-white">{lbl}</option>;
         })}
       </select>
-      {/* Flechita personalizada para el select */}
       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
         <ChevronDownIcon size={16} />
       </div>
     </div>
-    {error && <span className="text-[10px] font-bold text-rose-400 mt-0.5">{error}</span>}
+    {error && <span className="text-[10px] text-neonmagenta pl-1 font-bold tracking-wide">{error}</span>}
   </div>
 );
 
@@ -179,16 +185,16 @@ const Select = ({ label, value, onChange, options, className="", required, error
 const Toast = ({ toast, onClose }) => {
   if (!toast) return null;
   return (
-    <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-5 py-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 backdrop-blur-2xl border ${toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.15)]'}`}>
+    <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-5 py-4 rounded-2xl shadow-neumorph z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 border ${toast.type === 'success' ? 'bg-appcard border-neoncyan/50 text-neoncyan' : 'bg-appcard border-neonmagenta/50 text-neonmagenta'}`}>
       {toast.type === 'success' ? <CheckCircle2 size={20}/> : <AlertCircle size={20}/>}
       <span className="text-sm font-bold tracking-wide">{toast.msg}</span>
-      <button onClick={onClose} className="ml-4 p-1 bg-white/5 rounded-full hover:bg-white/10 transition-colors"><XIconGlobal size={14}/></button>
+      <button onClick={onClose} className="ml-4 p-1 rounded-full hover:bg-white/10 transition-colors"><XIconGlobal size={14}/></button>
     </div>
   );
 };
 
 // ============================================================================
-// --- Componentes Extras Adaptados ---
+// --- COMPONENTES EXTRAS ADAPTADOS ---
 // ============================================================================
 const PagoFijoCard = ({ pf, cuentasPermitidas, onPay }) => {
   const [cuentaId, setCuentaId] = useState('');
@@ -196,28 +202,28 @@ const PagoFijoCard = ({ pf, cuentasPermitidas, onPay }) => {
   const [editMonto, setEditMonto] = useState(false);
 
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 shadow-lg flex flex-col gap-3 relative overflow-hidden transition-colors hover:border-amber-500/30 backdrop-blur-md">
+    <div className="bg-appcard shadow-neumorph border border-white/[0.02] rounded-2xl p-4 flex flex-col gap-3 transition-colors hover:shadow-glow-magenta">
       <div className="flex justify-between items-start">
         <div className="overflow-hidden pr-2 flex-1">
-          <p className="font-bold text-slate-200 text-sm truncate leading-tight">{pf.descripcion}</p>
-          <p className="text-[10px] font-bold tracking-widest text-slate-500 truncate uppercase mt-1">{pf.categoria}</p>
+          <p className="font-bold text-white text-sm truncate leading-tight">{pf.descripcion}</p>
+          <p className="text-[10px] font-bold tracking-widest text-[#8A92A6] truncate uppercase mt-1">{pf.categoria}</p>
         </div>
         <div className="shrink-0 text-right">
           {!editMonto ? (
-            <p className="font-black text-amber-400 text-sm cursor-pointer flex items-center justify-end gap-1.5 hover:text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20" onClick={() => setEditMonto(true)} title="Modificar monto">
+            <p className="font-black text-neonmagenta text-sm cursor-pointer flex items-center justify-end gap-1.5 hover:text-white" onClick={() => setEditMonto(true)} title="Modificar monto">
               {formatCOP(montoCustom)} <Edit3 size={12} className="opacity-70"/>
             </p>
           ) : (
-            <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-24 text-sm font-bold bg-[#0f0f11] text-amber-400 border border-amber-500 rounded-lg p-1.5 text-right outline-none shadow-inner" autoFocus />
+            <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-24 text-sm font-bold bg-[#111222] shadow-neumorph-inset text-neonmagenta rounded-lg p-1.5 text-right outline-none" autoFocus />
           )}
         </div>
       </div>
       <div className="flex gap-2 items-center mt-2 border-t border-white/[0.05] pt-3">
-        <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-[#0f0f11]/60 border border-white/10 rounded-xl px-2 py-2 text-[11px] text-slate-300 outline-none focus:border-amber-500/50 cursor-pointer h-9 shadow-inner appearance-none">
+        <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-[#111222] shadow-neumorph-inset border-transparent rounded-xl px-2 py-2 text-[11px] text-white outline-none focus:border-neoncyan cursor-pointer h-9 appearance-none">
           <option value="">Medio de pago...</option>
           {cuentasPermitidas.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
-        <button onClick={() => onPay(cuentaId, montoCustom)} className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 px-4 rounded-xl font-bold flex items-center justify-center transition-all h-9 text-xs shadow-sm">
+        <button onClick={() => onPay(cuentaId, montoCustom)} className="bg-appcard shadow-neumorph text-neoncyan hover:shadow-glow-cyan hover:-translate-y-0.5 active:shadow-neumorph-inset px-4 rounded-xl font-bold flex items-center justify-center transition-all h-9 text-xs">
           PAGAR
         </button>
       </div>
@@ -232,32 +238,32 @@ const IngresoFijoCard = ({ inc, cuentasPermitidas, onReceive, cuentas }) => {
   const [editMonto, setEditMonto] = useState(false);
 
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 shadow-lg flex flex-col justify-between backdrop-blur-md hover:border-emerald-500/30 transition-colors">
+    <div className="bg-appcard shadow-neumorph border border-white/[0.02] rounded-2xl p-5 flex flex-col justify-between hover:shadow-glow-cyan transition-colors">
       <div>
         <div className="flex justify-between items-start mb-4">
           <div>
             <p className="font-bold text-white text-base">{inc.descripcion}</p>
-            <p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-1">{inc.persona ? `${inc.persona} • ` : ''}{inc.tipo}</p>
+            <p className="text-[10px] font-bold tracking-widest text-[#8A92A6] uppercase mt-1">{inc.persona ? `${inc.persona} • ` : ''}{inc.tipo}</p>
           </div>
           <div className="text-right">
             {!editMonto ? (
-              <p className="font-black text-emerald-400 cursor-pointer flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/50 transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto">
+              <p className="font-black text-neoncyan cursor-pointer flex items-center gap-1.5 hover:text-white transition-colors" onClick={() => setEditMonto(true)} title="Clic para modificar monto">
                 {formatCOP(montoCustom)} <Edit3 size={14}/>
               </p>
             ) : (
-              <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-28 text-sm font-bold bg-[#0f0f11] text-emerald-400 border border-emerald-500 rounded-lg p-2 text-right outline-none shadow-inner" autoFocus />
+              <input type="number" value={montoCustom} onChange={(e) => setMontoCustom(e.target.value)} onBlur={() => setEditMonto(false)} className="w-28 text-sm font-bold bg-[#111222] shadow-neumorph-inset text-neoncyan rounded-lg p-2 text-right outline-none" autoFocus />
             )}
           </div>
         </div>
       </div>
       <div className="flex flex-col gap-2 mt-2 pt-4 border-t border-white/[0.05]">
-        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Destino de los fondos</label>
+        <label className="text-[10px] text-[#8A92A6] font-bold uppercase tracking-widest">Destino de los fondos</label>
         <div className="flex gap-2">
-          <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-[#0f0f11]/60 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 outline-none focus:border-emerald-500/50 shadow-inner appearance-none cursor-pointer">
+          <select value={cuentaId} onChange={e=>setCuentaId(e.target.value)} className="flex-1 bg-[#111222] shadow-neumorph-inset border-transparent rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-neoncyan appearance-none cursor-pointer">
             <option value="">Selecciona...</option>
             {cuentasPermitidas.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
-          <button onClick={() => onReceive(cuentaId, montoCustom)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 rounded-xl font-bold flex items-center justify-center transition-all shadow-lg shadow-emerald-500/20">
+          <button onClick={() => onReceive(cuentaId, montoCustom)} className="bg-appcard shadow-neumorph text-neoncyan hover:shadow-glow-cyan hover:-translate-y-0.5 active:shadow-neumorph-inset px-5 rounded-xl font-bold flex items-center justify-center transition-all">
             OK
           </button>
         </div>
