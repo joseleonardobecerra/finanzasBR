@@ -15,6 +15,12 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
         style: 'currency', currency: 'COP', maximumFractionDigits: 0 
       }).format(val);
 
+      const getLocalToday = () => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 10);
+      };
+
       // --- CÁLCULOS DE LIQUIDEZ POR PERSONA ---
       const identifyOwner = (name) => {
         const t = (name || '').toUpperCase();
@@ -259,7 +265,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                           
                           <div className="flex items-center gap-3 shrink-0">
                             <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
-                            {/* Botones de edición integrados al hover */}
                             <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
                               <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
@@ -270,7 +275,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                    )}
                  </div>
                  
-                 {/* Totales consolidados de Leo */}
                  <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
@@ -309,7 +313,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                           
                           <div className="flex items-center gap-3 shrink-0">
                             <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
-                            {/* Botones de edición integrados al hover */}
                             <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
                               <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
@@ -320,7 +323,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                    )}
                  </div>
                  
-                 {/* Totales consolidados de Andre */}
                  <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
