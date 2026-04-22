@@ -196,8 +196,10 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
   // ============================================================================
-  const checkPagoRealizado = (pf) => {
-    return egresosMes.some(e => {
+  
+  // ✨ CORRECCIÓN: Ahora esta función retorna el OBJETO egreso real, no solo true/false
+  const getPagoRealizado = (pf) => {
+    return egresosMes.find(e => {
       if (e.tipo !== 'Fijo') return false;
       if (e.pagoFijoId) return e.pagoFijoId === pf.id;
       return e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
@@ -243,15 +245,8 @@ const EgresosTab = ({
     showToast(`Pago de ${pf.descripcion} registrado.`);
   };
 
-  // ✨ NUEVA FUNCIÓN: DESHACER PAGO FIJO
   const deshacerPagoFijo = (pf) => {
-    // Buscar el egreso exacto que corresponde a este pago fijo en este mes
-    const egresoAEliminar = egresosMes.find(e => {
-      if (e.tipo !== 'Fijo') return false;
-      if (e.pagoFijoId) return e.pagoFijoId === pf.id;
-      return e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
-    });
-
+    const egresoAEliminar = getPagoRealizado(pf);
     if (egresoAEliminar) {
       removeEgreso(egresoAEliminar.id);
       showToast(`Se ha revertido el pago de ${pf.descripcion}.`, 'error');
@@ -260,8 +255,8 @@ const EgresosTab = ({
 
   const pagosFijosOrdenados = useMemo(() => {
     return [...pagosFijos].sort((a, b) => {
-      const aPaid = checkPagoRealizado(a);
-      const bPaid = checkPagoRealizado(b);
+      const aPaid = !!getPagoRealizado(a);
+      const bPaid = !!getPagoRealizado(b);
       if (aPaid && !bPaid) return 1;
       if (!aPaid && bPaid) return -1;
       return (a.diaPago || 1) - (b.diaPago || 1);
@@ -500,7 +495,7 @@ const EgresosTab = ({
       </Card>
 
       {/* ============================================================================ */}
-      {/* 2. PAGOS FIJOS (CHECKLIST - AHORA A UNA SOLA COLUMNA) */}
+      {/* 2. PAGOS FIJOS (CHECKLIST) */}
       {/* ============================================================================ */}
       <Card>
         <div 
@@ -513,7 +508,7 @@ const EgresosTab = ({
           </h2>
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 uppercase tracking-widest">
-               {pagosFijos.filter(pf => checkPagoRealizado(pf)).length} / {pagosFijos.length} Listo
+               {pagosFijos.filter(pf => !!getPagoRealizado(pf)).length} / {pagosFijos.length} Listo
             </span>
             <button className="text-slate-500 hover:text-white transition-colors">
               {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -530,7 +525,10 @@ const EgresosTab = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
                 {pagosFijosOrdenados.map(pf => {
-                  const isPaid = checkPagoRealizado(pf);
+                  
+                  // ✨ CORRECCIÓN CLAVE: Obtenemos el registro real del historial, no solo true/false
+                  const egresoPagado = getPagoRealizado(pf);
+                  const isPaid = !!egresoPagado;
                   
                   return (
                     <div 
@@ -545,7 +543,6 @@ const EgresosTab = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <button 
-                            // ✨ AQUÍ ESTÁ EL CAMBIO: Si está pagado, ejecuta deshacer. Si no, registra.
                             onClick={() => isPaid ? deshacerPagoFijo(pf) : registrarPagoFijo(pf)} 
                             title={isPaid ? "Desmarcar y eliminar registro de este mes" : "Registrar pago de este mes"}
                             className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all shrink-0 ${
@@ -554,7 +551,6 @@ const EgresosTab = ({
                                 : 'bg-[#111222] border-slate-600 text-transparent hover:border-amber-500 cursor-pointer'
                             }`}
                           >
-                            {/* Al hacer hover sobre uno ya pagado, mostramos una X temporalmente para indicar que lo va a deshacer (Opcional, pero mejora la UX) */}
                             {isPaid ? <CheckIcon size={14} className="hover:hidden block"/> : null}
                             {isPaid ? <XIcon size={14} className="hidden hover:block"/> : null}
                           </button>
@@ -569,10 +565,10 @@ const EgresosTab = ({
                           </div>
                         </div>
 
-                        {/* Monto pagado si ya está checkeado */}
+                        {/* ✨ CORRECCIÓN CLAVE: Monto pagado basado en la base de datos real, no en el presupuesto */}
                         {isPaid && (
                           <p className="text-sm font-black text-emerald-500/50 text-right shrink-0 pl-2">
-                            {formatCOP(Number(pf.monto || pf.montoEstimado || 0))}
+                            {formatCOP(Number(egresoPagado.monto))}
                           </p>
                         )}
                       </div>
