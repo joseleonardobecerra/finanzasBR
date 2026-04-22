@@ -235,7 +235,6 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                   {tablaData.map(c => {
                     const isEditing = editId === c.id;
                     const isAddingGanancia = gananciaId === c.id;
-                    const owner = getOwner(c.name);
 
                     if (isEditing) {
                        return (
@@ -259,7 +258,7 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                       <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-5 py-4 font-bold text-white tracking-wide">
                            {c.name}
-                           {owner !== 'Shared' && <span className="ml-2 text-[9px] bg-slate-800 text-[#8A92A6] px-2 py-0.5 rounded font-black uppercase tracking-widest">{owner}</span>}
+                           {/* ✨ Etiqueta de dueño eliminada aquí */}
                         </td>
                         <td className="px-5 py-4 text-right text-[#8A92A6] tabular-nums">{formatCOP(c.sInicial)}</td>
                         <td className="px-5 py-4 text-right font-black text-emerald-400 tabular-nums">
@@ -282,7 +281,15 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                         <td className="px-5 py-4 text-center text-amber-400 font-bold tabular-nums">{c.tasaEA}%</td>
                         <td className="px-5 py-4 text-center flex justify-center gap-3">
                           <button onClick={() => startEdit(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
-                          <button onClick={() => {removeCuenta(c.id); showToast("Cuenta eliminada");}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
+                          
+                          {/* ✨ Botón de Eliminar directo y funcionando */}
+                          <button onClick={() => {
+                            if(window.confirm(`¿Estás seguro de que quieres eliminar la inversión "${c.name}"?`)) {
+                               removeCuenta(c.id); 
+                               showToast("Inversión eliminada", "error");
+                            }
+                          }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
+                        
                         </td>
                       </tr>
                     );
