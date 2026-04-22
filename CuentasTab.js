@@ -1,25 +1,35 @@
 const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                           transferencias, addTransferencia, removeTransferencia,
                           addEgreso, showToast }) => {
+      
+      // 1. PRIMERO DEFINIMOS LAS FUNCIONES DE UTILIDAD (Para evitar ReferenceError)
+      const getLocalToday = () => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 10);
+      };
+
+      const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
+        style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+      }).format(val);
+
+      // ✨ Helper para colores dinámicos basados en el valor
+      const getValueColor = (val) => {
+        if (val > 0) return 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]';
+        if (val < 0) return 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]';
+        return 'text-[#8A92A6]';
+      };
+
+      // 2. LUEGO DEFINIMOS LOS ESTADOS
       const { useState, useRef } = React;
       const [cuentaEdit, setCuentaEdit] = useState({ id: null, name: '', type: 'bank', initialBalance: '', initialDebt: '', limit: '', tasaEA: '', cuotaMinima: '' });
+      // Ahora getLocalToday() sí existe cuando se llama aquí
       const [nuevaTx, setNuevaTx] = useState({ fecha: getLocalToday(), fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
       const [errors, setErrors] = useState({});
       const [txErrors, setTxErrors] = useState({});
       const [showForm, setShowForm] = useState(false);
       const formRef = useRef(null);
       const fileInputRef = useRef(null);
-
-      // --- UTILIDAD DE FORMATO ---
-      const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
-        style: 'currency', currency: 'COP', maximumFractionDigits: 0 
-      }).format(val);
-
-      const getLocalToday = () => {
-        const d = new Date();
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-        return d.toISOString().slice(0, 10);
-      };
 
       // --- CÁLCULOS DE LIQUIDEZ POR PERSONA ---
       const identifyOwner = (name) => {
@@ -175,13 +185,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       const tipoDestino = cuentas.find(c=>c.id===nuevaTx.toId)?.type;
       const esAvance    = tipoOrigen === 'credit' && ['bank','cash'].includes(tipoDestino);
 
-      // ✨ Helper para colores dinámicos basados en el valor
-      const getValueColor = (val) => {
-        if (val > 0) return 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]';
-        if (val < 0) return 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]';
-        return 'text-[#8A92A6]';
-      };
-
       return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
           
@@ -265,6 +268,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                           
                           <div className="flex items-center gap-3 shrink-0">
                             <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
+                            {/* Botones de edición integrados al hover */}
                             <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
                               <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
@@ -275,6 +279,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                    )}
                  </div>
                  
+                 {/* Totales consolidados de Leo */}
                  <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
@@ -313,6 +318,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                           
                           <div className="flex items-center gap-3 shrink-0">
                             <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
+                            {/* Botones de edición integrados al hover */}
                             <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
                               <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
@@ -323,6 +329,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                    )}
                  </div>
                  
+                 {/* Totales consolidados de Andre */}
                  <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
