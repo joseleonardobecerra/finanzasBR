@@ -10,6 +10,11 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       const formRef = useRef(null);
       const fileInputRef = useRef(null);
 
+      // --- UTILIDAD DE FORMATO ---
+      const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
+        style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+      }).format(val);
+
       // --- CÁLCULOS DE LIQUIDEZ POR PERSONA ---
       const identifyOwner = (name) => {
         const t = (name || '').toUpperCase();
@@ -45,10 +50,13 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
         }
       });
 
-      // Ordenar alfabéticamente para que se vea más organizado
+      // Ordenar alfabéticamente
       leoAccounts.sort((a,b) => a.name.localeCompare(b.name));
       andreAccounts.sort((a,b) => a.name.localeCompare(b.name));
       sharedAccounts.sort((a,b) => a.name.localeCompare(b.name));
+
+      // Ordenar Transferencias por Fecha Descendente
+      const transferenciasOrdenadas = [...(transferencias || [])].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
       const guardarCuenta = (e) => {
         e.preventDefault();
@@ -227,7 +235,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
             </Card>
           )}
 
-          {/* ✨ ACTUALIZADO: TRES COLUMNAS PRINCIPALES */}
+          {/* TRES COLUMNAS PRINCIPALES */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 items-start">
             
             {/* --- COLUMNA 1: Tarjeta Leo (Cyan Theme) --- */}
@@ -410,6 +418,64 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                </div>
             </Card>
           )}
+
+          {/* ✨ NUEVO: TABLA HISTORIAL DE TRANSFERENCIAS */}
+          <Card className="!border-transparent mt-6 flex flex-col">
+            <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
+              <ArrowRightLeft size={18} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/> 
+              Historial de Transferencias
+            </h2>
+            
+            <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent">
+              <table className="w-full text-sm text-left min-w-[700px]">
+                <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
+                  <tr>
+                    <th className="px-5 py-4 w-[15%]">Fecha</th>
+                    <th className="px-5 py-4 w-[25%]">Origen</th>
+                    <th className="px-5 py-4 w-[25%]">Destino</th>
+                    <th className="px-5 py-4 w-[20%] text-right">Monto</th>
+                    <th className="px-5 py-4 w-[15%] text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.02]">
+                  {transferenciasOrdenadas.map(t => {
+                    const origen = cuentas.find(c => c.id === t.fromId)?.name || 'Desconocido';
+                    const destino = cuentas.find(c => c.id === t.toId)?.name || 'Desconocido';
+                    return (
+                      <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-4 font-bold text-[#8A92A6] text-xs">{t.fecha}</td>
+                        <td className="px-5 py-4 font-bold text-white tracking-wide">
+                          <span className="flex items-center gap-2"><span className="text-rose-400">↗</span> {origen}</span>
+                          {t.descripcion && <p className="text-[9px] text-slate-500 font-bold mt-1 uppercase tracking-widest truncate">{t.descripcion}</p>}
+                        </td>
+                        <td className="px-5 py-4 font-bold text-white tracking-wide">
+                          <span className="flex items-center gap-2"><span className="text-emerald-400">↘</span> {destino}</span>
+                        </td>
+                        <td className="px-5 py-4 text-right font-black text-amber-400 tabular-nums drop-shadow-[0_0_5px_rgba(251,191,36,0.3)]">{formatCOP(t.monto)}</td>
+                        <td className="px-5 py-4 text-center">
+                          <button onClick={() => {
+                              if(window.confirm("¿Estás seguro de eliminar esta transferencia?\n(Esto afectará el saldo actual de las cuentas involucradas).")) {
+                                  if(removeTransferencia) {
+                                      removeTransferencia(t.id);
+                                      showToast("Transferencia eliminada correctamente.", "error");
+                                  } else {
+                                      showToast("No se pudo eliminar la transferencia.", "error");
+                                  }
+                              }
+                          }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors p-1.5" title="Eliminar">
+                            <Trash2 size={16}/>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {transferenciasOrdenadas.length === 0 && (
+                    <tr><td colSpan="5" className="px-5 py-10 text-center text-[#8A92A6] font-bold italic">No hay transferencias registradas.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
         </div>
       );
