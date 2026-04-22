@@ -156,7 +156,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
   const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
 
-  // ✨ PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES
+  // ✨ PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES (CORREGIDO)
   const { fijosItems, varItems } = useMemo(() => {
     const fijos = [];
     const variables = [];
@@ -164,9 +164,9 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     pagosFijos.forEach(pf => {
       const gastado = egresosMes.filter(e => {
         if (e.tipo !== 'Fijo') return false;
-        // ✨ CORRECCIÓN: Si el ID coincide, es un éxito directo. 
+        // Prioridad: Etiqueta oculta exacta (Cuando pagas desde el checklist)
         if (e.pagoFijoId === pf.id) return true;
-        // ✨ CORRECCIÓN: Si el ID no coincide (ej. se borró y se recreó), verificar por descripción como respaldo fuerte.
+        // Respaldo inteligente: Coincidencia por nombre sin importar mayúsculas si se recreó el pago fijo
         return (e.descripcion || '').trim().toLowerCase() === (pf.descripcion || '').trim().toLowerCase();
       }).reduce((s, e) => s + e.monto, 0);
       
@@ -199,6 +199,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     return 'text-amber-400'; 
   };
 
+  // ✨ NUEVO DISEÑO: Nodos de datos Sci-Fi
   const RenderCardCompacta = ({ p, themeColor }) => {
     const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
     const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
@@ -207,54 +208,66 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
     const themeMap = {
       yellow: { 
-         bar: excede ? 'bg-neonmagenta shadow-glow-magenta' : 'bg-amber-400 shadow-glow-amber', 
-         text: excede ? 'text-neonmagenta' : 'text-amber-400', 
-         border: 'border-amber-500/30', 
-         bgEdit: 'bg-amber-900/20 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.2)]' 
+         line: excede ? 'bg-neonmagenta shadow-[0_0_10px_#FF007A]' : 'bg-amber-400 shadow-[0_0_10px_#fbbf24]', 
+         textMain: excede ? 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.3)]', 
+         bgHover: 'hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(251,191,36,0.1)]',
+         bgEdit: 'bg-amber-900/10 border-amber-500 shadow-[0_0_15px_rgba(251,191,36,0.2)]' 
       },
       blue: { 
-         bar: excede ? 'bg-neonmagenta shadow-glow-magenta' : 'bg-neoncyan shadow-glow-cyan', 
-         text: excede ? 'text-neonmagenta' : 'text-neoncyan', 
-         border: 'border-neoncyan/30', 
-         bgEdit: 'bg-cyan-900/20 border-neoncyan shadow-[0_0_15px_rgba(0,229,255,0.2)]' 
+         line: excede ? 'bg-neonmagenta shadow-[0_0_10px_#FF007A]' : 'bg-neoncyan shadow-[0_0_10px_#00E5FF]', 
+         textMain: excede ? 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]' : 'text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.3)]', 
+         bgHover: 'hover:border-neoncyan/30 hover:shadow-[0_0_15px_rgba(0,229,255,0.1)]',
+         bgEdit: 'bg-cyan-900/10 border-neoncyan shadow-[0_0_15px_rgba(0,229,255,0.2)]' 
       }
     };
 
     let t = themeMap[themeColor];
 
     return (
-      <div key={p.id} className={`bg-appcard p-4 rounded-2xl border flex flex-col gap-3 hover:border-white/[0.05] transition-all shadow-neumorph ${editId === p.id ? `${t.border} ${t.bgEdit}` : 'border-white/[0.02]'}`}>
-        <div className="flex justify-between items-start">
-          <div className="flex flex-col pr-2 overflow-hidden">
-            <span className="font-black text-white text-sm leading-tight truncate tracking-wide">{p.nombre}</span>
-            <span className="text-[10px] font-bold text-[#8A92A6] mt-1 uppercase tracking-widest">{p.tipo === 'Fijo' ? 'Estimado' : 'Límite'}: {formatCOP(p.limite)}</span>
-          </div>
-          <div className="flex gap-1 shrink-0">
-            <button onClick={() => cargarParaEditar(p)} className={`text-[#8A92A6] hover:${t.text} p-1.5 transition-colors`} title="Editar"><Edit3 size={14}/></button>
+      <div key={p.id} className={`relative bg-[#111222] shadow-neumorph-inset p-5 pb-6 rounded-[20px] flex flex-col justify-between border transition-all duration-300 ${editId === p.id ? t.bgEdit : `border-transparent ${t.bgHover}`} group overflow-hidden`}>
+        
+        {/* LÍNEA LÁSER DE PROGRESO */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#1c1e32]">
+          <div className={`h-full transition-all duration-1000 ${t.line}`} style={{ width: `${porcentaje}%` }}></div>
+        </div>
+
+        {/* Encabezado: Título y Controles */}
+        <div className="flex justify-between items-start mb-4">
+          <span className="font-black text-white text-sm uppercase tracking-widest truncate pr-2 leading-tight">
+            {p.nombre}
+          </span>
+          <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
+            <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-white transition-colors"><Edit3 size={14}/></button>
             <button onClick={() => {
-              // ✨ NUEVO: Confirmación de eliminación con advertencia clara
               const isVar = p.tipo === 'Variable';
-              if (window.confirm(`¿Estás seguro de que quieres eliminar el ${isVar ? 'presupuesto' : 'gasto fijo'} "${p.nombre}"?\n\n(Esto solo borrará el límite de la lista, los pagos que ya hayas realizado se mantendrán en el historial).`)) {
-                if (isVar) { removePresupuesto(p.id); showToast("Presupuesto eliminado"); } 
-                else { removePagoFijo(p.id); showToast("Gasto Fijo eliminado."); }
+              if (window.confirm(`¿Seguro que quieres eliminar el ${isVar ? 'presupuesto' : 'gasto fijo'} "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
+                if (isVar) removePresupuesto(p.id); else removePagoFijo(p.id);
               }
-            }} className="text-[#8A92A6] hover:text-neonmagenta p-1.5 transition-colors" title="Eliminar"><Trash2 size={14}/></button>
+            }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors"><Trash2 size={14}/></button>
           </div>
         </div>
 
-        <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 border border-transparent overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-1000 ${t.bar}`} style={{ width: `${porcentaje}%` }}></div>
-        </div>
-
-        <div className="flex justify-between items-end text-[10px]">
-          <div className="flex flex-col gap-0.5">
-             <span className="text-[#8A92A6] font-bold uppercase tracking-wider">Gastado: <span className="text-white font-black">{formatCOP(p.gastado)}</span></span>
-             <span className={`font-black uppercase tracking-wider ${diferencia >= 0 ? 'text-emerald-400' : 'text-neonmagenta'}`}>
-               {diferencia >= 0 ? 'Disponible: ' : 'Excedido: '} {formatCOP(Math.abs(diferencia))}
+        {/* Nodos de Datos (Minimalistas) */}
+        <div className="flex items-end justify-between">
+          <div className="flex flex-col">
+             <span className={`text-2xl md:text-3xl font-black tabular-nums leading-none ${t.textMain}`}>
+               {formatCOP(p.gastado)}
+             </span>
+             <span className="text-[10px] text-[#8A92A6] font-bold mt-2 tracking-widest uppercase">
+               De {formatCOP(p.limite)}
              </span>
           </div>
-          <span className={`font-black ${t.text} text-xs drop-shadow-md`}>{porcentajeReal.toFixed(1)}%</span>
+          
+          <div className="text-right flex flex-col items-end">
+             <span className={`text-sm font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
+               {porcentajeReal.toFixed(1)}%
+             </span>
+             <span className={`text-[9px] font-black uppercase tracking-widest mt-1 px-2 py-0.5 rounded-md ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
+               {excede ? 'Excedido' : 'OK'}
+             </span>
+          </div>
         </div>
+
       </div>
     );
   };
