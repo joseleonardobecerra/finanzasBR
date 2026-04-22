@@ -126,6 +126,7 @@ function App() {
   const updateCuenta = (id, d) => fire.update('cuentas', id, d);
   const removeCuenta = (id, data) => data ? removeWithUndo('cuentas', id, data, 'Cuenta') : fire.remove('cuentas', id);
   const addTransferencia = (d) => fire.add('transferencias', d);
+  const removeTransferencia = (id, data) => data ? removeWithUndo('transferencias', id, data, 'Transferencia') : fire.remove('transferencias', id);
   const addEgreso = (d) => fire.add('egresos', d);
   const updateEgreso = (id, d) => fire.update('egresos', id, d);
   const removeEgreso = (id, data) => data ? removeWithUndo('egresos', id, data, 'Gasto') : fire.remove('egresos', id);
@@ -388,7 +389,8 @@ function App() {
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
           
-          {['ingresos', 'cuentas', 'deudas'].includes(activeTab) && (
+          {/* ✨ ACTUALIZADO: Oculto en Cuentas */}
+          {['ingresos', 'deudas'].includes(activeTab) && (
             <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto border border-transparent">
               <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Total' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-slate-500 hover:text-slate-300'}`}>TOTAL</button>
               <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Andre' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-slate-500 hover:text-slate-300'}`}>ANDRE</button>
@@ -419,9 +421,9 @@ function App() {
         <div className="p-4 md:p-8 overflow-y-auto flex-1 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
           <div className="max-w-6xl mx-auto">
             <ErrorBoundary>
-              {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} />}
-              {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} />}
-              {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} addEgreso={addEgreso} showToast={showToast} />}
+              {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} />}
+              {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} proyeccionLiquidez={proyeccionLiquidez} />}
+              {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} />}
               {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
               {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
               {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
