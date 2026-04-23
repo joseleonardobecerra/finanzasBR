@@ -292,7 +292,6 @@ function App() {
     setQuickEntryOpen(false);
   };
 
-  // PANTALLAS DE CARGA REDISEÑADAS AL ESTILO NEON
   if (authChecking) return (
     <div className="flex flex-col items-center justify-center h-screen bg-appbg">
       <div className="w-12 h-12 border-4 border-appcard border-t-neoncyan rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(0,229,255,0.4)]"></div>
@@ -323,16 +322,19 @@ function App() {
   return (
     <div className="min-h-screen bg-appbg text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
 
-      {/* TOAST GLOBAL (Importado desde globals.js) */}
+      {/* TOAST GLOBAL */}
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
 
-      {/* BARRA LATERAL (PC) - ESTILO NEÓN NEUMÓRFICO */}
+      {/* BARRA LATERAL (PC) */}
       <aside className="hidden md:flex w-64 bg-appcard flex-shrink-0 flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.3)]">
         <div className="p-6 border-b border-white/[0.02]">
           <h1 className="text-xl font-bold text-white flex items-center gap-3 tracking-wide">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-neoncyan to-blue-600 flex items-center justify-center shadow-glow-cyan">
-              <span className="text-[#0b0c16] font-black text-lg">F</span>
-            </div>
+            {/* ✨ AQUÍ ESTÁ EL LOGO NUEVO */}
+            <img 
+              src="logo.png" 
+              alt="Logo Finanzas" 
+              className="w-8 h-8 object-contain drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]"
+            />
             FinanzasFamilia
           </h1>
         </div>
@@ -383,13 +385,12 @@ function App() {
       {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
         
-        {/* TOP BAR - NEUMORFISMO INSET */}
+        {/* TOP BAR */}
         <div className="bg-appcard border-b border-white/[0.02] p-3 md:p-4 flex justify-between items-center gap-4 z-10">
           <button onClick={() => auth.signOut()} className="md:hidden text-neonmagenta p-2 hover:shadow-glow-magenta rounded-full transition-all">
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
           
-          {/* ✨ ACTUALIZADO: Oculto en Cuentas */}
           {['ingresos', 'deudas'].includes(activeTab) && (
             <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto border border-transparent">
               <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Total' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-slate-500 hover:text-slate-300'}`}>TOTAL</button>
@@ -428,10 +429,7 @@ function App() {
               {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
               {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
               {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={activeEgresos} />}
-              
-              {/* ✨ AQUÍ ESTÁ EL CAMBIO PARA INVERSIONES: Pasamos removeCuenta */}
               {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} />}
-              
               {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} />}
               {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
             </ErrorBoundary>
@@ -439,12 +437,11 @@ function App() {
         </div>
       </main>
 
-      {/* BARRA INFERIOR (CELULAR) - GLASSMORPHISM OSCURO */}
+      {/* BARRA INFERIOR (CELULAR) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-appcard/90 backdrop-blur-xl border-t border-white/[0.02] z-30 flex overflow-x-auto h-[72px] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
         <div className="flex px-2 min-w-max w-full">
           {navItems.map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id)} className="w-[76px] flex flex-col items-center justify-center p-2 relative group">
-              {/* Luz activa indicadora superior */}
               {activeTab === item.id && <div className="absolute top-0 w-8 h-1 bg-neoncyan rounded-b-full shadow-glow-cyan"></div>}
               <item.icon size={22} className={`transition-all duration-300 ${activeTab === item.id ? 'mb-1 text-neoncyan' : 'mb-1 text-slate-500 group-hover:text-slate-300'}`}/>
               <span className={`text-[9px] font-bold tracking-wide truncate w-full text-center transition-colors ${activeTab === item.id ? 'text-white' : 'text-slate-500'}`}>{item.label}</span>
@@ -453,16 +450,15 @@ function App() {
         </div>
       </nav>
 
-      {/* FAB REGISTRO RÁPIDO - GLOW MAGENTA/CYAN */}
+      {/* FAB REGISTRO RÁPIDO */}
       <button onClick={handleOpenWizard} className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-neoncyan text-[#0b0c16] rounded-full shadow-glow-cyan flex items-center justify-center z-40 transition-all hover:scale-110 active:scale-95">
         <Plus size={28} strokeWidth="3" />
       </button>
 
-      {/* MODAL WIZARD - ESTILO APP (Oscuro y Neon) */}
+      {/* MODAL WIZARD */}
       {quickEntryOpen && (
         <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center animate-in fade-in duration-300">
           <div className="bg-appcard w-full md:w-[420px] md:rounded-[30px] rounded-t-[30px] p-6 border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-10 min-h-[420px] flex flex-col relative overflow-hidden">
-            {/* Brillos de fondo modal */}
             <div className="absolute -top-32 -left-32 w-64 h-64 bg-neoncyan/10 rounded-full blur-[100px] pointer-events-none"></div>
             
             <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
