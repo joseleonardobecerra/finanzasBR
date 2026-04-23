@@ -13,20 +13,30 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const [filtroLista, setFiltroLista] = useState('Todos'); 
   const [showForm, setShowForm] = useState(false);
   
-  // ✨ NUEVO: Estados para colapsar las tablas
   const [openFijos, setOpenFijos] = useState(true);
   const [openVariables, setOpenVariables] = useState(true);
+
+  // ✨ NUEVO: Estados para manejar el ordenamiento de las tablas
+  const [sortFijos, setSortFijos] = useState({ key: 'limite', direction: 'desc' });
+  const [sortVar, setSortVar] = useState({ key: 'limite', direction: 'desc' });
 
   const formRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Íconos para los acordeones
   const ChevronDownIcon = ({ size = 20, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>
   );
   const ChevronUpIcon = ({ size = 20, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"></polyline></svg>
   );
+
+  // Icono para indicar el ordenamiento actual
+  const SortIcon = ({ columnKey, currentSort }) => {
+    if (currentSort.key !== columnKey) return <span className="opacity-20 ml-1 text-[10px]">↕</span>;
+    return currentSort.direction === 'asc' 
+      ? <span className="ml-1 text-[10px] text-neoncyan">↑</span> 
+      : <span className="ml-1 text-[10px] text-neoncyan">↓</span>;
+  };
 
   const handleExport = async () => {
     try {
@@ -169,8 +179,8 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
   const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
 
-  // PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES
-  const { fijosItems, varItems } = useMemo(() => {
+  // Procesamiento base
+  const { fijosBase, varBase } = useMemo(() => {
     const fijos = [];
     const variables = [];
 
@@ -189,14 +199,51 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       variables.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
     });
 
-    return { 
-      fijosItems: fijos.sort((a, b) => b.limite - a.limite), 
-      varItems: variables.sort((a, b) => b.limite - a.limite) 
-    };
+    return { fijosBase: fijos, varBase: variables };
   }, [pagosFijos, presupuestos, egresosMes]);
 
-  const totalGastadoFijo = useMemo(() => fijosItems.reduce((s, item) => s + item.gastado, 0), [fijosItems]);
-  const totalGastadoVar = useMemo(() => varItems.reduce((s, item) => s + item.gastado, 0), [varItems]);
+  // ✨ Función maestra para ordenar las tablas
+  const sortData = (data, config) => {
+    return [...data].sort((a, b) => {
+      let aVal = a[config.key];
+      let bVal = b[config.key];
+
+      // Cálculo en tiempo real para ordenar por porcentaje
+      if (config.key === 'porcentaje') {
+        aVal = a.limite > 0 ? (a.gastado / a.limite) : 0;
+        bVal = b.limite > 0 ? (b.gastado / b.limite) : 0;
+      }
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+        if (aVal < bVal) return config.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return config.direction === 'asc' ? 1 : -1;
+        return 0;
+      } else {
+        return config.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+    });
+  };
+
+  const fijosItems = useMemo(() => sortData(fijosBase, sortFijos), [fijosBase, sortFijos]);
+  const varItems = useMemo(() => sortData(varBase, sortVar), [varBase, sortVar]);
+
+  // Controles de clic en encabezados
+  const requestSortFijos = (key) => {
+    let direction = 'asc';
+    if (sortFijos.key === key && sortFijos.direction === 'asc') direction = 'desc';
+    setSortFijos({ key, direction });
+  };
+
+  const requestSortVar = (key) => {
+    let direction = 'asc';
+    if (sortVar.key === key && sortVar.direction === 'asc') direction = 'desc';
+    setSortVar({ key, direction });
+  };
+
+  const totalGastadoFijo = fijosBase.reduce((s, item) => s + item.gastado, 0);
+  const totalGastadoVar = varBase.reduce((s, item) => s + item.gastado, 0);
   const totalGastadoAmbos = totalGastadoFijo + totalGastadoVar;
 
   const difFijo = totalFijo - totalGastadoFijo;
@@ -387,13 +434,23 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                     <table className="w-full text-sm text-left min-w-[800px]">
                       <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
                         <tr>
-                          <th className="px-5 py-4 w-[25%]">Nombre</th>
-                          <th className="px-5 py-4 w-[15%]">Categoría</th>
-                          <th className="px-5 py-4 w-[15%] text-right">Presupuesto</th>
-                          <th className="px-5 py-4 w-[15%] text-right">Gastado</th>
-                          <th className="px-5 py-4 w-[10%] text-center">%</th>
-                          <th className="px-5 py-4 w-[10%] text-center">Estatus</th>
-                          <th className="px-5 py-4 w-[10%] text-center">Acciones</th>
+                          <th className="px-4 py-4 w-[25%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('nombre')}>
+                            <div className="flex items-center">Nombre <SortIcon columnKey="nombre" currentSort={sortFijos} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[20%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('categoria')}>
+                            <div className="flex items-center">Categoría <SortIcon columnKey="categoria" currentSort={sortFijos} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('limite')}>
+                            <div className="flex items-center justify-end">Presupuesto <SortIcon columnKey="limite" currentSort={sortFijos} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('gastado')}>
+                            <div className="flex items-center justify-end">Gastado <SortIcon columnKey="gastado" currentSort={sortFijos} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[8%] text-center cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('porcentaje')}>
+                            <div className="flex items-center justify-center">% <SortIcon columnKey="porcentaje" currentSort={sortFijos} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[7%] text-center">Estatus</th>
+                          <th className="px-4 py-4 w-[10%] text-center">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.02]">
@@ -403,21 +460,23 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                           
                           return (
                             <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-amber-900/10 border-amber-500/30' : 'hover:bg-white/[0.02]'}`}>
-                              <td className="px-5 py-4 font-bold text-white tracking-wide">{p.nombre}</td>
-                              <td className="px-5 py-4">
-                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest">{p.categoria}</span>
+                              <td className="px-4 py-4 font-bold text-white tracking-wide truncate max-w-[150px]" title={p.nombre}>{p.nombre}</td>
+                              <td className="px-4 py-4">
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>
+                                  {p.categoria}
+                                </span>
                               </td>
-                              <td className="px-5 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
-                              <td className="px-5 py-4 text-right font-black text-amber-400 tabular-nums">{formatCOP(p.gastado)}</td>
-                              <td className={`px-5 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
+                              <td className="px-4 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
+                              <td className="px-4 py-4 text-right font-black text-amber-400 tabular-nums">{formatCOP(p.gastado)}</td>
+                              <td className={`px-4 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
                                 {porcentaje.toFixed(1)}%
                               </td>
-                              <td className="px-5 py-4 text-center">
+                              <td className="px-4 py-4 text-center">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
                                   {excede ? 'Excedido' : 'OK'}
                                 </span>
                               </td>
-                              <td className="px-5 py-4 text-center flex justify-center gap-3">
+                              <td className="px-4 py-4 text-center flex justify-center gap-3">
                                 <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Editar"><Edit3 size={16}/></button>
                                 <button onClick={() => {
                                   if (window.confirm(`¿Seguro que quieres eliminar el gasto fijo "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
@@ -463,13 +522,23 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                     <table className="w-full text-sm text-left min-w-[800px]">
                       <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
                         <tr>
-                          <th className="px-5 py-4 w-[25%]">Nombre (Cat)</th>
-                          <th className="px-5 py-4 w-[15%]">Categoría</th>
-                          <th className="px-5 py-4 w-[15%] text-right">Presupuesto</th>
-                          <th className="px-5 py-4 w-[15%] text-right">Gastado</th>
-                          <th className="px-5 py-4 w-[10%] text-center">%</th>
-                          <th className="px-5 py-4 w-[10%] text-center">Estatus</th>
-                          <th className="px-5 py-4 w-[10%] text-center">Acciones</th>
+                          <th className="px-4 py-4 w-[25%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('nombre')}>
+                            <div className="flex items-center">Nombre (Cat) <SortIcon columnKey="nombre" currentSort={sortVar} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[20%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('categoria')}>
+                            <div className="flex items-center">Categoría <SortIcon columnKey="categoria" currentSort={sortVar} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('limite')}>
+                            <div className="flex items-center justify-end">Presupuesto <SortIcon columnKey="limite" currentSort={sortVar} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('gastado')}>
+                            <div className="flex items-center justify-end">Gastado <SortIcon columnKey="gastado" currentSort={sortVar} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[8%] text-center cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('porcentaje')}>
+                            <div className="flex items-center justify-center">% <SortIcon columnKey="porcentaje" currentSort={sortVar} /></div>
+                          </th>
+                          <th className="px-4 py-4 w-[7%] text-center">Estatus</th>
+                          <th className="px-4 py-4 w-[10%] text-center">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.02]">
@@ -479,21 +548,23 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                           
                           return (
                             <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-cyan-900/10 border-neoncyan/30' : 'hover:bg-white/[0.02]'}`}>
-                              <td className="px-5 py-4 font-bold text-white tracking-wide">{p.nombre}</td>
-                              <td className="px-5 py-4">
-                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest">{p.categoria}</span>
+                              <td className="px-4 py-4 font-bold text-white tracking-wide truncate max-w-[150px]" title={p.nombre}>{p.nombre}</td>
+                              <td className="px-4 py-4">
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>
+                                  {p.categoria}
+                                </span>
                               </td>
-                              <td className="px-5 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
-                              <td className="px-5 py-4 text-right font-black text-neoncyan tabular-nums">{formatCOP(p.gastado)}</td>
-                              <td className={`px-5 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
+                              <td className="px-4 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
+                              <td className="px-4 py-4 text-right font-black text-neoncyan tabular-nums">{formatCOP(p.gastado)}</td>
+                              <td className={`px-4 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
                                 {porcentaje.toFixed(1)}%
                               </td>
-                              <td className="px-5 py-4 text-center">
+                              <td className="px-4 py-4 text-center">
                                 <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
                                   {excede ? 'Excedido' : 'OK'}
                                 </span>
                               </td>
-                              <td className="px-5 py-4 text-center flex justify-center gap-3">
+                              <td className="px-4 py-4 text-center flex justify-center gap-3">
                                 <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
                                 <button onClick={() => {
                                   if (window.confirm(`¿Seguro que quieres eliminar el presupuesto variable "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
