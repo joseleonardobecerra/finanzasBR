@@ -12,8 +12,21 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const [errors, setErrors] = useState({});
   const [filtroLista, setFiltroLista] = useState('Todos'); 
   const [showForm, setShowForm] = useState(false);
+  
+  // ✨ NUEVO: Estados para colapsar las tablas
+  const [openFijos, setOpenFijos] = useState(true);
+  const [openVariables, setOpenVariables] = useState(true);
+
   const formRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Íconos para los acordeones
+  const ChevronDownIcon = ({ size = 20, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>
+  );
+  const ChevronUpIcon = ({ size = 20, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"></polyline></svg>
+  );
 
   const handleExport = async () => {
     try {
@@ -156,7 +169,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
   const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
 
-  // ✨ PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES
+  // PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES
   const { fijosItems, varItems } = useMemo(() => {
     const fijos = [];
     const variables = [];
@@ -164,9 +177,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     pagosFijos.forEach(pf => {
       const gastado = egresosMes.filter(e => {
         if (e.tipo !== 'Fijo') return false;
-        // Prioridad: Etiqueta oculta exacta (Cuando pagas desde el checklist)
         if (e.pagoFijoId === pf.id) return true;
-        // Respaldo inteligente: Coincidencia por nombre sin importar mayúsculas si se recreó el pago fijo
         return (e.descripcion || '').trim().toLowerCase() === (pf.descripcion || '').trim().toLowerCase();
       }).reduce((s, e) => s + e.monto, 0);
       
@@ -174,7 +185,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     });
 
     presupuestos.forEach(p => {
-      // Blindamos las categorías variables contra espacios extra
       const gastado = egresosMes.filter(e => (e.categoria || '').trim().toLowerCase() === (p.categoria || '').trim().toLowerCase() && e.tipo !== 'Fijo').reduce((s, e) => s + e.monto, 0);
       variables.push({ id: p.id, tipo: 'Variable', nombre: p.categoria, categoria: p.categoria, limite: p.limite, gastado });
     });
@@ -197,79 +207,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     if (val >= 0) return 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.4)]';
     if (val < 0) return 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.4)]';
     return 'text-amber-400'; 
-  };
-
-  // ✨ NUEVO DISEÑO: Nodos de datos Sci-Fi
-  const RenderCardCompacta = ({ p, themeColor }) => {
-    const porcentaje = Math.min((p.gastado / p.limite) * 100, 100);
-    const porcentajeReal = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
-    const diferencia = p.limite - p.gastado;
-    const excede = diferencia < 0;
-
-    const themeMap = {
-      yellow: { 
-         line: excede ? 'bg-neonmagenta shadow-[0_0_10px_#FF007A]' : 'bg-amber-400 shadow-[0_0_10px_#fbbf24]', 
-         textMain: excede ? 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]' : 'text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.3)]', 
-         bgHover: 'hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(251,191,36,0.1)]',
-         bgEdit: 'bg-amber-900/10 border-amber-500 shadow-[0_0_15px_rgba(251,191,36,0.2)]' 
-      },
-      blue: { 
-         line: excede ? 'bg-neonmagenta shadow-[0_0_10px_#FF007A]' : 'bg-neoncyan shadow-[0_0_10px_#00E5FF]', 
-         textMain: excede ? 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]' : 'text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.3)]', 
-         bgHover: 'hover:border-neoncyan/30 hover:shadow-[0_0_15px_rgba(0,229,255,0.1)]',
-         bgEdit: 'bg-cyan-900/10 border-neoncyan shadow-[0_0_15px_rgba(0,229,255,0.2)]' 
-      }
-    };
-
-    let t = themeMap[themeColor];
-
-    return (
-      <div key={p.id} className={`relative bg-[#111222] shadow-neumorph-inset p-5 pb-6 rounded-[20px] flex flex-col justify-between border transition-all duration-300 ${editId === p.id ? t.bgEdit : `border-transparent ${t.bgHover}`} group overflow-hidden`}>
-        
-        {/* LÍNEA LÁSER DE PROGRESO */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#1c1e32]">
-          <div className={`h-full transition-all duration-1000 ${t.line}`} style={{ width: `${porcentaje}%` }}></div>
-        </div>
-
-        {/* Encabezado: Título y Controles */}
-        <div className="flex justify-between items-start mb-4">
-          <span className="font-black text-white text-sm uppercase tracking-widest truncate pr-2 leading-tight">
-            {p.nombre}
-          </span>
-          <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
-            <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-white transition-colors"><Edit3 size={14}/></button>
-            <button onClick={() => {
-              const isVar = p.tipo === 'Variable';
-              if (window.confirm(`¿Seguro que quieres eliminar el ${isVar ? 'presupuesto' : 'gasto fijo'} "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
-                if (isVar) removePresupuesto(p.id); else removePagoFijo(p.id);
-              }
-            }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors"><Trash2 size={14}/></button>
-          </div>
-        </div>
-
-        {/* Nodos de Datos (Minimalistas) */}
-        <div className="flex items-end justify-between">
-          <div className="flex flex-col">
-             <span className={`text-2xl md:text-3xl font-black tabular-nums leading-none ${t.textMain}`}>
-               {formatCOP(p.gastado)}
-             </span>
-             <span className="text-[10px] text-[#8A92A6] font-bold mt-2 tracking-widest uppercase">
-               De {formatCOP(p.limite)}
-             </span>
-          </div>
-          
-          <div className="text-right flex flex-col items-end">
-             <span className={`text-sm font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
-               {porcentajeReal.toFixed(1)}%
-             </span>
-             <span className={`text-[9px] font-black uppercase tracking-widest mt-1 px-2 py-0.5 rounded-md ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
-               {excede ? 'Excedido' : 'OK'}
-             </span>
-          </div>
-        </div>
-
-      </div>
-    );
   };
 
   return (
@@ -301,7 +238,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
       </header>
 
-      {/* TARJETAS RESUMEN (Neumorfismo Inset) */}
+      {/* TARJETAS RESUMEN GLOBALES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-[#111222] shadow-neumorph-inset p-5 rounded-[20px] border border-transparent flex flex-col justify-between">
           <div>
@@ -418,46 +355,166 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </Card>
       )}
 
-      {/* FILTROS */}
+      {/* FILTROS GENERALES */}
       <div className="flex bg-[#111222] shadow-neumorph-inset p-1.5 rounded-xl border border-transparent text-xs font-black uppercase tracking-widest w-full md:w-max mx-auto md:mx-0">
         <button onClick={()=>setFiltroLista('Todos')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg transition-all ${filtroLista === 'Todos' ? 'bg-appcard text-white shadow-neumorph' : 'text-[#8A92A6] hover:text-white'}`}>Todos</button>
         <button onClick={()=>setFiltroLista('Fijos')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg transition-all ${filtroLista === 'Fijos' ? 'bg-amber-400 text-[#0b0c16] shadow-glow-amber' : 'text-[#8A92A6] hover:text-white'}`}>Solo Fijos</button>
         <button onClick={()=>setFiltroLista('Variables')} className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg transition-all ${filtroLista === 'Variables' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>Variables</button>
       </div>
 
-      <div className="space-y-10">
+      {/* SECCIÓN DE TABLAS COLAPSABLES */}
+      <div className="space-y-6">
+        
+        {/* TABLA: GASTOS FIJOS ESTIMADOS */}
         {(filtroLista === 'Todos' || filtroLista === 'Fijos') && (
-          <div className="space-y-5 animate-in fade-in">
-            <h2 className="text-sm font-black text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)] uppercase tracking-widest flex items-center gap-2 border-b border-white/[0.05] pb-3">
-              <CheckSquare size={18} /> Gastos Fijos Estimados
-            </h2>
-            {fijosItems.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
-                {fijosItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="yellow" />)}
-              </div>
-            ) : (
-              <div className="bg-[#111222] shadow-neumorph-inset p-8 rounded-3xl text-center">
-                <p className="text-sm text-[#8A92A6] font-bold tracking-wide uppercase">No hay gastos fijos configurados.</p>
+          <Card className="!border-transparent p-0 overflow-hidden flex flex-col">
+            <div 
+              className="flex justify-between items-center cursor-pointer select-none p-5 md:p-6 border-b border-white/[0.05]"
+              onClick={() => setOpenFijos(!openFijos)}
+            >
+              <h2 className="text-sm font-black text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)] uppercase tracking-widest flex items-center gap-2">
+                <CheckSquare size={18} /> Gastos Fijos Estimados
+              </h2>
+              <button className="text-slate-500 hover:text-white transition-colors">
+                {openFijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              </button>
+            </div>
+
+            {openFijos && (
+              <div className="animate-in slide-in-from-top-4 fade-in duration-300 p-5 md:p-6 pt-0">
+                {fijosItems.length > 0 ? (
+                  <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent mt-4">
+                    <table className="w-full text-sm text-left min-w-[800px]">
+                      <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
+                        <tr>
+                          <th className="px-5 py-4 w-[25%]">Nombre</th>
+                          <th className="px-5 py-4 w-[15%]">Categoría</th>
+                          <th className="px-5 py-4 w-[15%] text-right">Presupuesto</th>
+                          <th className="px-5 py-4 w-[15%] text-right">Gastado</th>
+                          <th className="px-5 py-4 w-[10%] text-center">%</th>
+                          <th className="px-5 py-4 w-[10%] text-center">Estatus</th>
+                          <th className="px-5 py-4 w-[10%] text-center">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.02]">
+                        {fijosItems.map(p => {
+                          const porcentaje = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
+                          const excede = p.gastado > p.limite;
+                          
+                          return (
+                            <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-amber-900/10 border-amber-500/30' : 'hover:bg-white/[0.02]'}`}>
+                              <td className="px-5 py-4 font-bold text-white tracking-wide">{p.nombre}</td>
+                              <td className="px-5 py-4">
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest">{p.categoria}</span>
+                              </td>
+                              <td className="px-5 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
+                              <td className="px-5 py-4 text-right font-black text-amber-400 tabular-nums">{formatCOP(p.gastado)}</td>
+                              <td className={`px-5 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
+                                {porcentaje.toFixed(1)}%
+                              </td>
+                              <td className="px-5 py-4 text-center">
+                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                                  {excede ? 'Excedido' : 'OK'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-center flex justify-center gap-3">
+                                <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Editar"><Edit3 size={16}/></button>
+                                <button onClick={() => {
+                                  if (window.confirm(`¿Seguro que quieres eliminar el gasto fijo "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
+                                    removePagoFijo(p.id); showToast("Gasto Fijo eliminado", "error");
+                                  }
+                                }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="bg-[#111222] shadow-neumorph-inset p-8 rounded-3xl text-center mt-4">
+                    <p className="text-sm text-[#8A92A6] font-bold tracking-wide uppercase">No hay gastos fijos configurados.</p>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </Card>
         )}
 
+        {/* TABLA: LÍMITES DE GASTO VARIABLE */}
         {(filtroLista === 'Todos' || filtroLista === 'Variables') && (
-          <div className="space-y-5 animate-in fade-in">
-            <h2 className="text-sm font-black text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.5)] uppercase tracking-widest flex items-center gap-2 border-b border-white/[0.05] pb-3">
-              <PieChart size={18} /> Límites de Gasto Variable
-            </h2>
-            {varItems.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
-                {varItems.map(p => <RenderCardCompacta key={p.id} p={p} themeColor="blue" />)}
-              </div>
-            ) : (
-              <div className="bg-[#111222] shadow-neumorph-inset p-8 rounded-3xl text-center">
-                 <p className="text-sm text-[#8A92A6] font-bold tracking-wide uppercase">No hay presupuestos variables configurados.</p>
+          <Card className="!border-transparent p-0 overflow-hidden flex flex-col">
+            <div 
+              className="flex justify-between items-center cursor-pointer select-none p-5 md:p-6 border-b border-white/[0.05]"
+              onClick={() => setOpenVariables(!openVariables)}
+            >
+              <h2 className="text-sm font-black text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.5)] uppercase tracking-widest flex items-center gap-2">
+                <PieChart size={18} /> Límites de Gasto Variable
+              </h2>
+              <button className="text-slate-500 hover:text-white transition-colors">
+                {openVariables ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              </button>
+            </div>
+
+            {openVariables && (
+              <div className="animate-in slide-in-from-top-4 fade-in duration-300 p-5 md:p-6 pt-0">
+                {varItems.length > 0 ? (
+                  <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent mt-4">
+                    <table className="w-full text-sm text-left min-w-[800px]">
+                      <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
+                        <tr>
+                          <th className="px-5 py-4 w-[25%]">Nombre (Cat)</th>
+                          <th className="px-5 py-4 w-[15%]">Categoría</th>
+                          <th className="px-5 py-4 w-[15%] text-right">Presupuesto</th>
+                          <th className="px-5 py-4 w-[15%] text-right">Gastado</th>
+                          <th className="px-5 py-4 w-[10%] text-center">%</th>
+                          <th className="px-5 py-4 w-[10%] text-center">Estatus</th>
+                          <th className="px-5 py-4 w-[10%] text-center">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.02]">
+                        {varItems.map(p => {
+                          const porcentaje = p.limite > 0 ? (p.gastado / p.limite) * 100 : 0;
+                          const excede = p.gastado > p.limite;
+                          
+                          return (
+                            <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-cyan-900/10 border-neoncyan/30' : 'hover:bg-white/[0.02]'}`}>
+                              <td className="px-5 py-4 font-bold text-white tracking-wide">{p.nombre}</td>
+                              <td className="px-5 py-4">
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest">{p.categoria}</span>
+                              </td>
+                              <td className="px-5 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
+                              <td className="px-5 py-4 text-right font-black text-neoncyan tabular-nums">{formatCOP(p.gastado)}</td>
+                              <td className={`px-5 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
+                                {porcentaje.toFixed(1)}%
+                              </td>
+                              <td className="px-5 py-4 text-center">
+                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                                  {excede ? 'Excedido' : 'OK'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-center flex justify-center gap-3">
+                                <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
+                                <button onClick={() => {
+                                  if (window.confirm(`¿Seguro que quieres eliminar el presupuesto variable "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
+                                    removePresupuesto(p.id); showToast("Presupuesto eliminado", "error");
+                                  }
+                                }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="bg-[#111222] shadow-neumorph-inset p-8 rounded-3xl text-center mt-4">
+                     <p className="text-sm text-[#8A92A6] font-bold tracking-wide uppercase">No hay presupuestos variables configurados.</p>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </Card>
         )}
       </div>
     </div>
