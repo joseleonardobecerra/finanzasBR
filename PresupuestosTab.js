@@ -156,7 +156,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const totalFijo = pagosFijos.reduce((s, p) => s + p.monto, 0);
   const totalVar = presupuestos.reduce((s, p) => s + p.limite, 0);
 
-  // ✨ PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES (CORREGIDO)
+  // ✨ PARCHE DE SEGURIDAD PARA SINCRONIZAR FIJOS Y VARIABLES
   const { fijosItems, varItems } = useMemo(() => {
     const fijos = [];
     const variables = [];
