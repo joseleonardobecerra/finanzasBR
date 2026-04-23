@@ -306,12 +306,13 @@ function App() {
     </div>
   );
 
+  // ✨ AQUÍ ESTÁ EL CAMBIO DE "Deudas" A "Créditos" EN EL MENÚ
   const navItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'ingresos', label: 'Ingresos', icon: Wallet },
     { id: 'egresos', label: 'Egresos', icon: Receipt },
     { id: 'cuentas', label: 'Cuentas', icon: Landmark },
-    { id: 'deudas', label: 'Deudas', icon: ShieldAlert },
+    { id: 'deudas', label: 'Créditos', icon: ShieldAlert },
     { id: 'presupuestos', label: 'Presupuestos', icon: PieChart },
     { id: 'inversiones', label: 'Inversión y ahorro', icon: PiggyBank },
     { id: 'analitica', label: 'Analítica y Estrategia', icon: BarChart },
@@ -329,7 +330,6 @@ function App() {
       <aside className="hidden md:flex w-64 bg-appcard flex-shrink-0 flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.3)]">
         <div className="p-6 border-b border-white/[0.02]">
           <h1 className="text-xl font-bold text-white flex items-center gap-3 tracking-wide">
-            {/* ✨ AQUÍ ESTÁ EL LOGO NUEVO */}
             <img 
               src="logo.png" 
               alt="Logo Finanzas" 
