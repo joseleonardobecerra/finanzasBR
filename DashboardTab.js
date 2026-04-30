@@ -1,12 +1,25 @@
-const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas }) => {
+const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas, proyeccionLiquidez, privacyMode }) => {
   const { useState, useMemo } = React;
-  const [chartFilter, setChartFilter] = useState('Todos');
-  const [expandedCard, setExpandedCard] = useState(null);
   
-  const toggleCard = (cardId) => {
-    setExpandedCard(prev => prev === cardId ? null : cardId);
+  // ✨ Importamos los componentes de Recharts desde el objeto global window
+  const { PieChart, Pie, Cell, ResponsiveContainer, Tooltip: RechartsTooltip } = window.Recharts;
+
+  const [expandedCard, setExpandedCard] = useState(null);
+  const toggleCard = (cardId) => setExpandedCard(prev => prev === cardId ? null : cardId);
+
+  const formatCOP = (val) => {
+    if (privacyMode) return '****';
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
   };
 
+  // Íconos SVG
+  const ChevronRight = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 18 15 12 9 6"></polyline></svg>;
+  const AlertCircle = ({ size=16, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+  const Calculator = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14.01"></line><line x1="16" y1="10" x2="16" y2="10.01"></line><line x1="16" y1="18" x2="16" y2="18.01"></line><line x1="8" y1="14" x2="12" y2="14"></line><line x1="8" y1="10" x2="12" y2="10"></line><line x1="8" y1="18" x2="12" y2="18"></line></svg>;
+
+  // ============================================================================
+  // LÓGICA DE DATOS
+  // ============================================================================
   const identifyOwner = (cuentaId, itemPersona, textDesc) => {
     if (itemPersona === 'L' || itemPersona === 'Leo') return 'Leo';
     if (itemPersona === 'A' || itemPersona === 'Andre') return 'Andre';
@@ -82,63 +95,51 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  const getMacroCategoria = (catName) => {
-      if (!catName) return 'Otros Gastos';
-      const lower = catName.toLowerCase();
-      
-      if (lower.includes('tarjeta') || lower.includes('crédito') || lower.includes('credito') || lower.includes('interes') || lower.includes('davibank') || lower.includes('lulo')) return 'Tarjetas y Créditos';
-      if (lower.includes('vehículo') || lower.includes('vehiculo') || lower.includes('gasolina') || lower.includes('peaje') || lower.includes('parqueadero')) return 'Vehículo y Gasolina';
-      if (lower.includes('hogar') || lower.includes('aseo') || lower.includes('agua') || lower.includes('públicos') || lower.includes('publicos') || lower.includes('internet') || lower.includes('administración') || lower.includes('gas') || lower.includes('arriendo')) return 'Hogar y Servicios';
-      if (lower.includes('mercado') || lower.includes('alimentación') || lower.includes('alimentacion') || lower.includes('comida') || lower.includes('panadería') || lower.includes('restaurante')) return 'Mercado y Alimentación';
-      if (lower.includes('seguro') || lower.includes('salud') || lower.includes('médico') || lower.includes('medico') || lower.includes('farmacia')) return 'Seguros y Salud';
-      if (lower.includes('tobías') || lower.includes('tobias') || lower.includes('salomé') || lower.includes('salome') || lower.includes('niños') || lower.includes('colegio') || lower.includes('educación') || lower.includes('natación')) return 'Tobías y Salomé';
-      if (lower === 'andre' || lower === 'andrea' || lower.includes('ropa andre')) return 'Andre';
-      if (lower === 'leo' || lower.includes('ropa leo')) return 'Leo';
-      if (lower.includes('inversión') || lower.includes('inversion') || lower.includes('ahorro')) return 'Inversión y Ahorro';
-      
-      return catName; 
+  // ============================================================================
+  // PREPARACIÓN DE DATOS PARA EL GRÁFICO DE DONA (RECHARTS)
+  // ============================================================================
+  const datosGrafico = useMemo(() => {
+    const agrupados = egresosMes.reduce((acc, egreso) => {
+      acc[egreso.categoria] = (acc[egreso.categoria] || 0) + egreso.monto;
+      return acc;
+    }, {});
+    
+    return Object.keys(agrupados)
+      .map(cat => ({ name: cat, value: agrupados[cat] }))
+      .sort((a, b) => b.value - a.value); // De mayor a menor
+  }, [egresosMes]);
+
+  const COLORS = ['#00E5FF', '#FF007A', '#FBBF24', '#34D399', '#818CF8', '#F472B6', '#A78BFA', '#38BDF8', '#FB923C', '#4ADE80'];
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-appcard/95 backdrop-blur-md border border-white/[0.05] p-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+          <p className="text-[10px] font-black uppercase tracking-widest text-[#8A92A6] mb-1">{payload[0].name}</p>
+          <p className="text-sm font-black text-white" style={{ color: payload[0].payload.fill }}>
+            {formatCOP(payload[0].value)}
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
-  const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
-  const gastosPorCategoria = {};
-  
-  gastosFiltrados.forEach(g => {
-    const catOriginal = g.categoria || 'Otros';
-    const interesOriginal = g.interesesOtros || 0;
-    const capitalGasto = g.monto - interesOriginal;
-    
-    const macroCat = getMacroCategoria(catOriginal);
-    const macroInteres = getMacroCategoria('Intereses y Cargos');
-    
-    if (capitalGasto > 0) gastosPorCategoria[macroCat] = (gastosPorCategoria[macroCat] || 0) + capitalGasto;
-    if (interesOriginal > 0) gastosPorCategoria[macroInteres] = (gastosPorCategoria[macroInteres] || 0) + interesOriginal;
-  });
-  
-  const chartData = Object.entries(gastosPorCategoria).sort((a,b)=>b[1]-a[1]);
-  const maxMonto = chartData.length > 0 ? chartData[0][1] : 1;
-
-  // ✨ LÓGICA DE INICIO DESDE ABRIL 2026
-  const trendData = useMemo(() => {
-    const APP_START = '2026-04';
-    const data = [];
-    
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(`${selectedMonth}-01T12:00:00`);
-      d.setMonth(d.getMonth() - i);
-      const mStr = d.toISOString().slice(0, 7);
-      
-      // Solo incluimos meses desde Abril de 2026 en adelante
-      if (mStr >= APP_START) {
-        const label = d.toLocaleString('es-ES', { month: 'short' }).replace(/^\w/, c=>c.toUpperCase());
-        const tIng = ingresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
-        const tEgr = egresos.filter(x => x.fecha.startsWith(mStr)).reduce((s, x) => s + x.monto, 0);
-        data.push({ mes: mStr, label, ing: tIng, egr: tEgr });
-      }
-    }
-    return data;
-  }, [ingresos, egresos, selectedMonth]);
-
-  const maxTrendVal = Math.max(...trendData.map(d => Math.max(d.ing, d.egr)), 1);
+  const EmptyStateIlustrado = () => (
+    <div className="flex flex-col items-center justify-center p-10 text-center animate-in zoom-in-95 duration-500 w-full h-full min-h-[250px]">
+      <div className="relative w-24 h-24 mb-6">
+        <div className="absolute inset-0 bg-neoncyan/20 blur-xl rounded-full animate-pulse"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full text-neoncyan drop-shadow-[0_0_10px_rgba(0,229,255,0.8)]">
+          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+        </svg>
+      </div>
+      <h3 className="text-white font-black uppercase tracking-widest text-sm mb-2">Lienzo en blanco</h3>
+      <p className="text-[#8A92A6] text-xs font-bold w-3/4 mx-auto">No hay gastos registrados en este mes. ¡El motor está listo para arrancar!</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
@@ -149,11 +150,10 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
       </header>
 
       {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-        
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card className="flex flex-col justify-center">
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
-          <p className="text-xl md:text-3xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]">
+          <p className="text-xl md:text-2xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)] truncate">
             {formatCOP(ingresosMesTotal)}
           </p>
         </Card>
@@ -162,7 +162,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Egresos Totales</h3>
-              <p className="text-xl md:text-3xl font-black text-neonmagenta mt-1 drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]">
+              <p className="text-xl md:text-2xl font-black text-neonmagenta mt-1 drop-shadow-[0_0_8px_rgba(255,0,122,0.4)] truncate">
                 {formatCOP(egresosMesTotal)}
               </p>
             </div>
@@ -171,13 +171,13 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           {expandedCard === 'egresos' && (
             <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
               <ul className="space-y-3 text-xs">
-                {chartData.map(([cat, amount]) => (
-                  <li key={cat} className="flex justify-between items-center">
-                    <span className="truncate pr-2 font-bold text-white">{cat}</span>
-                    <span className="font-black text-neonmagenta">{formatCOP(amount)}</span>
+                {datosGrafico.map((entry, index) => (
+                  <li key={entry.name} className="flex justify-between items-center">
+                    <span className="truncate pr-2 font-bold text-white" style={{ color: COLORS[index % COLORS.length] }}>{entry.name}</span>
+                    <span className="font-black text-white">{formatCOP(entry.value)}</span>
                   </li>
                 ))}
-                {chartData.length === 0 && <li className="text-slate-500 text-center py-2 font-bold">Sin egresos</li>}
+                {datosGrafico.length === 0 && <li className="text-slate-500 text-center py-2 font-bold">Sin egresos</li>}
               </ul>
             </div>
           )}
@@ -185,47 +185,16 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
         <Card className="flex flex-col justify-center">
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Flujo del mes</h3>
-          <p className={`text-xl md:text-3xl font-black mt-1 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
+          <p className={`text-xl md:text-2xl font-black mt-1 truncate ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
             {formatCOP(dineroDisponible)}
           </p>
         </Card>
-        
-        <Card className="flex flex-col justify-center">
-          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Pagos Fijos Ptes.</h3>
-          <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">
-            {formatCOP(pagosFijosPendientesTotal)}
-          </p>
-        </Card>
-        
-        <Card onClick={() => toggleCard('presupuesto')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Presupuesto Config.</h3>
-              <p className="text-xl md:text-3xl font-black text-white mt-1">
-                {formatCOP(presupuestoTotal)}
-              </p>
-            </div>
-            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'presupuesto' ? 'rotate-90' : ''}`} />
-          </div>
-          {expandedCard === 'presupuesto' && (
-            <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
-              <div className="flex justify-between items-center text-xs mb-3">
-                <span className="text-[#8A92A6] font-bold">Gastos Fijos</span>
-                <span className="font-black text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-[#8A92A6] font-bold">Gastos Variables</span>
-                <span className="font-black text-neoncyan">{formatCOP(totalPresupuestadoVar)}</span>
-              </div>
-            </div>
-          )}
-        </Card>
-        
+
         <Card onClick={() => toggleCard('cuentas')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero en Cuentas</h3>
-              <p className="text-xl md:text-3xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]">
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero Cuentas</h3>
+              <p className="text-xl md:text-2xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] truncate">
                 {formatCOP(totalDineroCuentas)}
               </p>
             </div>
@@ -280,7 +249,88 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </div>
       )}
 
-      {/* 3. RESUMEN EN VIVO (LEO VS ANDRE) */}
+      {/* 3. GRÁFICOS Y ÚLTIMOS MOVIMIENTOS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* GRÁFICO DE DONA */}
+        <div className="md:col-span-1 bg-appcard shadow-neumorph p-5 rounded-2xl border border-white/[0.02] flex flex-col">
+          <h2 className="text-xs font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-400"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+            Distribución de Gastos
+          </h2>
+          
+          <div className="flex-1 flex flex-col items-center justify-center min-h-[250px]">
+            {datosGrafico.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={datosGrafico} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
+                      {datosGrafico.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ filter: `drop-shadow(0px 0px 5px ${COLORS[index % COLORS.length]}80)` }} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                {/* Leyenda minimalista */}
+                <div className="w-full mt-4 space-y-2 max-h-[100px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                  {datosGrafico.slice(0, 5).map((entry, index) => (
+                    <div key={index} className="flex justify-between items-center text-[10px] font-bold">
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length], boxShadow: `0 0 5px ${COLORS[index % COLORS.length]}` }}></div>
+                        <span className="text-slate-300 uppercase tracking-widest truncate">{entry.name}</span>
+                      </div>
+                      <span className="text-white tabular-nums shrink-0">{formatCOP(entry.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <EmptyStateIlustrado />
+            )}
+          </div>
+        </div>
+
+        {/* ÚLTIMOS MOVIMIENTOS */}
+        <div className="md:col-span-2 bg-[#111222] shadow-neumorph-inset p-5 rounded-2xl border border-transparent flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neoncyan"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Últimos Movimientos
+            </h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-800 h-[300px]">
+            {egresosMes.length === 0 ? (
+              <EmptyStateIlustrado />
+            ) : (
+              <div className="space-y-3">
+                {egresosMes.slice(0, 8).map(e => (
+                  <div key={e.id} className="flex justify-between items-center p-3.5 bg-appcard border border-white/[0.02] rounded-xl hover:border-white/[0.05] transition-colors group">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${e.tipo === 'Fijo' ? 'bg-amber-500/10 text-amber-400' : 'bg-neoncyan/10 text-neoncyan'}`}>
+                        {e.tipo === 'Fijo' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>}
+                      </div>
+                      <div className="truncate pr-2">
+                        <p className="text-sm font-bold text-white tracking-wide truncate">{e.descripcion}</p>
+                        <p className="text-[9px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5 truncate">{e.categoria}</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-black text-neonmagenta tabular-nums drop-shadow-[0_0_3px_rgba(255,0,122,0.3)]">-{formatCOP(e.monto)}</p>
+                      <p className="text-[9px] text-slate-500 font-bold tracking-widest mt-0.5">{e.fecha.slice(8,10)}/{e.fecha.slice(5,7)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* 4. RESUMEN EN VIVO (LEO VS ANDRE) */}
       <Card className="flex flex-col">
         <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2 uppercase tracking-widest">
           <Calculator size={18} className="text-neoncyan" /> Resumen y Realidad (En Vivo)
@@ -382,132 +432,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </div>
         </div>
       </Card>
-
-      {/* 4. GRÁFICAS DE TENDENCIA Y DISTRIBUCIÓN */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* GRÁFICA: TENDENCIA 6 MESES */}
-        <Card className="flex flex-col">
-          <h2 className="text-sm font-black text-white mb-8 flex items-center gap-2 uppercase tracking-widest">
-            <BarChart size={18} className="text-neoncyan" /> Tendencia Histórica
-          </h2>
-          <div className="flex-1 flex items-end justify-between gap-3 h-[200px] pb-4 border-b border-white/[0.05]">
-            {trendData.map((d, i) => {
-              const hInc = (d.ing / maxTrendVal) * 100;
-              const hExp = (d.egr / maxTrendVal) * 100;
-              const flujoAnterior = d.ing - d.egr;
-              return (
-                <div key={i} className="flex flex-col items-center w-full h-full justify-end group relative">
-                  <div className="flex gap-1.5 w-full justify-center items-end h-full">
-                    <div 
-                      style={{ height: `${Math.max(hInc, 2)}%` }} 
-                      className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neoncyan rounded-t-md shadow-[0_0_10px_rgba(0,229,255,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(0,229,255,0.6)]"
-                    ></div>
-                    <div 
-                      style={{ height: `${Math.max(hExp, 2)}%` }} 
-                      className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neonmagenta rounded-t-md shadow-[0_0_10px_rgba(255,0,122,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(255,0,122,0.6)]"
-                    ></div>
-                  </div>
-                  
-                  {/* Tooltip Hover Neumórfico */}
-                  <div className="opacity-0 group-hover:opacity-100 absolute -top-20 bg-appcard shadow-neumorph border border-white/[0.05] p-3 rounded-xl whitespace-nowrap z-10 pointer-events-none transition-all duration-300">
-                    <p className="text-neoncyan font-black text-xs mb-1">Ing: {formatCOP(d.ing)}</p>
-                    <p className="text-neonmagenta font-black text-xs mb-2">Egr: {formatCOP(d.egr)}</p>
-                    <div className="border-t border-white/[0.05] my-1 pt-1"></div>
-                    <p className={`font-black text-xs ${flujoAnterior >= 0 ? 'text-white' : 'text-amber-500'}`}>Neto: {formatCOP(flujoAnterior)}</p>
-                  </div>
-                </div>
-              )
-            })}
-            {trendData.length === 0 && (
-               <div className="w-full text-center text-slate-500 font-bold text-xs pb-10">Esperando datos...</div>
-            )}
-          </div>
-          <div className="flex justify-between mt-3 px-2">
-            {trendData.map((d, i) => <span key={i} className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">{d.label}</span>)}
-          </div>
-          <div className="flex justify-center gap-6 mt-6 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">
-            <span className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-neoncyan shadow-glow-cyan"></div> Ingresos
-            </span>
-            <span className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-neonmagenta shadow-glow-magenta"></div> Egresos
-            </span>
-          </div>
-        </Card>
-
-        {/* GRÁFICA: DISTRIBUCIÓN DE EGRESOS */}
-        <Card className="flex flex-col">
-          <div className="flex flex-col xl:flex-row justify-between xl:items-center mb-8 gap-5">
-            <h2 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-widest">
-              <BarChart3 size={18} className="text-neonmagenta" /> Distribución
-            </h2>
-            
-            <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1.5 w-full xl:w-auto border border-transparent">
-              <button 
-                onClick={()=>setChartFilter('Todos')} 
-                className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Todos' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-[#8A92A6] hover:text-white'}`}
-              >
-                Todos
-              </button>
-              <button 
-                onClick={()=>setChartFilter('Fijo')} 
-                className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Fijo' ? 'bg-amber-500 text-[#0b0c16] shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}
-              >
-                Fijos
-              </button>
-              <button 
-                onClick={()=>setChartFilter('Variable')} 
-                className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}
-              >
-                Variables
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex-1 space-y-5 overflow-y-auto max-h-[300px] pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
-            {chartData.length === 0 && <p className="text-sm text-[#8A92A6] font-bold text-center py-10">No hay egresos registrados.</p>}
-            
-            {chartData.map(([name, amount]) => {
-              const width = Math.max((amount / maxMonto) * 100, 2);
-              
-              let barColorClass = '';
-              let textColorClass = '';
-
-              if (chartFilter === 'Todos') {
-                barColorClass = 'bg-gradient-to-r from-neonmagenta to-[#ff5e99] shadow-glow-magenta';
-                textColorClass = 'text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)]';
-              } else if (chartFilter === 'Fijo') {
-                barColorClass = 'bg-gradient-to-r from-amber-500 to-[#ffd166] shadow-[0_0_10px_rgba(251,191,36,0.5)]';
-                textColorClass = 'text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]';
-              } else if (chartFilter === 'Variable') {
-                barColorClass = 'bg-gradient-to-r from-neoncyan to-[#66fcf1] shadow-glow-cyan';
-                textColorClass = 'text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]';
-              }
-
-              return (
-                <div key={name} className="relative group">
-                  <div className="flex justify-between items-end text-sm mb-2">
-                    <span className="text-white font-bold truncate pr-4 text-xs">{name}</span>
-                    <span className={`font-black text-sm tracking-wide ${textColorClass}`}>{formatCOP(amount)}</span>
-                  </div>
-                  {/* Contenedor Hundido */}
-                  <div className="w-full bg-[#111222] shadow-neumorph-inset rounded-full h-[10px] relative border border-transparent overflow-hidden">
-                    {/* Barra de progreso de neón */}
-                    <div 
-                      className={`h-full rounded-full transition-all duration-1000 relative ${barColorClass}`} 
-                      style={{ width: `${width}%` }}
-                    >
-                      {/* Punto de luz brillante en el extremo derecho */}
-                      <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white rounded-full opacity-60 mix-blend-screen"></div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
+      
     </div>
   );
 };
