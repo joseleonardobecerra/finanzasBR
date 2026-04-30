@@ -4,8 +4,12 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   // ✨ Importamos los componentes de Recharts
   const { PieChart, Pie, Cell, ResponsiveContainer, Tooltip: RechartsTooltip } = window.Recharts;
 
+  const [chartFilter, setChartFilter] = useState('Todos');
   const [expandedCard, setExpandedCard] = useState(null);
-  const toggleCard = (cardId) => setExpandedCard(prev => prev === cardId ? null : cardId);
+  
+  const toggleCard = (cardId) => {
+    setExpandedCard(prev => prev === cardId ? null : cardId);
+  };
 
   const formatCOP = (val) => {
     if (privacyMode) return '****';
@@ -97,18 +101,46 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
   // ============================================================================
-  // PREPARACIÓN DE DATOS PARA GRÁFICOS
+  // RESTAURADA: LÓGICA DE MACRO-CATEGORÍAS Y FILTROS
   // ============================================================================
-  const datosGrafico = useMemo(() => {
-    const agrupados = egresosMes.reduce((acc, egreso) => {
-      acc[egreso.categoria] = (acc[egreso.categoria] || 0) + egreso.monto;
-      return acc;
-    }, {});
+  const getMacroCategoria = (catName) => {
+      if (!catName) return 'Otros Gastos';
+      const lower = catName.toLowerCase();
+      
+      if (lower.includes('tarjeta') || lower.includes('crédito') || lower.includes('credito') || lower.includes('interes') || lower.includes('davibank') || lower.includes('lulo')) return 'Tarjetas y Créditos';
+      if (lower.includes('vehículo') || lower.includes('vehiculo') || lower.includes('gasolina') || lower.includes('peaje') || lower.includes('parqueadero')) return 'Vehículo y Gasolina';
+      if (lower.includes('hogar') || lower.includes('aseo') || lower.includes('agua') || lower.includes('públicos') || lower.includes('publicos') || lower.includes('internet') || lower.includes('administración') || lower.includes('gas') || lower.includes('arriendo')) return 'Hogar y Servicios';
+      if (lower.includes('mercado') || lower.includes('alimentación') || lower.includes('alimentacion') || lower.includes('comida') || lower.includes('panadería') || lower.includes('restaurante')) return 'Mercado y Alimentación';
+      if (lower.includes('seguro') || lower.includes('salud') || lower.includes('médico') || lower.includes('medico') || lower.includes('farmacia')) return 'Seguros y Salud';
+      if (lower.includes('tobías') || lower.includes('tobias') || lower.includes('salomé') || lower.includes('salome') || lower.includes('niños') || lower.includes('colegio') || lower.includes('educación') || lower.includes('natación')) return 'Tobías y Salomé';
+      if (lower === 'andre' || lower === 'andrea' || lower.includes('ropa andre')) return 'Andre';
+      if (lower === 'leo' || lower.includes('ropa leo')) return 'Leo';
+      if (lower.includes('inversión') || lower.includes('inversion') || lower.includes('ahorro')) return 'Inversión y Ahorro';
+      
+      return catName; 
+  };
+
+  const chartData = useMemo(() => {
+    const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
+    const gastosPorCategoria = {};
     
-    return Object.keys(agrupados)
-      .map(cat => ({ name: cat, value: agrupados[cat] }))
-      .sort((a, b) => b.value - a.value); 
-  }, [egresosMes]);
+    gastosFiltrados.forEach(g => {
+      const catOriginal = g.categoria || 'Otros';
+      const interesOriginal = g.interesesOtros || 0;
+      const capitalGasto = g.monto - interesOriginal;
+      
+      const macroCat = getMacroCategoria(catOriginal);
+      const macroInteres = getMacroCategoria('Intereses y Cargos');
+      
+      if (capitalGasto > 0) gastosPorCategoria[macroCat] = (gastosPorCategoria[macroCat] || 0) + capitalGasto;
+      if (interesOriginal > 0) gastosPorCategoria[macroInteres] = (gastosPorCategoria[macroInteres] || 0) + interesOriginal;
+    });
+    
+    // Lo convertimos al formato que espera Recharts (name, value)
+    return Object.entries(gastosPorCategoria)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [egresosMes, chartFilter]);
 
   const COLORS = ['#00E5FF', '#FF007A', '#FBBF24', '#34D399', '#818CF8', '#F472B6', '#A78BFA', '#38BDF8', '#FB923C', '#4ADE80'];
 
@@ -172,15 +204,15 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
       {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
-          <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Ingresos (Mes)</p>
+        <Card className="flex flex-col justify-center">
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
           <p className="text-xl md:text-2xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)] truncate">{formatCOP(ingresosMesTotal)}</p>
-        </div>
+        </Card>
         
-        <div onClick={() => toggleCard('egresos')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:border-white/[0.05] transition-colors">
+        <Card onClick={() => toggleCard('egresos')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Egresos Totales</p>
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Egresos Totales</h3>
               <p className="text-xl md:text-2xl font-black text-neonmagenta mt-1 drop-shadow-[0_0_8px_rgba(255,0,122,0.4)] truncate">{formatCOP(egresosMesTotal)}</p>
             </div>
             <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'egresos' ? 'rotate-90' : ''}`} />
@@ -188,30 +220,31 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           {expandedCard === 'egresos' && (
             <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
               <ul className="space-y-3 text-xs">
-                {datosGrafico.map((entry, index) => (
+                {/* Restaurado: Muestra los datos filtrados en la tarjeta expandible */}
+                {chartData.map((entry, index) => (
                   <li key={entry.name} className="flex justify-between items-center">
                     <span className="truncate pr-2 font-bold text-white" style={{ color: COLORS[index % COLORS.length] }}>{entry.name}</span>
                     <span className="font-black text-white">{formatCOP(entry.value)}</span>
                   </li>
                 ))}
-                {datosGrafico.length === 0 && <li className="text-slate-500 text-center py-2 font-bold">Sin egresos</li>}
+                {chartData.length === 0 && <li className="text-slate-500 text-center py-2 font-bold">Sin egresos</li>}
               </ul>
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative overflow-hidden group">
+        <Card className="flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-neoncyan/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1 relative z-10">Flujo Neto Libre</p>
-          <p className={`text-xl md:text-2xl font-black truncate relative z-10 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.4)]' : 'text-rose-500 drop-shadow-[0_0_5px_rgba(244,63,94,0.4)]'}`}>
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest relative z-10">Flujo del mes</h3>
+          <p className={`text-xl md:text-2xl font-black mt-1 truncate relative z-10 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.4)]' : 'text-rose-500 drop-shadow-[0_0_5px_rgba(244,63,94,0.4)]'}`}>
             {formatCOP(dineroDisponible)}
           </p>
-        </div>
+        </Card>
 
-        <div onClick={() => toggleCard('cuentas')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:border-white/[0.05] transition-colors">
+        <Card onClick={() => toggleCard('cuentas')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Dinero Cuentas</p>
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero Cuentas</h3>
               <p className="text-xl md:text-2xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] truncate">{formatCOP(totalDineroCuentas)}</p>
             </div>
             <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'cuentas' ? 'rotate-90' : ''}`} />
@@ -230,7 +263,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
               </div>
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* 2. ALERTAS: PAGOS PRÓXIMOS A VENCER */}
@@ -256,20 +289,28 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
       {/* 3. GRÁFICOS RESTAURADOS Y MEJORADOS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* DONA RECHARTS */}
+        {/* DONA RECHARTS CON FILTROS RESTAURADOS */}
         <div className="bg-appcard shadow-neumorph p-5 rounded-2xl border border-white/[0.02] flex flex-col">
-          <h2 className="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-400"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
-            Distribución de Gastos
-          </h2>
+          <div className="flex flex-col xl:flex-row justify-between xl:items-center mb-6 gap-3">
+            <h2 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-400"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+              Distribución
+            </h2>
+            {/* Restauramos los botones de filtro */}
+            <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full xl:w-auto border border-transparent">
+              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 xl:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${chartFilter==='Todos' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-[#8A92A6] hover:text-white'}`}>Todos</button>
+              <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 xl:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${chartFilter==='Fijo' ? 'bg-amber-500 text-[#0b0c16] shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}>Fijos</button>
+              <button onClick={()=>setChartFilter('Variable')} className={`flex-1 xl:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${chartFilter==='Variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>Var</button>
+            </div>
+          </div>
           
           <div className="flex-1 flex flex-col items-center justify-center min-h-[220px]">
-            {datosGrafico.length > 0 ? (
+            {chartData.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
-                    <Pie data={datosGrafico} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value" stroke="none">
-                      {datosGrafico.map((entry, index) => (
+                    <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value" stroke="none">
+                      {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ filter: `drop-shadow(0px 0px 5px ${COLORS[index % COLORS.length]}80)` }} />
                       ))}
                     </Pie>
@@ -278,7 +319,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 </ResponsiveContainer>
                 
                 <div className="w-full mt-4 space-y-2 max-h-[100px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
-                  {datosGrafico.slice(0, 5).map((entry, index) => (
+                  {chartData.slice(0, 5).map((entry, index) => (
                     <div key={index} className="flex justify-between items-center text-[10px] font-bold">
                       <div className="flex items-center gap-2 truncate pr-2">
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length], boxShadow: `0 0 5px ${COLORS[index % COLORS.length]}` }}></div>
