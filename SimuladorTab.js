@@ -1,4 +1,5 @@
-const SimuladorTab = ({ cuentas, addPagoFijo, showToast }) => {
+const SimuladorTab = ({ cuentas, addPagoFijo, showToast, privacyMode }) => {
+      const { useState } = React;
       const [activeSim, setActiveSim] = useState('acelerado'); 
       const [s1, setS1] = useState({ deudaId: '', extra: 200000 });
       const dSeleccionada = cuentas.find(c => c.id === s1.deudaId);
@@ -6,9 +7,52 @@ const SimuladorTab = ({ cuentas, addPagoFijo, showToast }) => {
       const s1Tasa = dSeleccionada ? dSeleccionada.tasaEA : 0;
       const s1Cuota = dSeleccionada ? dSeleccionada.cuotaMinima : 0;
 
+      // ✨ MODO PRIVACIDAD APLICADO
+      const formatCOP = (val) => {
+        if (privacyMode) return '****';
+        return new Intl.NumberFormat('es-CO', { 
+          style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+        }).format(val);
+      };
+
+      // Función de utilidad necesaria para los cálculos de simuladores
+      const getTasaMensual = (ea) => Math.pow(1 + (ea/100), 1/12) - 1;
+
+      // Íconos SVG para prevenir ReferenceError
+      const TrendingUp = ({ size=20, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>;
+      const Target = ({ size=20, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>;
+      const PiggyBank = ({ size=20, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"></path><path d="M2 9v1c0 1.1.9 2 2 2h1"></path><path d="M16 11h.01"></path></svg>;
+      const AlertCircle = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+      const CheckCircle2 = ({ size=20, className="", strokeWidth="2" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m9 12 2 2 4-4"></path></svg>;
+      const Calculator = ({ size=20, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14.01"></line><line x1="16" y1="10" x2="16" y2="10.01"></line><line x1="16" y1="18" x2="16" y2="18.01"></line><line x1="8" y1="14" x2="12" y2="14"></line><line x1="8" y1="10" x2="12" y2="10"></line><line x1="8" y1="18" x2="12" y2="18"></line></svg>;
+
+      // Funciones de Componentes UI básicos que se usaban sin estar definidos internamente:
+      const Select = ({ label, options, value, onChange, className }) => (
+        <div className={className}>
+          <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
+          <select value={value} onChange={onChange} className="w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta transition-all duration-300 appearance-none cursor-pointer">
+            <option value="" className="bg-[#111222]">Seleccione...</option>
+            {options.map(o => <option key={o.value} value={o.value} className="bg-[#111222]">{o.label}</option>)}
+          </select>
+        </div>
+      );
+      const Input = ({ type="text", label, value, onChange, className, placeholder, disabled=false }) => (
+        <div className={`relative ${className?.includes('col-span') ? className : ''}`}>
+          <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
+          <input type={type} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neoncyan transition-all duration-300 placeholder:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed ${className}`} />
+        </div>
+      );
+      const Card = ({ children, className }) => (
+        <div className={`bg-appcard shadow-neumorph p-5 md:p-8 rounded-[30px] border border-white/[0.02] ${className}`}>
+          {children}
+        </div>
+      );
+
+      // ============================================================================
+      // CÁLCULOS DEL SIMULADOR
+      // ============================================================================
       const calcSim1 = () => {
         if (s1Saldo <= 0) return { error: "Selecciona una obligación con deuda actual para simular." };
-        // FIX: cuota 0 causaba loop silencioso hasta 600 iteraciones
         if (s1Cuota <= 0) return { error: "Esta obligación no tiene cuota mínima registrada. Actualízala en la pestaña Deudas antes de simular." };
         const tm = getTasaMensual(s1Tasa); const intMesActual = s1Saldo * tm;
         if (s1Cuota <= intMesActual) return { error: "La cuota actual no cubre ni los intereses mensuales. Incrementa la cuota base en la pestaña Deudas." };
