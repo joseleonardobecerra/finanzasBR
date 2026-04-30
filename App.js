@@ -11,6 +11,11 @@ function App() {
   const [filtroPersona, setFiltroPersona] = useState('Total');
   const [scoreHistory, setScoreHistory] = useState({});
 
+  // ✨ MEJORA UX: Modo Privacidad y Buscador Global
+  const [privacyMode, setPrivacyMode] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Wizard Registro Rápido
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [qeStep, setQeStep] = useState(1);
@@ -25,11 +30,21 @@ function App() {
   const [undoItem, setUndoItem] = useState(null);
   const undoTimerRef = useRef(null);
 
+  // ============================================================================
+  // ÍCONOS GLOBALES
+  // ============================================================================
   const XIcon = ({ size=24 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   );
   const ArrowLeftIcon = ({ size=24 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+  );
+  const EyeIcon = ({ size=20, off=false }) => (
+    off ? <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        : <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+  );
+  const SearchIcon = ({ size=20 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
   );
 
   useEffect(() => {
@@ -107,7 +122,6 @@ function App() {
     },
   };
 
-  // ✨ Wrapper de eliminación con opción deshacer
   const removeWithUndo = (colName, id, data, label) => {
     fire.remove(colName, id);
     setUndoItem({ colName, data });
@@ -292,6 +306,38 @@ function App() {
     setQuickEntryOpen(false);
   };
 
+  // ============================================================================
+  // ✨ MOTOR DE BÚSQUEDA GLOBAL
+  // ============================================================================
+  const formatCOP = (val) => {
+    if (privacyMode) return '****';
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+  };
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    
+    const formatResult = (item, type, icon, color) => ({
+      id: item.id,
+      fecha: item.fecha || 'Sin fecha',
+      descripcion: item.descripcion || item.name || item.categoria || 'Sin descripción',
+      monto: item.monto || item.currentBalance || item.limite || 0,
+      tipo: type,
+      icon,
+      color
+    });
+
+    const results = [
+      ...activeEgresos.filter(e => (e.descripcion||'').toLowerCase().includes(query) || (e.categoria||'').toLowerCase().includes(query)).map(e => formatResult(e, 'Egreso', '📉', 'text-neonmagenta')),
+      ...activeIngresos.filter(i => (i.descripcion||'').toLowerCase().includes(query) || (i.categoria||'').toLowerCase().includes(query)).map(i => formatResult(i, 'Ingreso', '📈', 'text-emerald-400')),
+      ...activeTransferencias.filter(t => (t.descripcion||'').toLowerCase().includes(query)).map(t => formatResult(t, 'Transferencia', '🔄', 'text-amber-400')),
+      ...activeCalculatedAccounts.filter(c => (c.name||'').toLowerCase().includes(query)).map(c => formatResult(c, 'Cuenta', '🏦', 'text-neoncyan'))
+    ];
+
+    return results.sort((a, b) => new Date(b.fecha === 'Sin fecha' ? 0 : b.fecha) - new Date(a.fecha === 'Sin fecha' ? 0 : a.fecha));
+  }, [searchQuery, activeEgresos, activeIngresos, activeTransferencias, activeCalculatedAccounts]);
+
   if (authChecking) return (
     <div className="flex flex-col items-center justify-center h-screen bg-appbg">
       <div className="w-12 h-12 border-4 border-appcard border-t-neoncyan rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(0,229,255,0.4)]"></div>
@@ -306,7 +352,6 @@ function App() {
     </div>
   );
 
-  // ✨ AQUÍ ESTÁ EL CAMBIO DE "Deudas" A "Créditos" EN EL MENÚ
   const navItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'ingresos', label: 'Ingresos', icon: Wallet },
@@ -323,7 +368,6 @@ function App() {
   return (
     <div className="min-h-screen bg-appbg text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
 
-      {/* TOAST GLOBAL */}
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
 
       {/* BARRA LATERAL (PC) */}
@@ -399,7 +443,17 @@ function App() {
             </div>
           )}
           
-          <div className="flex-1 flex justify-end w-full md:w-auto">
+          <div className="flex-1 flex justify-end w-full md:w-auto gap-3">
+            
+            {/* ✨ BOTONES NUEVOS: PRIVACIDAD Y BUSCADOR */}
+            <button onClick={() => setPrivacyMode(!privacyMode)} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title={privacyMode ? "Mostrar saldos" : "Ocultar saldos"}>
+              <EyeIcon size={20} off={privacyMode} />
+            </button>
+            
+            <button onClick={() => { setIsSearchOpen(true); setTimeout(() => document.getElementById('global-search-input')?.focus(), 100); }} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title="Buscar en todo el sistema">
+              <SearchIcon size={20} />
+            </button>
+
             <div className="flex items-center bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:max-w-[240px] justify-between">
               <button onClick={() => changeMonth(-1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronLeft size={18}/></button>
               <span className="font-bold text-white capitalize text-sm tracking-wide">{getMonthName(selectedMonth)}</span>
@@ -408,7 +462,6 @@ function App() {
           </div>
         </div>
 
-        {/* BANNER MES HISTÓRICO */}
         {isHistoricalMonth && (
           <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 text-amber-400 text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)]">
             <AlertCircle size={14}/>
@@ -422,15 +475,16 @@ function App() {
         <div className="p-4 md:p-8 overflow-y-auto flex-1 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
           <div className="max-w-6xl mx-auto">
             <ErrorBoundary>
-              {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} />}
-              {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} proyeccionLiquidez={proyeccionLiquidez} />}
-              {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} />}
-              {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} />}
-              {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} />}
-              {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} />}
-              {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={activeEgresos} />}
-              {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} />}
-              {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} />}
+              {/* ✨ AÑADIMOS privacyMode A CADA PESTAÑA */}
+              {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
+              {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
+              {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} privacyMode={privacyMode} />}
+              {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} privacyMode={privacyMode} />}
+              {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} privacyMode={privacyMode} />}
+              {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} privacyMode={privacyMode} />}
+              {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={activeEgresos} privacyMode={privacyMode} />}
+              {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} privacyMode={privacyMode} />}
+              {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} privacyMode={privacyMode} />}
               {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
             </ErrorBoundary>
           </div>
@@ -534,6 +588,56 @@ function App() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ MODAL DEL BUSCADOR GLOBAL */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 bg-[#0b0c16]/90 backdrop-blur-md z-[60] flex flex-col items-center pt-10 md:pt-20 px-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl flex flex-col relative animate-in slide-in-from-top-4">
+            
+            <div className="relative z-10">
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-neoncyan"><SearchIcon size={24}/></span>
+              <input 
+                id="global-search-input"
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Busca el nombre del colegio, un supermercado, una cuenta..."
+                className="w-full bg-appcard shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-neoncyan/30 rounded-2xl pl-16 pr-12 py-5 text-lg font-black text-white outline-none focus:border-neoncyan focus:shadow-glow-cyan transition-all placeholder:text-slate-600 placeholder:font-medium"
+              />
+              <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-rose-400 p-2 transition-colors">
+                <XIcon size={20}/>
+              </button>
+            </div>
+
+            {searchQuery.trim() !== '' && (
+              <div className="mt-4 bg-appcard border border-white/[0.05] rounded-2xl p-2 max-h-[60vh] overflow-y-auto shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                {searchResults.length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    {searchResults.map((res, i) => (
+                      <div key={i} className="flex justify-between items-center p-4 hover:bg-white/[0.02] rounded-xl transition-colors cursor-default border border-transparent hover:border-white/[0.05]">
+                        <div className="flex items-center gap-4 overflow-hidden">
+                          <span className="text-2xl shrink-0">{res.icon}</span>
+                          <div className="truncate pr-2">
+                            <p className="text-sm font-bold text-white tracking-wide truncate">{res.descripcion}</p>
+                            <p className="text-[10px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5">{res.fecha} • {res.tipo}</p>
+                          </div>
+                        </div>
+                        <span className={`text-sm font-black tabular-nums shrink-0 drop-shadow-md ${res.color}`}>
+                          {formatCOP(res.monto)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-10 text-center">
+                    <p className="text-[#8A92A6] text-sm font-bold tracking-wide">No se encontraron resultados para "<span className="text-white">{searchQuery}</span>"</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
