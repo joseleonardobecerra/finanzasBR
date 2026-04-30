@@ -21,9 +21,10 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const AlertCircle = ({ size=16, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
   const Calculator = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14.01"></line><line x1="16" y1="10" x2="16" y2="10.01"></line><line x1="16" y1="18" x2="16" y2="18.01"></line><line x1="8" y1="14" x2="12" y2="14"></line><line x1="8" y1="10" x2="12" y2="10"></line><line x1="8" y1="18" x2="12" y2="18"></line></svg>;
   const BarChartIcon = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>;
+  const BarChart3 = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18"/><rect width="4" height="7" x="7" y="10" rx="1"/><rect width="4" height="12" x="15" y="5" rx="1"/></svg>;
 
   // ============================================================================
-  // LÓGICA DE DATOS
+  // LÓGICA DE DATOS ORIGINAL
   // ============================================================================
   const identifyOwner = (cuentaId, itemPersona, textDesc) => {
     if (itemPersona === 'L' || itemPersona === 'Leo') return 'Leo';
@@ -100,9 +101,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-  // ============================================================================
-  // RESTAURADA: LÓGICA DE MACRO-CATEGORÍAS Y FILTROS
-  // ============================================================================
   const getMacroCategoria = (catName) => {
       if (!catName) return 'Otros Gastos';
       const lower = catName.toLowerCase();
@@ -120,6 +118,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
       return catName; 
   };
 
+  // ============================================================================
+  // PREPARACIÓN DE DATOS PARA GRÁFICOS
+  // ============================================================================
   const chartData = useMemo(() => {
     const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
     const gastosPorCategoria = {};
@@ -136,7 +137,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
       if (interesOriginal > 0) gastosPorCategoria[macroInteres] = (gastosPorCategoria[macroInteres] || 0) + interesOriginal;
     });
     
-    // Lo convertimos al formato que espera Recharts (name, value)
     return Object.entries(gastosPorCategoria)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
@@ -158,7 +158,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     return null;
   };
 
-  // RESTAURACIÓN DE LA GRÁFICA DE TENDENCIA DE 6 MESES
   const trendData = useMemo(() => {
     const APP_START = '2026-04';
     const data = [];
@@ -202,25 +201,31 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">Resumen de flujos, analítica de egresos y proyecciones.</p>
       </header>
 
-      {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <Card className="flex flex-col justify-center">
-          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
-          <p className="text-xl md:text-2xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)] truncate">{formatCOP(ingresosMesTotal)}</p>
-        </Card>
+      {/* 1. TARJETAS DE RESUMEN SUPERIORES (Restauradas a 6 tarjetas) */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         
-        <Card onClick={() => toggleCard('egresos')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+        {/* Tarjeta 1 */}
+        <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
+          <p className="text-xl md:text-3xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)] truncate">
+            {formatCOP(ingresosMesTotal)}
+          </p>
+        </div>
+        
+        {/* Tarjeta 2 */}
+        <div onClick={() => toggleCard('egresos')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Egresos Totales</h3>
-              <p className="text-xl md:text-2xl font-black text-neonmagenta mt-1 drop-shadow-[0_0_8px_rgba(255,0,122,0.4)] truncate">{formatCOP(egresosMesTotal)}</p>
+              <p className="text-xl md:text-3xl font-black text-neonmagenta mt-1 drop-shadow-[0_0_8px_rgba(255,0,122,0.4)] truncate">
+                {formatCOP(egresosMesTotal)}
+              </p>
             </div>
             <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'egresos' ? 'rotate-90' : ''}`} />
           </div>
           {expandedCard === 'egresos' && (
             <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
               <ul className="space-y-3 text-xs">
-                {/* Restaurado: Muestra los datos filtrados en la tarjeta expandible */}
                 {chartData.map((entry, index) => (
                   <li key={entry.name} className="flex justify-between items-center">
                     <span className="truncate pr-2 font-bold text-white" style={{ color: COLORS[index % COLORS.length] }}>{entry.name}</span>
@@ -231,21 +236,58 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
               </ul>
             </div>
           )}
-        </Card>
+        </div>
 
-        <Card className="flex flex-col justify-center relative overflow-hidden group">
+        {/* Tarjeta 3 */}
+        <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-neoncyan/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest relative z-10">Flujo del mes</h3>
-          <p className={`text-xl md:text-2xl font-black mt-1 truncate relative z-10 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.4)]' : 'text-rose-500 drop-shadow-[0_0_5px_rgba(244,63,94,0.4)]'}`}>
+          <p className={`text-xl md:text-3xl font-black mt-1 truncate relative z-10 ${dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
             {formatCOP(dineroDisponible)}
           </p>
-        </Card>
-
-        <Card onClick={() => toggleCard('cuentas')} className="flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+        </div>
+        
+        {/* Tarjeta 4 (¡Restaurada!) */}
+        <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
+          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Pagos Fijos Ptes.</h3>
+          <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] truncate">
+            {formatCOP(pagosFijosPendientesTotal)}
+          </p>
+        </div>
+        
+        {/* Tarjeta 5 (¡Restaurada!) */}
+        <div onClick={() => toggleCard('presupuesto')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Presupuesto Config.</h3>
+              <p className="text-xl md:text-3xl font-black text-white mt-1 truncate">
+                {formatCOP(presupuestoTotal)}
+              </p>
+            </div>
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'presupuesto' ? 'rotate-90' : ''}`} />
+          </div>
+          {expandedCard === 'presupuesto' && (
+            <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
+              <div className="flex justify-between items-center text-xs mb-3">
+                <span className="text-[#8A92A6] font-bold">Gastos Fijos</span>
+                <span className="font-black text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-[#8A92A6] font-bold">Gastos Variables</span>
+                <span className="font-black text-neoncyan">{formatCOP(totalPresupuestadoVar)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Tarjeta 6 */}
+        <div onClick={() => toggleCard('cuentas')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero Cuentas</h3>
-              <p className="text-xl md:text-2xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] truncate">{formatCOP(totalDineroCuentas)}</p>
+              <p className="text-xl md:text-3xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] truncate">
+                {formatCOP(totalDineroCuentas)}
+              </p>
             </div>
             <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'cuentas' ? 'rotate-90' : ''}`} />
           </div>
@@ -263,7 +305,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
 
       {/* 2. ALERTAS: PAGOS PRÓXIMOS A VENCER */}
@@ -286,21 +328,144 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         </div>
       )}
 
-      {/* 3. GRÁFICOS RESTAURADOS Y MEJORADOS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* 3. RESUMEN EN VIVO (LEO VS ANDRE) */}
+      <div className="bg-appcard shadow-neumorph p-5 md:p-8 rounded-2xl border border-white/[0.02] flex flex-col">
+        <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2 uppercase tracking-widest">
+          <Calculator size={18} className="text-neoncyan" /> Resumen y Realidad (En Vivo)
+        </h2>
         
-        {/* DONA RECHARTS CON FILTROS RESTAURADOS */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-[#111222] shadow-neumorph-inset p-5 md:p-8 rounded-2xl border border-white/[0.02]">
+          
+          {/* LEO */}
+          <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
+            <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-neoncyan shadow-glow-cyan"></div> 1. Flujo mes Leo
+            </h3>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span><span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(proyIngLeo)}</span></div>
+              <span className="font-black text-emerald-400">{formatCOP(ingLeo)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#8A92A6]">Total Egresos</span>
+              <span className="font-black text-neonmagenta">{formatCOP(egrLeo)}</span>
+            </div>
+            <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
+              <span className="text-white">Flujo Leo</span>
+              <span className={ingLeo - egrLeo >= 0 ? 'text-neoncyan' : 'text-neonmagenta'}>{formatCOP(ingLeo - egrLeo)}</span>
+            </div>
+          </div>
+
+          {/* ANDRE */}
+          <div className="space-y-5 lg:border-r lg:border-white/[0.05] lg:pr-6">
+            <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-neonmagenta shadow-glow-magenta"></div> 2. Flujo Mes Andre
+            </h3>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span><span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(proyIngAndre)}</span></div>
+              <span className="font-black text-emerald-400">{formatCOP(ingAndre)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#8A92A6]">Total Egresos</span>
+              <span className="font-black text-neonmagenta">{formatCOP(egrAndre)}</span>
+            </div>
+            <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
+              <span className="text-white">Flujo Andre</span>
+              <span className={ingAndre - egrAndre >= 0 ? 'text-neoncyan' : 'text-neonmagenta'}>{formatCOP(ingAndre - egrAndre)}</span>
+            </div>
+          </div>
+
+          {/* HOGAR */}
+          <div className="space-y-5">
+            <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_10px_#fff]"></div> 3. Consolidado Hogar
+            </h3>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span><span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(proyeccionIngresosMes)}</span></div>
+              <span className="font-black text-emerald-400">{formatCOP(ingresosMesTotal)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Fijos (Sin TC)</span><span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(totalPresupuestadoFijo)}</span></div>
+              <span className="font-black text-amber-400">{formatCOP(gastadoFijoSinTC)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Var. (Sin TC)</span><span className="text-[10px] font-bold text-slate-600">Proy: {formatCOP(totalPresupuestadoVar)}</span></div>
+              <span className="font-black text-neoncyan">{formatCOP(gastadoVarSinTC)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-[#8A92A6]">Tarjetas Crédito</span>
+              <span className="font-black text-neonmagenta">{formatCOP(pagosTCLeo + pagosTCAndre)}</span>
+            </div>
+            <div className="flex justify-between text-sm items-center border-t border-white/[0.05] pt-4 mt-2">
+              <span className="text-white font-bold">Total Egresos</span>
+              <span className="font-black text-neonmagenta">{formatCOP(egresosMesTotal)}</span>
+            </div>
+            <div className="flex justify-between text-lg font-black pt-3 border-t border-white/[0.05] items-center">
+              <div className="flex flex-col">
+                <span className="text-white">TOTAL REAL</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Esperado: {formatCOP(totalProyeccionMes)}</span>
+              </div>
+              <span className={dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}>
+                {formatCOP(dineroDisponible)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. GRÁFICAS DE TENDENCIA Y DISTRIBUCIÓN */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* GRÁFICA: TENDENCIA 6 MESES */}
+        <div className="bg-appcard shadow-neumorph p-5 rounded-2xl border border-white/[0.02] flex flex-col">
+          <h2 className="text-sm font-black text-white mb-8 flex items-center gap-2 uppercase tracking-widest">
+            <BarChartIcon size={18} className="text-neoncyan" /> Tendencia Histórica
+          </h2>
+          <div className="flex-1 flex items-end justify-between gap-3 h-[200px] pb-4 border-b border-white/[0.05]">
+            {trendData.map((d, i) => {
+              const hInc = (d.ing / maxTrendVal) * 100;
+              const hExp = (d.egr / maxTrendVal) * 100;
+              const flujoAnterior = d.ing - d.egr;
+              return (
+                <div key={i} className="flex flex-col items-center w-full h-full justify-end group relative">
+                  <div className="flex gap-1.5 w-full justify-center items-end h-full">
+                    <div style={{ height: `${Math.max(hInc, 2)}%` }} className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neoncyan rounded-t-md shadow-[0_0_10px_rgba(0,229,255,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(0,229,255,0.6)]"></div>
+                    <div style={{ height: `${Math.max(hExp, 2)}%` }} className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neonmagenta rounded-t-md shadow-[0_0_10px_rgba(255,0,122,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(255,0,122,0.6)]"></div>
+                  </div>
+                  
+                  {/* Tooltip Hover */}
+                  <div className="opacity-0 group-hover:opacity-100 absolute -top-20 bg-appcard shadow-neumorph border border-white/[0.05] p-3 rounded-xl whitespace-nowrap z-10 pointer-events-none transition-all duration-300">
+                    <p className="text-neoncyan font-black text-xs mb-1">Ing: {formatCOP(d.ing)}</p>
+                    <p className="text-neonmagenta font-black text-xs mb-2">Egr: {formatCOP(d.egr)}</p>
+                    <div className="border-t border-white/[0.05] my-1 pt-1"></div>
+                    <p className={`font-black text-xs ${flujoAnterior >= 0 ? 'text-white' : 'text-amber-500'}`}>Neto: {formatCOP(flujoAnterior)}</p>
+                  </div>
+                </div>
+              )
+            })}
+            {trendData.length === 0 && (
+               <div className="w-full text-center text-slate-500 font-bold text-xs pb-10">Esperando datos...</div>
+            )}
+          </div>
+          <div className="flex justify-between mt-3 px-2">
+            {trendData.map((d, i) => <span key={i} className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">{d.label}</span>)}
+          </div>
+          <div className="flex justify-center gap-6 mt-6 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">
+            <span className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-neoncyan shadow-glow-cyan"></div> Ingresos</span>
+            <span className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-neonmagenta shadow-glow-magenta"></div> Egresos</span>
+          </div>
+        </div>
+
+        {/* GRÁFICO: DISTRIBUCIÓN DONA RECHARTS */}
         <div className="bg-appcard shadow-neumorph p-5 rounded-2xl border border-white/[0.02] flex flex-col">
           <div className="flex flex-col xl:flex-row justify-between xl:items-center mb-6 gap-3">
-            <h2 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-400"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
-              Distribución
+            <h2 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-widest">
+              <BarChart3 size={18} className="text-neonmagenta" /> Distribución
             </h2>
-            {/* Restauramos los botones de filtro */}
-            <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full xl:w-auto border border-transparent">
-              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 xl:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${chartFilter==='Todos' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-[#8A92A6] hover:text-white'}`}>Todos</button>
-              <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 xl:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${chartFilter==='Fijo' ? 'bg-amber-500 text-[#0b0c16] shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}>Fijos</button>
-              <button onClick={()=>setChartFilter('Variable')} className={`flex-1 xl:flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${chartFilter==='Variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>Var</button>
+            {/* Filtros */}
+            <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1.5 w-full xl:w-auto border border-transparent">
+              <button onClick={()=>setChartFilter('Todos')} className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Todos' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-[#8A92A6] hover:text-white'}`}>Todos</button>
+              <button onClick={()=>setChartFilter('Fijo')} className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Fijo' ? 'bg-amber-500 text-[#0b0c16] shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}>Fijos</button>
+              <button onClick={()=>setChartFilter('Variable')} className={`flex-1 xl:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${chartFilter==='Variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>Var</button>
             </div>
           </div>
           
@@ -336,166 +501,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </div>
         </div>
 
-        {/* TENDENCIA HISTÓRICA (Restaurada) */}
-        <div className="bg-appcard shadow-neumorph p-5 rounded-2xl border border-white/[0.02] flex flex-col">
-          <h2 className="text-xs font-black text-white mb-6 flex items-center gap-2 uppercase tracking-widest">
-            <BarChartIcon size={16} className="text-neoncyan" /> Tendencia Histórica
-          </h2>
-          <div className="flex-1 flex items-end justify-between gap-3 h-[200px] pb-4 border-b border-white/[0.05]">
-            {trendData.map((d, i) => {
-              const hInc = (d.ing / maxTrendVal) * 100;
-              const hExp = (d.egr / maxTrendVal) * 100;
-              const flujoAnterior = d.ing - d.egr;
-              return (
-                <div key={i} className="flex flex-col items-center w-full h-full justify-end group relative">
-                  <div className="flex gap-1.5 w-full justify-center items-end h-full">
-                    <div style={{ height: `${Math.max(hInc, 2)}%` }} className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neoncyan rounded-t-md shadow-[0_0_10px_rgba(0,229,255,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(0,229,255,0.6)]"></div>
-                    <div style={{ height: `${Math.max(hExp, 2)}%` }} className="w-1/3 max-w-[14px] bg-gradient-to-t from-[#111222] to-neonmagenta rounded-t-md shadow-[0_0_10px_rgba(255,0,122,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(255,0,122,0.6)]"></div>
-                  </div>
-                  
-                  <div className="opacity-0 group-hover:opacity-100 absolute -top-20 bg-appcard shadow-neumorph border border-white/[0.05] p-3 rounded-xl whitespace-nowrap z-10 pointer-events-none transition-all duration-300">
-                    <p className="text-neoncyan font-black text-xs mb-1">Ing: {formatCOP(d.ing)}</p>
-                    <p className="text-neonmagenta font-black text-xs mb-2">Egr: {formatCOP(d.egr)}</p>
-                    <div className="border-t border-white/[0.05] my-1 pt-1"></div>
-                    <p className={`font-black text-xs ${flujoAnterior >= 0 ? 'text-white' : 'text-amber-500'}`}>Neto: {formatCOP(flujoAnterior)}</p>
-                  </div>
-                </div>
-              )
-            })}
-            {trendData.length === 0 && (
-               <div className="w-full text-center text-slate-500 font-bold text-xs pb-10">Esperando datos...</div>
-            )}
-          </div>
-          <div className="flex justify-between mt-3 px-2">
-            {trendData.map((d, i) => <span key={i} className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">{d.label}</span>)}
-          </div>
-          <div className="flex justify-center gap-6 mt-4 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">
-            <span className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-neoncyan shadow-glow-cyan"></div> Ingresos</span>
-            <span className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-neonmagenta shadow-glow-magenta"></div> Egresos</span>
-          </div>
-        </div>
       </div>
-
-      {/* 4. ÚLTIMOS MOVIMIENTOS Y RESUMEN EN VIVO */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* ÚLTIMOS MOVIMIENTOS */}
-        <div className="lg:col-span-1 bg-[#111222] shadow-neumorph-inset p-5 rounded-2xl border border-transparent flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neoncyan"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              Últimos Gastos
-            </h2>
-          </div>
-
-          <div className="flex-1 overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-800 h-[280px]">
-            {egresosMes.length === 0 ? (
-              <EmptyStateIlustrado />
-            ) : (
-              <div className="space-y-3">
-                {egresosMes.slice(0, 7).map(e => (
-                  <div key={e.id} className="flex justify-between items-center p-3.5 bg-appcard border border-white/[0.02] rounded-xl hover:border-white/[0.05] transition-colors group">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${e.tipo === 'Fijo' ? 'bg-amber-500/10 text-amber-400' : 'bg-neoncyan/10 text-neoncyan'}`}>
-                        {e.tipo === 'Fijo' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>}
-                      </div>
-                      <div className="truncate pr-2">
-                        <p className="text-sm font-bold text-white tracking-wide truncate">{e.descripcion}</p>
-                        <p className="text-[9px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5 truncate">{e.categoria}</p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-black text-neonmagenta tabular-nums drop-shadow-[0_0_3px_rgba(255,0,122,0.3)]">-{formatCOP(e.monto)}</p>
-                      <p className="text-[9px] text-slate-500 font-bold tracking-widest mt-0.5">{e.fecha.slice(8,10)}/{e.fecha.slice(5,7)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* RESUMEN EN VIVO (LEO VS ANDRE) */}
-        <div className="lg:col-span-2 bg-appcard shadow-neumorph p-5 md:p-8 rounded-2xl border border-white/[0.02] flex flex-col">
-          <h2 className="text-sm font-black text-white mb-6 flex items-center gap-2 uppercase tracking-widest">
-            <Calculator size={18} className="text-neoncyan" /> Resumen y Realidad (En Vivo)
-          </h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
-            
-            {/* LEO */}
-            <div className="space-y-4 lg:border-r lg:border-white/[0.05] lg:pr-6">
-              <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-neoncyan shadow-glow-cyan"></div> 1. Flujo mes Leo
-              </h3>
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span></div>
-                <span className="font-black text-emerald-400">{formatCOP(ingLeo)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-[#8A92A6]">Total Egresos</span>
-                <span className="font-black text-neonmagenta">{formatCOP(egrLeo)}</span>
-              </div>
-              <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
-                <span className="text-white">Flujo Leo</span>
-                <span className={ingLeo - egrLeo >= 0 ? 'text-neoncyan' : 'text-neonmagenta'}>{formatCOP(ingLeo - egrLeo)}</span>
-              </div>
-            </div>
-
-            {/* ANDRE */}
-            <div className="space-y-4 lg:border-r lg:border-white/[0.05] lg:pr-6">
-              <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-neonmagenta shadow-glow-magenta"></div> 2. Flujo Mes Andre
-              </h3>
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span></div>
-                <span className="font-black text-emerald-400">{formatCOP(ingAndre)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-[#8A92A6]">Total Egresos</span>
-                <span className="font-black text-neonmagenta">{formatCOP(egrAndre)}</span>
-              </div>
-              <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
-                <span className="text-white">Flujo Andre</span>
-                <span className={ingAndre - egrAndre >= 0 ? 'text-neoncyan' : 'text-neonmagenta'}>{formatCOP(ingAndre - egrAndre)}</span>
-              </div>
-            </div>
-
-            {/* HOGAR */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/[0.05] pb-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_10px_#fff]"></div> 3. Consolidado Hogar
-              </h3>
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Total Ingresos</span></div>
-                <span className="font-black text-emerald-400">{formatCOP(ingresosMesTotal)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Fijos (Sin TC)</span></div>
-                <span className="font-black text-amber-400">{formatCOP(gastadoFijoSinTC)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col"><span className="text-xs font-bold text-[#8A92A6]">Var. (Sin TC)</span></div>
-                <span className="font-black text-neoncyan">{formatCOP(gastadoVarSinTC)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-[#8A92A6]">Tarjetas Crédito</span>
-                <span className="font-black text-neonmagenta">{formatCOP(pagosTCLeo + pagosTCAndre)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-black pt-4 border-t border-white/[0.05] items-center mt-2">
-                <div className="flex flex-col">
-                  <span className="text-white">TOTAL REAL</span>
-                </div>
-                <span className={dineroDisponible >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}>
-                  {formatCOP(dineroDisponible)}
-                </span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-      
     </div>
   );
 };
