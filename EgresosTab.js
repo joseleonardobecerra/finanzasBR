@@ -52,8 +52,6 @@ const EgresosTab = ({
   const Edit3 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
   const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
   const Plus = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-  // ✨ NUEVO ICONO PARA OCULTAR
-  const EyeOff = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>;
 
   // ============================================================================
   // 1. ESTADOS DEL FORMULARIO PRINCIPAL
@@ -89,7 +87,7 @@ const EgresosTab = ({
   // ============================================================================
   const [openSections, setOpenSections] = useState({
     form: true,
-    fijos: true, // Checklist abierto por defecto
+    fijos: true, // Checklist abierto por defecto para mayor agilidad
     historial: false
   });
 
@@ -101,7 +99,7 @@ const EgresosTab = ({
   const [pfState, setPfState] = useState({});
   const [tcState, setTcState] = useState({});
   
-  // Estados para edición inline de la Base de Pagos Fijos y TC
+  // Estados para edición inline de la Base de Pagos Fijos
   const [editingPfId, setEditingPfId] = useState(null);
   const [pfEditData, setPfEditData] = useState({});
   const [editingTcId, setEditingTcId] = useState(null);
@@ -115,7 +113,7 @@ const EgresosTab = ({
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
   const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
 
-  // Filtro dinámico de cuentas según el método de pago elegido
+  // Filtro dinámico de cuentas según el método de pago elegido en el formulario
   const cuentasFiltradas = useMemo(() => {
     if (!metodoPago) return [];
     if (metodoPago === 'cash') return cuentasActivas.filter(c => c.type === 'cash');
@@ -151,7 +149,7 @@ const EgresosTab = ({
   }, [egresosMes, filters]);
 
   // ============================================================================
-  // FUNCIONES DE REGISTRO INDIVIDUAL (FORMULARIO PRINCIPAL)
+  // FUNCIONES DE REGISTRO INDIVIDUAL
   // ============================================================================
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -172,21 +170,41 @@ const EgresosTab = ({
       deudaId: deudaId || null
     });
     
-    setDescripcion(''); setMonto(''); setInteresesOtros(''); setDeudaId('');
+    setDescripcion('');
+    setMonto('');
+    setInteresesOtros('');
+    setDeudaId('');
     showToast('Gasto registrado correctamente.');
   };
 
-  const startEditing = (egreso) => { setEditingId(egreso.id); setEditData({ ...egreso }); };
-  const saveEdit = async () => {
-    if (!editData.descripcion || !editData.monto || !editData.cuentaId || !editData.categoria) return showToast('Faltan datos en la edición', 'error');
-    await updateEgreso(editingId, { ...editData, monto: Number(editData.monto) });
-    setEditingId(null); showToast('Gasto actualizado.');
+  const startEditing = (egreso) => {
+    setEditingId(egreso.id);
+    setEditData({ ...egreso });
   };
-  const handleDelete = (id) => { if (window.confirm('¿Estás seguro de eliminar este gasto?')) { removeEgreso(id); showToast('Gasto eliminado.', 'error'); } };
-  const limpiarFiltros = () => setFilters({ descripcion: '', tipo: 'Ambos', categoria: '', cuenta: '' });
+
+  const saveEdit = async () => {
+    if (!editData.descripcion || !editData.monto || !editData.cuentaId || !editData.categoria) {
+      showToast('Faltan datos en la edición', 'error');
+      return;
+    }
+    await updateEgreso(editingId, { ...editData, monto: Number(editData.monto) });
+    setEditingId(null);
+    showToast('Gasto actualizado.');
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm('¿Estás seguro de eliminar este gasto?')) {
+      removeEgreso(id);
+      showToast('Gasto eliminado.', 'error');
+    }
+  };
+
+  const limpiarFiltros = () => {
+    setFilters({ descripcion: '', tipo: 'Ambos', categoria: '', cuenta: '' });
+  };
 
   // ============================================================================
-  // ✨ LÓGICA DE TARJETAS DE CRÉDITO (BÚSQUEDA INTELIGENTE)
+  // ✨ FUNCIONES PARA TARJETAS DE CRÉDITO (Búsqueda Estricta)
   // ============================================================================
   const getTCPagada = (tc) => {
     const pagosAsociados = egresosMes.filter(e => {
@@ -194,17 +212,14 @@ const EgresosTab = ({
       if (e.pagoTarjetaId === tc.id) return true;
       if (e.deudaId === tc.id) return true;
       
-      // 2. Detección Inteligente por Nombre (Para Pagos Antiguos / Formularios manuales)
+      // 2. Detección Inteligente por Nombre Estricto (Para registros manuales)
       const catLow = (e.categoria || '').toLowerCase();
       if (catLow.includes('tarjet') || catLow.includes('crédito') || catLow.includes('credito') || catLow.includes('deuda')) {
         const descLow = (e.descripcion || '').toLowerCase();
         const tcNameLow = (tc.name || '').toLowerCase();
         
+        // Exigimos que el nombre completo de la tarjeta esté en la descripción (evita cruzar "Andre" con "Leo")
         if (descLow.includes(tcNameLow)) return true;
-        
-        // Coincidencia parcial estricta
-        const parts = tcNameLow.split(' ').filter(p => p.length > 2);
-        if (parts.length > 0 && parts.every(part => descLow.includes(part))) return true;
       }
       return false;
     });
@@ -236,7 +251,7 @@ const EgresosTab = ({
       pagoTarjetaId: tc.id, 
     });
     
-    // Limpiamos el input para el próximo uso
+    // Limpiar input tras pago
     setTcState(prev => { const n = {...prev}; if(n[tc.id]) n[tc.id].monto = ''; return n; });
     showToast(`Pago de Tarjeta ${tc.name} registrado por ${formatCOP(montoPago)}.`);
   };
@@ -251,16 +266,17 @@ const EgresosTab = ({
     }
   };
 
-  const handleHideTc = (tc) => {
-    const skipped = tc.skippedMonths || [];
-    if (updateCuenta) updateCuenta(tc.id, { skippedMonths: [...skipped, selectedMonth] });
-    showToast(`Tarjeta oculta en ${selectedMonth}.`);
-  };
-
   const handleDeleteTc = (tc) => {
-    if (window.confirm(`¿Seguro que quieres eliminar la tarjeta "${tc.name}" PARA SIEMPRE de tu base de datos?`)) {
-      if (removeCuenta) removeCuenta(tc.id);
-      showToast("Tarjeta eliminada completamente.", "error");
+    const action = window.prompt(`¿Qué deseas hacer con la tarjeta "${tc.name}"?\n\n1. Ocultar solo este mes\n2. Eliminar para siempre\n\nEscribe 1 o 2:`);
+    if (action === '1') {
+      const skipped = tc.skippedMonths || [];
+      if (updateCuenta) updateCuenta(tc.id, { skippedMonths: [...skipped, selectedMonth] });
+      showToast(`Tarjeta oculta en ${selectedMonth}.`);
+    } else if (action === '2') {
+      if (window.confirm(`¿Seguro que quieres eliminar la tarjeta "${tc.name}" PARA SIEMPRE? (Los pagos pasados se conservan).`)) {
+        if (removeCuenta) removeCuenta(tc.id);
+        showToast("Tarjeta eliminada completamente.", "error");
+      }
     }
   };
 
@@ -272,7 +288,7 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // ✨ LÓGICA DE PAGOS FIJOS (REFACTORIZADO A TABLA)
+  // ✨ FUNCIONES PARA PAGOS FIJOS (REFACTORIZADO)
   // ============================================================================
   const getPagoRealizado = (pf) => {
     return egresosMes.find(e => {
@@ -322,16 +338,17 @@ const EgresosTab = ({
     }
   };
 
-  const handleHidePf = (pf) => {
-    const skipped = pf.skippedMonths || [];
-    updatePagoFijo(pf.id, { skippedMonths: [...skipped, selectedMonth] });
-    showToast(`Pago fijo oculto en ${selectedMonth}.`);
-  };
-
   const handleDeletePf = (pf) => {
-    if(window.confirm(`¿Seguro que quieres eliminar la configuración de "${pf.descripcion}" PARA SIEMPRE?\n(Los pagos ya hechos no se borrarán).`)) {
-      removePagoFijo(pf.id);
-      showToast("Pago Fijo eliminado del sistema.", "error");
+    const action = window.prompt(`¿Qué deseas hacer con el pago fijo "${pf.descripcion}"?\n\n1. Ocultar solo este mes\n2. Eliminar para siempre\n\nEscribe 1 o 2:`);
+    if (action === '1') {
+      const skipped = pf.skippedMonths || [];
+      updatePagoFijo(pf.id, { skippedMonths: [...skipped, selectedMonth] });
+      showToast(`Pago fijo oculto en ${selectedMonth}.`);
+    } else if (action === '2') {
+      if(window.confirm(`¿Seguro que quieres eliminar la configuración de "${pf.descripcion}" PARA SIEMPRE? (Los pagos viejos no se borran).`)) {
+        removePagoFijo(pf.id);
+        showToast("Pago Fijo eliminado del sistema.", "error");
+      }
     }
   };
 
@@ -366,10 +383,15 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // FILTRADO VISUAL (Solo los que no están ocultos en el mes)
+  // ✨ FILTRADO VISUAL INTELIGENTE
   // ============================================================================
   const pagosFijosVisibles = useMemo(() => {
-    return pagosFijos.filter(pf => !(pf.skippedMonths || []).includes(selectedMonth)).sort((a, b) => {
+    return pagosFijos.filter(pf => {
+      // Excluir si el usuario lo creó como tarjeta de crédito en Pagos Fijos en el pasado
+      const isTC = (pf.categoria || '').toLowerCase().includes('tarjet') || (pf.descripcion || '').toLowerCase().includes('tarjeta de cr');
+      const isHidden = (pf.skippedMonths || []).includes(selectedMonth);
+      return !isTC && !isHidden;
+    }).sort((a, b) => {
       const aPaid = !!getPagoRealizado(a);
       const bPaid = !!getPagoRealizado(b);
       if (aPaid && !bPaid) return 1;
@@ -384,7 +406,10 @@ const EgresosTab = ({
 
   // Listas de Ocultos (Para poder restaurarlos)
   const hiddenTCs = tarjetasCredito.filter(c => (c.skippedMonths || []).includes(selectedMonth));
-  const hiddenPFs = pagosFijos.filter(pf => (pf.skippedMonths || []).includes(selectedMonth));
+  const hiddenPFs = pagosFijos.filter(pf => {
+    const isTC = (pf.categoria || '').toLowerCase().includes('tarjet') || (pf.descripcion || '').toLowerCase().includes('tarjeta de cr');
+    return !isTC && (pf.skippedMonths || []).includes(selectedMonth);
+  });
 
   const restoreTC = (id) => {
     if (!id) return;
@@ -447,10 +472,12 @@ const EgresosTab = ({
           <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Total Gastado (Mes)</p>
           <p className="text-xl md:text-3xl font-black text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]">{formatCOP(totalMes)}</p>
         </div>
+        
         <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
           <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Gastos Fijos</p>
           <p className="text-xl md:text-3xl font-black text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">{formatCOP(totalFijos)}</p>
         </div>
+        
         <div className="p-5 bg-[#111222] shadow-neumorph-inset rounded-[20px] border border-transparent flex flex-col justify-center">
           <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Gastos Variables</p>
           <p className="text-xl md:text-3xl font-black text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]">{formatCOP(totalVariables)}</p>
@@ -461,66 +488,171 @@ const EgresosTab = ({
       {/* 1. FORMULARIO REGISTRO NORMAL (ACORDEÓN) */}
       {/* ============================================================================ */}
       <Card>
-        <div className="flex justify-between items-center cursor-pointer mb-2 select-none" onClick={() => toggleSection('form')}>
+        <div 
+          className="flex justify-between items-center cursor-pointer mb-2 select-none"
+          onClick={() => toggleSection('form')}
+        >
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
             <span className="w-6 h-6 rounded-md bg-neonmagenta/20 text-neonmagenta flex items-center justify-center text-xs">1</span>
             Registrar Gasto o Pago Libre
           </h2>
-          <button className="text-slate-500 hover:text-white transition-colors">{openSections.form ? <ChevronUpIcon /> : <ChevronDownIcon />}</button>
+          <button className="text-slate-500 hover:text-white transition-colors">
+            {openSections.form ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </button>
         </div>
 
         {openSections.form && (
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
-            <div><label className={labelBaseClass}>Fecha</label><input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`} /></div>
-            <div><label className={labelBaseClass}>Descripción</label><input type="text" required value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej. Almuerzo, Pago libre..." className={inputBaseClass} /></div>
+          <form 
+            onSubmit={handleSubmit} 
+            className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6 animate-in slide-in-from-top-4 fade-in duration-300"
+          >
+            {/* Fila 1 */}
+            <div>
+              <label className={labelBaseClass}>Fecha</label>
+              <input 
+                type="date" 
+                required 
+                value={fecha} 
+                onChange={(e) => setFecha(e.target.value)} 
+                onClick={(e) => e.target.showPicker && e.target.showPicker()} 
+                className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`}
+              />
+            </div>
+            
+            <div>
+              <label className={labelBaseClass}>Descripción</label>
+              <input 
+                type="text" 
+                required 
+                value={descripcion} 
+                onChange={(e) => setDescripcion(e.target.value)} 
+                placeholder="Ej. Almuerzo, Pago libre..." 
+                className={inputBaseClass}
+              />
+            </div>
+            
             <div>
               <label className={labelBaseClass}>Categoría</label>
-              <select required value={categoria} onChange={(e) => setCategoria(e.target.value)} className={`${inputBaseClass} appearance-none cursor-pointer`}>
+              <select 
+                required 
+                value={categoria} 
+                onChange={(e) => setCategoria(e.target.value)} 
+                className={`${inputBaseClass} appearance-none cursor-pointer`}
+              >
                 <option value="" className="bg-[#111222]">Seleccione...</option>
-                {categoriasMaestras.map(c => <option key={c} value={c} className="bg-[#111222]">{c}</option>)}
-                {!categoriasMaestras.includes('Intereses y otros') && <option value="Intereses y otros" className="bg-[#111222]">Intereses y otros</option>}
+                {categoriasMaestras.map(c => (
+                  <option key={c} value={c} className="bg-[#111222]">{c}</option>
+                ))}
+                {!categoriasMaestras.includes('Intereses y otros') && (
+                  <option value="Intereses y otros" className="bg-[#111222]">Intereses y otros</option>
+                )}
               </select>
             </div>
+
+            {/* Fila 2 */}
             <div>
               <label className={labelBaseClass}>Método de Pago</label>
-              <select required value={metodoPago} onChange={(e) => { setMetodoPago(e.target.value); setCuentaId(''); }} className={`${inputBaseClass} appearance-none cursor-pointer`}>
+              <select 
+                required 
+                value={metodoPago} 
+                onChange={(e) => {
+                  setMetodoPago(e.target.value);
+                  setCuentaId(''); 
+                }} 
+                className={`${inputBaseClass} appearance-none cursor-pointer`}
+              >
                 <option value="" className="bg-[#111222]">Seleccione...</option>
                 <option value="cash" className="bg-[#111222]">💵 Efectivo (Leo/Andre)</option>
                 <option value="bank" className="bg-[#111222]">🏦 Débito / Ahorro</option>
                 <option value="credit" className="bg-[#111222]">💳 Tarjeta de Crédito</option>
               </select>
             </div>
+
             <div>
               <label className={labelBaseClass}>De dónde sale la plata</label>
-              <select required disabled={!metodoPago} value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} className={`${inputBaseClass} appearance-none cursor-pointer disabled:opacity-30`}>
+              <select 
+                required 
+                disabled={!metodoPago}
+                value={cuentaId} 
+                onChange={(e) => setCuentaId(e.target.value)} 
+                className={`${inputBaseClass} appearance-none cursor-pointer disabled:opacity-30`}
+              >
                 <option value="" className="bg-[#111222]">{metodoPago ? "Seleccione cuenta..." : "Elija método de pago"}</option>
-                {cuentasFiltradas.map(c => <option key={c.id} value={c.id} className="bg-[#111222]">{c.type === 'cash' ? '💵' : c.type === 'credit' ? '💳' : '🏦'} {c.name}</option>)}
+                {cuentasFiltradas.map(c => (
+                  <option key={c.id} value={c.id} className="bg-[#111222]">
+                    {c.type === 'cash' ? '💵' : c.type === 'credit' ? '💳' : '🏦'} {c.name}
+                  </option>
+                ))}
               </select>
             </div>
+
             <div>
               <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-1 mb-1.5 flex items-center gap-1">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Abonar a Deuda (Opcional)
               </label>
-              <select value={deudaId} onChange={(e) => setDeudaId(e.target.value)} className={`${inputBaseClass} !border-indigo-500/30 focus:!border-indigo-500 focus:!shadow-[0_0_15px_rgba(99,102,241,0.4)] appearance-none cursor-pointer`}>
+              <select 
+                value={deudaId} 
+                onChange={(e) => setDeudaId(e.target.value)} 
+                className={`${inputBaseClass} !border-indigo-500/30 focus:!border-indigo-500 focus:!shadow-[0_0_15px_rgba(99,102,241,0.4)] appearance-none cursor-pointer`}
+              >
                 <option value="" className="bg-[#111222]">No es pago a deuda</option>
-                {todasLasDeudas.map(d => <option key={d.id} value={d.id} className="bg-[#111222]">Pagar: {d.name}</option>)}
+                {todasLasDeudas.map(d => (
+                  <option key={d.id} value={d.id} className="bg-[#111222]">Pagar: {d.name}</option>
+                ))}
               </select>
             </div>
+            
+            {/* Fila 3: Montos */}
             <div className="md:col-span-2 relative">
               <label className={labelBaseClass}>Monto Total Pagado</label>
               <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
-              <input type="number" required value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" className={`${inputBaseClass} pl-8 font-black text-lg text-neonmagenta`} />
+              <input 
+                type="number" 
+                required 
+                value={monto} 
+                onChange={(e) => setMonto(e.target.value)} 
+                placeholder="0" 
+                className={`${inputBaseClass} pl-8 font-black text-lg text-neonmagenta`}
+              />
             </div>
+
             <div className="md:col-span-1">
-              <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest pl-1 mb-1.5 flex items-center gap-1">Pago de Intereses (Opcional)</label>
-              <input type="number" value={interesesOtros} onChange={(e) => setInteresesOtros(e.target.value)} placeholder="$ 0 (Extra/Interés)" className={`${inputBaseClass} !border-amber-500/30 focus:!border-amber-500 focus:!shadow-[0_0_15px_rgba(251,191,36,0.4)] font-bold text-amber-400`} />
+              <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest pl-1 mb-1.5 flex items-center gap-1">
+                Pago de Intereses (Opcional)
+              </label>
+              <input 
+                type="number" 
+                value={interesesOtros} 
+                onChange={(e) => setInteresesOtros(e.target.value)} 
+                placeholder="$ 0 (Extra/Interés)" 
+                className={`${inputBaseClass} !border-amber-500/30 focus:!border-amber-500 focus:!shadow-[0_0_15px_rgba(251,191,36,0.4)] font-bold text-amber-400`}
+                title="Si este pago incluye intereses, digita cuánto fue."
+              />
             </div>
+
+            {/* Fila 4: Controles */}
             <div className="md:col-span-3 flex flex-col md:flex-row justify-between items-center mt-4 pt-6 border-t border-white/[0.05] gap-4">
                <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto">
-                  <button type="button" onClick={() => setTipo('Variable')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all ${tipo === 'Variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>Variable</button>
-                  <button type="button" onClick={() => setTipo('Fijo')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all ${tipo === 'Fijo' ? 'bg-amber-500 text-[#0b0c16] shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}>Fijo</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setTipo('Variable')} 
+                    className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all ${tipo === 'Variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}
+                  >
+                    Variable
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setTipo('Fijo')} 
+                    className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all ${tipo === 'Fijo' ? 'bg-amber-500 text-[#0b0c16] shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'text-[#8A92A6] hover:text-white'}`}
+                  >
+                    Fijo
+                  </button>
                </div>
-              <button type="submit" className="w-full md:w-auto bg-neonmagenta hover:bg-[#ff1a8c] text-[#0b0c16] font-black py-3.5 px-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-glow-magenta hover:scale-105 active:scale-95 tracking-wide uppercase">
+               
+              <button 
+                type="submit" 
+                className="w-full md:w-auto bg-neonmagenta hover:bg-[#ff1a8c] text-[#0b0c16] font-black py-3.5 px-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-glow-magenta hover:scale-105 active:scale-95 tracking-wide uppercase"
+              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14"/><path d="M12 5v14"/></svg> GUARDAR MOVIMIENTO
               </button>
             </div>
@@ -529,10 +661,13 @@ const EgresosTab = ({
       </Card>
 
       {/* ============================================================================ */}
-      {/* 2. ✨ TABLAS SEPARADAS: TARJETAS Y PAGOS FIJOS */}
+      {/* 2. PAGOS FIJOS (NUEVAS TABLAS SEPARADAS: TC Y FIJOS) */}
       {/* ============================================================================ */}
       <Card>
-        <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('fijos')}>
+        <div 
+          className="flex justify-between items-center cursor-pointer select-none"
+          onClick={() => toggleSection('fijos')}
+        >
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
              <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">2</span>
              Checklist Mensual
@@ -541,7 +676,9 @@ const EgresosTab = ({
             <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 uppercase tracking-widest">
                {pagosFijosVisibles.filter(pf => !!getPagoRealizado(pf)).length + tarjetasCreditoVisibles.filter(tc => getTCPagada(tc).isPaid).length} Listos
             </span>
-            <button className="text-slate-500 hover:text-white transition-colors">{openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}</button>
+            <button className="text-slate-500 hover:text-white transition-colors">
+              {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            </button>
           </div>
         </div>
 
@@ -616,7 +753,7 @@ const EgresosTab = ({
                                 className={`w-6 h-6 rounded-md flex items-center justify-center border-2 mx-auto transition-all ${
                                   isPaid 
                                     ? 'bg-emerald-500 border-emerald-500 text-[#0b0c16] shadow-[0_0_10px_rgba(16,185,129,0.5)] cursor-pointer hover:bg-rose-500 hover:border-rose-500' 
-                                    : 'bg-[#111222] border-slate-600 text-transparent hover:border-amber-500 cursor-pointer'
+                                    : 'bg-[#111222] border-slate-600 text-transparent hover:border-indigo-500 cursor-pointer'
                                 }`}
                               >
                                 {isPaid ? <CheckIcon size={14} className="hover:hidden block"/> : null}
@@ -644,7 +781,7 @@ const EgresosTab = ({
                                   {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                               ) : (
-                                <span className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-black">Monto Pagado</span>
+                                <span className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-black">Pagada</span>
                               )}
                             </td>
                             
@@ -655,7 +792,7 @@ const EgresosTab = ({
                                   placeholder="0" 
                                   value={tcState[tc.id]?.monto || ''} 
                                   onChange={(e) => handleTcChange(tc.id, 'monto', e.target.value)} 
-                                  className="w-24 bg-[#0b0c16] border border-white/[0.05] rounded-lg px-2 py-1.5 text-xs text-emerald-400 font-black outline-none text-right shadow-neumorph-inset focus:border-emerald-500 ml-auto" 
+                                  className="w-full bg-[#0b0c16] border border-white/[0.05] rounded-lg px-2 py-1.5 text-xs text-emerald-400 font-black outline-none text-right shadow-neumorph-inset focus:border-emerald-500 ml-auto" 
                                 />
                               ) : (
                                 <span className="font-black text-emerald-500 tabular-nums">
@@ -668,8 +805,7 @@ const EgresosTab = ({
                               {!isPaid ? (
                                 <div className="flex items-center justify-center gap-3">
                                   <button onClick={() => startEditTc(tc)} className="text-[#8A92A6] hover:text-indigo-400 transition-colors" title="Editar tarjeta"><Edit3 size={16}/></button>
-                                  <button onClick={() => handleHideTc(tc)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Ocultar este mes"><EyeOff size={16}/></button>
-                                  <button onClick={() => handleDeleteTc(tc)} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar para siempre"><Trash2 size={16}/></button>
+                                  <button onClick={() => handleDeleteTc(tc)} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar / Ocultar"><Trash2 size={16}/></button>
                                 </div>
                               ) : (
                                 <span className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-black">Listo</span>
@@ -832,8 +968,7 @@ const EgresosTab = ({
                             {!isPaid ? (
                               <div className="flex items-center justify-center gap-3">
                                 <button onClick={() => startEditPf(pf)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Editar base"><Edit3 size={16}/></button>
-                                <button onClick={() => handleHidePf(pf)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Ocultar este mes"><EyeOff size={16}/></button>
-                                <button onClick={() => handleDeletePf(pf)} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar para siempre"><Trash2 size={16}/></button>
+                                <button onClick={() => handleDeletePf(pf)} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar / Ocultar"><Trash2 size={16}/></button>
                               </div>
                             ) : (
                               <span className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-black">Listo</span>
