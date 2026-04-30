@@ -1,5 +1,8 @@
-const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, scoreHistory, proyeccionLiquidez }) => {
+const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, scoreHistory, proyeccionLiquidez, privacyMode }) => {
   const { useMemo } = React;
+
+  // ✨ IMPORTAMOS COMPONENTES DE GRÁFICAS
+  const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, Legend } = window.Recharts;
 
   // --- ÍCONOS NATIVOS ---
   const Zap = ({ size = 24, className = "" }) => (
@@ -28,15 +31,18 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     </svg>
   );
 
-  const formatCOP = (val) => new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0
-  }).format(val);
-
+  // ✨ MODO PRIVACIDAD APLICADO
+  const formatCOP = (val) => {
+    if (privacyMode) return '****';
+    return new Intl.NumberFormat('es-CO', { 
+      style: 'currency', 
+      currency: 'COP', 
+      maximumFractionDigits: 0 
+    }).format(val);
+  };
 
   // ============================================================================
-  // ✨ COMPONENTES SVG DINÁMICOS (CYBERPUNK STYLE) ✨
+  // COMPONENTES SVG DINÁMICOS ORIGINALES (CYBERPUNK STYLE)
   // ============================================================================
 
   const ScoreGauge = ({ score }) => {
@@ -87,10 +93,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   };
 
   // ============================================================================
-  // LÓGICA DE DATOS
+  // LÓGICA DE DATOS ORIGINAL
   // ============================================================================
   
-  // ✨ LÓGICA DE INICIO DESDE ABRIL 2026
   const {
     historialMensual, totalIngresosAnual, totalEgresosAnual, totalFijosAnual, totalVariablesAnual, mesesConSuperavit
   } = useMemo(() => {
@@ -105,7 +110,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
 
       const mesStr = d.toISOString().slice(0, 7);
       
-      // SOLO procesar si el mes es mayor o igual a Abril 2026
       if (mesStr >= APP_START) {
         const label = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace(/^\w/, c => c.toUpperCase());
 
@@ -158,7 +162,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     fechaBase.setMonth(fechaBase.getMonth() - 11);
     const hace12MesesStr = fechaBase.toISOString().slice(0, 7);
     
-    // Clamp to April 2026 if earlier
     const APP_START = '2026-04';
     const filterStart = hace12MesesStr < APP_START ? APP_START : hace12MesesStr;
 
@@ -177,6 +180,63 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   const maxValCat = topCategoriasAnual.length > 0 ? topCategoriasAnual[0][1] : 1;
   const pctFijos = totalEgresosAnual > 0 ? (totalFijosAnual / totalEgresosAnual) * 100 : 0;
   const pctVariables = totalEgresosAnual > 0 ? (totalVariablesAnual / totalEgresosAnual) * 100 : 0;
+
+  // ============================================================================
+  // ✨ NUEVA LÓGICA: DATOS PARA GRÁFICO RECHARTS LEO VS ANDRE
+  // ============================================================================
+  const datosComparativos = useMemo(() => {
+    const egresosMes = egresos.filter(e => e.fecha.startsWith(selectedMonth));
+    const categoriasObj = {};
+
+    egresosMes.forEach(e => {
+      const cat = e.categoria || 'Otros';
+      if (!categoriasObj[cat]) categoriasObj[cat] = { name: cat, Leo: 0, Andre: 0, Shared: 0 };
+      
+      const cuentaAsociada = cuentas.find(c => c.id === e.cuentaId);
+      const owner = cuentaAsociada ? cuentaAsociada.ownerId || 'Shared' : 'Shared';
+
+      if (owner === 'Leo' || e.persona === 'Leo') categoriasObj[cat].Leo += e.monto;
+      else if (owner === 'Andre' || e.persona === 'Andre') categoriasObj[cat].Andre += e.monto;
+      else categoriasObj[cat].Shared += e.monto;
+    });
+
+    return Object.values(categoriasObj)
+      .sort((a, b) => (b.Leo + b.Andre + b.Shared) - (a.Leo + a.Andre + a.Shared))
+      .slice(0, 6); 
+  }, [egresos, selectedMonth, cuentas]);
+
+  const CustomTooltipBar = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-appcard/95 backdrop-blur-md border border-white/[0.05] p-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] min-w-[150px]">
+          <p className="text-[11px] font-black uppercase tracking-widest text-white mb-3 border-b border-white/[0.1] pb-2">{label}</p>
+          {payload.map((entry, index) => (
+             entry.value > 0 && (
+              <div key={index} className="flex justify-between items-center text-xs font-bold mb-1.5 gap-4">
+                <span style={{ color: entry.fill }} className="uppercase tracking-wider">{entry.name}</span>
+                <span className="text-white tabular-nums">{formatCOP(entry.value)}</span>
+              </div>
+             )
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const EmptyStateAnalitica = () => (
+    <div className="flex flex-col items-center justify-center p-10 h-full text-center animate-in zoom-in-95 duration-500">
+      <div className="relative w-20 h-20 mb-4">
+        <div className="absolute inset-0 bg-neonmagenta/20 blur-xl rounded-full animate-pulse"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full text-neonmagenta drop-shadow-[0_0_10px_rgba(255,0,122,0.8)]">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+      </div>
+      <h3 className="text-white font-black uppercase tracking-widest text-xs mb-1">Sin datos para analizar</h3>
+      <p className="text-[#8A92A6] text-[10px] font-bold w-3/4 mx-auto">Comienza a registrar movimientos.</p>
+    </div>
+  );
+
 
   // ============================================================================
   // INTERFAZ DE USUARIO (UI)
@@ -232,11 +292,41 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </div>
       </div>
 
+      {/* ---------------------------------------------------- */}
+      {/* ✨ SECCIÓN NUEVA: GRÁFICO RECHARTS LEO VS ANDRE      */}
+      {/* ---------------------------------------------------- */}
+      <Card className="flex flex-col h-[400px]">
+        <h2 className="text-xs font-black text-white uppercase tracking-widest mb-2 flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neoncyan"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          Top Gastos: Leo vs Andre
+        </h2>
+        <p className="text-[10px] text-[#8A92A6] font-bold uppercase tracking-widest mb-6">Comparativa por Categorías (Mes Actual)</p>
+        
+        <div className="flex-1 w-full">
+          {datosComparativos.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={datosComparativos} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1c1e32" vertical={false} />
+                <XAxis dataKey="name" stroke="#8A92A6" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(val) => val.substring(0,6)+'...'} />
+                <YAxis stroke="#8A92A6" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                <RechartsTooltip content={<CustomTooltipBar />} cursor={{fill: '#1c1e32', opacity: 0.4}} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
+                <Bar dataKey="Leo" fill="#00E5FF" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Andre" fill="#FF007A" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Shared" name="Compartido" fill="#FBBF24" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyStateAnalitica />
+          )}
+        </div>
+      </Card>
+
+      {/* ---------------------------------------------------- */}
+      {/* SECCIÓN PROYECCIÓN Y RECOMENDACIONES                 */}
+      {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* ---------------------------------------------------- */}
-        {/* SECCIÓN 2: PROYECCIÓN DE LIQUIDEZ (MOVIDA DE DASHBOARD)*/}
-        {/* ---------------------------------------------------- */}
         {proyeccionLiquidez ? (
           <Card className="xl:col-span-2 flex flex-col justify-center">
             <h2 className="text-lg font-black text-white mb-6 tracking-wide flex items-center gap-2">
@@ -267,9 +357,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
           </Card>
         )}
 
-        {/* ---------------------------------------------------- */}
-        {/* SECCIÓN 3: RECOMENDACIONES                           */}
-        {/* ---------------------------------------------------- */}
         <Card className="flex flex-col">
            <div className="flex items-center gap-2 mb-6">
               <Zap className="text-amber-400 w-5 h-5 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/>
@@ -300,7 +387,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* ---------------------------------------------------- */}
-        {/* TARJETA 1: ESTRATEGIA AVALANCHA                      */}
+        {/* TARJETA 5: ESTRATEGIA AVALANCHA                      */}
         {/* ---------------------------------------------------- */}
         <Card className="flex flex-col">
           <div className="flex justify-between items-center mb-6">
@@ -344,7 +431,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
 
         <div className="flex flex-col gap-6">
           {/* ---------------------------------------------------- */}
-          {/* TARJETA 2: EXTREMOS DEL AÑO                          */}
+          {/* TARJETA 6: EXTREMOS DEL AÑO                          */}
           {/* ---------------------------------------------------- */}
           <Card className="flex flex-col justify-center gap-4">
             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-2">Extremos de tu Historial</h3>
@@ -371,7 +458,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
           </Card>
 
           {/* ---------------------------------------------------- */}
-          {/* TARJETA 3: TOP 5 FUGAS                               */}
+          {/* TARJETA 7: TOP 5 FUGAS                               */}
           {/* ---------------------------------------------------- */}
           <Card className="flex flex-col flex-1">
             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Top Fugas ({topCategoriasAnual.length > 0 ? topCategoriasAnual.length : 0})</h3>
@@ -401,7 +488,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         </div>
 
         {/* ---------------------------------------------------- */}
-        {/* TARJETA 4: ESTRUCTURA DE GASTO CON DONA SVG          */}
+        {/* TARJETA 8: ESTRUCTURA DE GASTO CON DONA SVG          */}
         {/* ---------------------------------------------------- */}
         <Card className="lg:col-span-2 flex flex-col justify-center">
           <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Estructura de Gasto Real</h3>
