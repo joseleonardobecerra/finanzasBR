@@ -25,7 +25,6 @@ const EgresosTab = ({
   // UTILIDADES
   // ============================================================================
   
-  // ✨ MODO PRIVACIDAD APLICADO
   const formatCOP = (val) => {
     if (privacyMode) return '****';
     return new Intl.NumberFormat('es-CO', { 
@@ -53,6 +52,7 @@ const EgresosTab = ({
   const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
   const Plus = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
   const EyeOff = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>;
+  const CreditCardIcon = ({ size = 18, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>;
 
   // ============================================================================
   // 1. ESTADOS DEL FORMULARIO PRINCIPAL
@@ -87,23 +87,27 @@ const EgresosTab = ({
   // 4. ESTADOS PARA LOS ACORDEONES Y TABLAS
   // ============================================================================
   const [openSections, setOpenSections] = useState({
-    form: true,
-    fijos: true, 
-    historial: false
+    form: false,     // Cerrado por defecto
+    tc: false,       // Cerrado por defecto
+    fijos: false,    // Cerrado por defecto
+    historial: false // Cerrado por defecto
   });
 
   const toggleSection = (sec) => {
     setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
   };
 
+  // Estados para Pagos Fijos y TC
   const [pfState, setPfState] = useState({});
   const [tcState, setTcState] = useState({});
   
+  // Estados para edición inline de la Base de Pagos Fijos y TC
   const [editingPfId, setEditingPfId] = useState(null);
   const [pfEditData, setPfEditData] = useState({});
   const [editingTcId, setEditingTcId] = useState(null);
   const [tcEditData, setTcEditData] = useState({});
   
+  // Estado para añadir nuevo Pago Fijo rápido
   const [nuevoPf, setNuevoPf] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '1' });
 
   // Listas de Cuentas Filtradas Globales
@@ -111,6 +115,7 @@ const EgresosTab = ({
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
   const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
 
+  // Filtro dinámico de cuentas según el método de pago elegido en el formulario
   const cuentasFiltradas = useMemo(() => {
     if (!metodoPago) return [];
     if (metodoPago === 'cash') return cuentasActivas.filter(c => c.type === 'cash');
@@ -132,6 +137,9 @@ const EgresosTab = ({
   const totalFijos = egresosMes.filter(e => e.tipo === 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
   const totalVariables = egresosMes.filter(e => e.tipo !== 'Fijo').reduce((s, e) => s + Number(e.monto), 0);
 
+  // ============================================================================
+  // FILTRADO DEL HISTORIAL COMPLETO
+  // ============================================================================
   const egresosFiltrados = useMemo(() => {
     return egresosMes.filter(egreso => {
       const matchDesc = egreso.descripcion.toLowerCase().includes(filters.descripcion.toLowerCase());
@@ -178,21 +186,22 @@ const EgresosTab = ({
   const limpiarFiltros = () => setFilters({ descripcion: '', tipo: 'Ambos', categoria: '', cuenta: '' });
 
   // ============================================================================
-  // ✨ LÓGICA DE TARJETAS DE CRÉDITO (CORRECCIÓN OCULTAR VS ELIMINAR)
+  // ✨ LÓGICA DE TARJETAS DE CRÉDITO (BÚSQUEDA INTELIGENTE)
   // ============================================================================
   const getTCPagada = (tc) => {
     const pagosAsociados = egresosMes.filter(e => {
+      // 1. Detección Exacta
       if (e.pagoTarjetaId === tc.id) return true;
       if (e.deudaId === tc.id) return true;
       
+      // 2. Detección Inteligente por Nombre Estricto (Para registros manuales)
       const catLow = (e.categoria || '').toLowerCase();
       if (catLow.includes('tarjet') || catLow.includes('crédito') || catLow.includes('credito') || catLow.includes('deuda')) {
         const descLow = (e.descripcion || '').toLowerCase();
         const tcNameLow = (tc.name || '').toLowerCase();
-        if (descLow.includes(tcNameLow)) return true;
         
-        const parts = tcNameLow.split(' ').filter(p => p.length > 2);
-        if (parts.length > 0 && parts.every(part => descLow.includes(part))) return true;
+        // Exigimos que el nombre completo de la tarjeta esté en la descripción
+        if (descLow.includes(tcNameLow)) return true;
       }
       return false;
     });
@@ -214,7 +223,7 @@ const EgresosTab = ({
 
     addEgreso({
       id: generateId(),
-      fecha: getLocalToday(),
+      fecha: getLocalToday(), // ✨ Registra la fecha exacta del día en que se hizo clic
       descripcion: `Pago Tarjeta: ${tc.name}`,
       categoria: 'Tarjetas y Créditos',
       monto: montoPago,
@@ -224,6 +233,7 @@ const EgresosTab = ({
       pagoTarjetaId: tc.id, 
     });
     
+    // Limpiamos el input para el próximo uso
     setTcState(prev => { const n = {...prev}; if(n[tc.id]) n[tc.id].monto = ''; return n; });
     showToast(`Pago de Tarjeta ${tc.name} registrado por ${formatCOP(montoPago)}.`);
   };
@@ -238,32 +248,28 @@ const EgresosTab = ({
     }
   };
 
-  // ✨ CORRECCIÓN: NUNCA se llama a removeCuenta desde aquí.
   const handleDeleteTc = (tc) => {
-    const action = window.prompt(`¿Qué deseas hacer con la tarjeta "${tc.name}" en este checklist?\n\n1. Ocultar solo este mes\n2. Ocultar para siempre\n\nEscribe 1 o 2:`);
+    const action = window.prompt(`¿Qué deseas hacer con la tarjeta "${tc.name}" en este checklist?\n\n1. Ocultar SOLO este mes\n2. Ocultar para SIEMPRE\n\nEscribe 1 o 2:`);
     
     if (action === '1') {
       const skipped = tc.skippedMonths || [];
       if (updateCuenta) updateCuenta(tc.id, { skippedMonths: [...skipped, selectedMonth] });
       showToast(`Tarjeta oculta en ${selectedMonth}.`);
     } else if (action === '2') {
-      if (window.confirm(`¿Seguro que quieres ocultar "${tc.name}" del checklist para siempre?\n(Tu tarjeta NO se borrará del sistema, solo desaparecerá de aquí).`)) {
-        if (updateCuenta) updateCuenta(tc.id, { hideFromChecklist: true });
-        showToast("Tarjeta oculta del checklist permanentemente.", "error");
-      }
+      if (updateCuenta) updateCuenta(tc.id, { hideFromChecklist: true });
+      showToast("Tarjeta oculta del checklist permanentemente.", "error");
     }
   };
 
-  const startEditTc = (tc) => { setEditingTcId(tc.id); setTcEditData({ name: tc.name, currentDebt: tc.currentDebt }); };
+  const startEditTc = (tc) => { setEditingTcId(tc.id); setTcEditData({ name: tc.name, currentDebt: tc.currentDebt, diaPago: tc.diaPago || 1 }); };
   const saveEditTc = () => {
     if (!tcEditData.name) return showToast('El nombre es requerido', 'error');
-    if (updateCuenta) updateCuenta(editingTcId, { name: tcEditData.name, currentDebt: Number(tcEditData.currentDebt) });
+    if (updateCuenta) updateCuenta(editingTcId, { name: tcEditData.name, currentDebt: Number(tcEditData.currentDebt), diaPago: Number(tcEditData.diaPago) });
     setEditingTcId(null); showToast("Tarjeta actualizada.");
   };
 
-
   // ============================================================================
-  // LÓGICA DE PAGOS FIJOS (REFACTORIZADO A TABLA)
+  // ✨ LÓGICA DE PAGOS FIJOS (REFACTORIZADO A TABLA)
   // ============================================================================
   const getPagoRealizado = (pf) => {
     return egresosMes.find(e => {
@@ -293,7 +299,7 @@ const EgresosTab = ({
 
     addEgreso({
       id: generateId(),
-      fecha: getLocalToday(),
+      fecha: getLocalToday(), // ✨ Registra la fecha exacta del día en que se hizo clic
       descripcion: pf.descripcion,
       categoria: pf.categoria || 'Otros',
       monto: montoFinal,
@@ -314,7 +320,7 @@ const EgresosTab = ({
   };
 
   const handleDeletePf = (pf) => {
-    const action = window.prompt(`¿Qué deseas hacer con el pago fijo "${pf.descripcion}"?\n\n1. Ocultar solo este mes\n2. Eliminar para siempre\n\nEscribe 1 o 2:`);
+    const action = window.prompt(`¿Qué deseas hacer con el pago fijo "${pf.descripcion}"?\n\n1. Ocultar SOLO este mes\n2. Eliminar del sistema para SIEMPRE\n\nEscribe 1 o 2:`);
     if (action === '1') {
       const skipped = pf.skippedMonths || [];
       updatePagoFijo(pf.id, { skippedMonths: [...skipped, selectedMonth] });
@@ -346,25 +352,30 @@ const EgresosTab = ({
 
   const handleCreateNuevoPf = () => {
     if (!nuevoPf.descripcion || !nuevoPf.monto) return showToast('Escribe un nombre y un monto.', 'error');
+    const isRecurrente = window.confirm("¿Este pago fijo es RECURRENTE (todos los meses)?\n\n[Aceptar] = Sí, todos los meses\n[Cancelar] = No, SOLO por este mes");
+    
     addPagoFijo({
       id: generateId(),
       descripcion: nuevoPf.descripcion,
       categoria: nuevoPf.categoria,
       monto: Number(nuevoPf.monto),
-      diaPago: Number(nuevoPf.diaPago)
+      diaPago: Number(nuevoPf.diaPago),
+      mesEspecifico: isRecurrente ? null : selectedMonth // Si es solo por este mes, le asignamos el mes especifico
     });
     setNuevoPf({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '1' });
-    showToast("Nuevo Pago Fijo agregado exitosamente.");
+    showToast(isRecurrente ? "Nuevo Pago Fijo agregado exitosamente." : "Pago programado solo para este mes.");
   };
 
   // ============================================================================
-  // FILTRADO VISUAL
+  // FILTRADO VISUAL (Solo los que no están ocultos en el mes)
   // ============================================================================
   const pagosFijosVisibles = useMemo(() => {
     return pagosFijos.filter(pf => {
+      // Excluir si el usuario lo creó como tarjeta de crédito en Pagos Fijos en el pasado
       const isTC = (pf.categoria || '').toLowerCase().includes('tarjet') || (pf.descripcion || '').toLowerCase().includes('tarjeta de cr');
       const isHidden = (pf.skippedMonths || []).includes(selectedMonth);
-      return !isTC && !isHidden;
+      const isDifferentMonth = pf.mesEspecifico && pf.mesEspecifico !== selectedMonth; // Filtro de mes específico
+      return !isTC && !isHidden && !isDifferentMonth;
     }).sort((a, b) => {
       const aPaid = !!getPagoRealizado(a);
       const bPaid = !!getPagoRealizado(b);
@@ -383,7 +394,7 @@ const EgresosTab = ({
   const hiddenTCs = tarjetasCredito.filter(c => (c.skippedMonths || []).includes(selectedMonth) || c.hideFromChecklist);
   const hiddenPFs = pagosFijos.filter(pf => {
     const isTC = (pf.categoria || '').toLowerCase().includes('tarjet') || (pf.descripcion || '').toLowerCase().includes('tarjeta de cr');
-    return !isTC && (pf.skippedMonths || []).includes(selectedMonth);
+    return !isTC && ((pf.skippedMonths || []).includes(selectedMonth) || (pf.mesEspecifico && pf.mesEspecifico !== selectedMonth));
   });
 
   const restoreTC = (id) => {
@@ -399,7 +410,7 @@ const EgresosTab = ({
     if (!id) return;
     const pf = pagosFijos.find(p => p.id === id);
     const skipped = (pf.skippedMonths || []).filter(m => m !== selectedMonth);
-    updatePagoFijo(id, { skippedMonths: skipped });
+    updatePagoFijo(id, { skippedMonths: skipped, mesEspecifico: null });
     showToast(`Pago fijo restaurado.`);
   };
 
@@ -639,38 +650,31 @@ const EgresosTab = ({
       </Card>
 
       {/* ============================================================================ */}
-      {/* 2. PAGOS FIJOS (NUEVAS TABLAS SEPARADAS: TC Y FIJOS) */}
+      {/* 2. TABLA TARJETAS DE CRÉDITO */}
       {/* ============================================================================ */}
       <Card>
         <div 
           className="flex justify-between items-center cursor-pointer select-none"
-          onClick={() => toggleSection('fijos')}
+          onClick={() => toggleSection('tc')}
         >
-          <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
-             <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">2</span>
-             Checklist Mensual
+          <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide uppercase">
+             <span className="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">2</span>
+             Pagos a Tarjetas de Crédito
           </h2>
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 uppercase tracking-widest">
-               {pagosFijosVisibles.filter(pf => !!getPagoRealizado(pf)).length + tarjetasCreditoVisibles.filter(tc => getTCPagada(tc).isPaid).length} Listos
+            <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 uppercase tracking-widest">
+               {tarjetasCreditoVisibles.filter(tc => getTCPagada(tc).isPaid).length} / {tarjetasCreditoVisibles.length} Listas
             </span>
             <button className="text-slate-500 hover:text-white transition-colors">
-              {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              {openSections.tc ? <ChevronUpIcon /> : <ChevronDownIcon />}
             </button>
           </div>
         </div>
 
-        {openSections.fijos && (
+        {openSections.tc && (
           <div className="mt-8 space-y-8 animate-in slide-in-from-top-4 fade-in duration-300">
-            
-            {/* --- TABLA 2A: TARJETAS DE CRÉDITO --- */}
             <div>
-              <div className="flex flex-col sm:flex-row justify-between sm:items-end mb-4 gap-3">
-                <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                  Pagar Tarjetas de Crédito
-                </h3>
-                
+              <div className="flex flex-col sm:flex-row justify-end sm:items-end mb-4 gap-3">
                 {/* Desplegable para Agregar/Restaurar Tarjetas Ocultas */}
                 {hiddenTCs.length > 0 ? (
                   <select 
@@ -691,6 +695,7 @@ const EgresosTab = ({
                     <tr>
                       <th className="px-5 py-4 w-[10%] text-center">Estado</th>
                       <th className="px-5 py-4 w-[25%]">Tarjeta</th>
+                      <th className="px-5 py-4 w-[8%] text-center">Día</th>
                       <th className="px-5 py-4 w-[15%] text-right">Deuda Total</th>
                       <th className="px-5 py-4 w-[20%]">Pagar desde...</th>
                       <th className="px-5 py-4 w-[15%] text-right">Monto a pagar</th>
@@ -699,7 +704,7 @@ const EgresosTab = ({
                   </thead>
                   <tbody className="divide-y divide-white/[0.02]">
                     {tarjetasCreditoVisibles.length === 0 ? (
-                      <tr><td colSpan="6" className="p-8 text-center text-[#8A92A6] font-bold italic">No tienes tarjetas visibles. Agrégalas en el botón de arriba o en la pestaña "Cuentas".</td></tr>
+                      <tr><td colSpan="7" className="p-6 text-center text-[#8A92A6] font-bold italic">No tienes tarjetas visibles. Agrégalas en el botón de arriba o en la pestaña "Cuentas".</td></tr>
                     ) : (
                       tarjetasCreditoVisibles.map(tc => {
                         const datosPago = getTCPagada(tc);
@@ -711,6 +716,7 @@ const EgresosTab = ({
                             <tr key={tc.id} className="bg-indigo-900/10">
                               <td className="px-3 py-3 text-center">-</td>
                               <td className="px-3 py-3"><input type="text" value={tcEditData.name} onChange={e=>setTcEditData({...tcEditData, name: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-indigo-500" placeholder="Nombre" /></td>
+                              <td className="px-3 py-3"><input type="number" value={tcEditData.diaPago} onChange={e=>setTcEditData({...tcEditData, diaPago: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-2 py-1.5 text-xs text-white outline-none text-center shadow-neumorph-inset focus:border-indigo-500" placeholder="Día" /></td>
                               <td className="px-3 py-3"><input type="number" value={tcEditData.currentDebt} onChange={e=>setTcEditData({...tcEditData, currentDebt: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-2 py-1.5 text-xs text-rose-400 font-bold outline-none text-right shadow-neumorph-inset focus:border-indigo-500" placeholder="Deuda Total" /></td>
                               <td className="px-3 py-3 text-slate-500">-</td>
                               <td className="px-3 py-3 text-right text-slate-500">-</td>
@@ -741,9 +747,13 @@ const EgresosTab = ({
                             
                             <td className={`px-5 py-3 font-bold tracking-wide ${isPaid ? 'line-through text-emerald-500/70' : 'text-white'}`}>
                               {tc.name}
-                              {datosPago.pagos.length > 1 && <span className="block text-[9px] text-emerald-400 font-black uppercase tracking-widest no-underline">({datosPago.pagos.length} pagos sumados)</span>}
+                              {datosPago.pagos.length > 1 && <span className="block text-[9px] text-emerald-400 font-black uppercase tracking-widest no-underline mt-1">({datosPago.pagos.length} pagos sumados)</span>}
                             </td>
                             
+                            <td className="px-5 py-3 text-center text-[#8A92A6] font-black">
+                              {tc.diaPago || 1}
+                            </td>
+
                             <td className="px-5 py-3 text-right font-black text-rose-400 tabular-nums">
                               {formatCOP(tc.currentDebt)}
                             </td>
@@ -759,7 +769,7 @@ const EgresosTab = ({
                                   {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                               ) : (
-                                <span className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-black">Pagada</span>
+                                <span className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-black">Monto Pagado</span>
                               )}
                             </td>
                             
@@ -770,7 +780,7 @@ const EgresosTab = ({
                                   placeholder="0" 
                                   value={tcState[tc.id]?.monto || ''} 
                                   onChange={(e) => handleTcChange(tc.id, 'monto', e.target.value)} 
-                                  className="w-full bg-[#0b0c16] border border-white/[0.05] rounded-lg px-2 py-1.5 text-xs text-emerald-400 font-black outline-none text-right shadow-neumorph-inset focus:border-emerald-500" 
+                                  className="w-24 bg-[#0b0c16] border border-white/[0.05] rounded-lg px-2 py-1.5 text-xs text-emerald-400 font-black outline-none text-right shadow-neumorph-inset focus:border-emerald-500 ml-auto" 
                                 />
                               ) : (
                                 <span className="font-black text-emerald-500 tabular-nums">
@@ -783,7 +793,6 @@ const EgresosTab = ({
                               {!isPaid ? (
                                 <div className="flex items-center justify-center gap-3">
                                   <button onClick={() => startEditTc(tc)} className="text-[#8A92A6] hover:text-indigo-400 transition-colors" title="Editar tarjeta"><Edit3 size={16}/></button>
-                                  {/* ✨ MODIFICADO: Ahora usa handleDeleteTc que pregunta Ocultar o Eliminar */}
                                   <button onClick={() => handleDeleteTc(tc)} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar / Ocultar"><Trash2 size={16}/></button>
                                 </div>
                               ) : (
@@ -798,7 +807,7 @@ const EgresosTab = ({
                     {/* Fila de Totales TC */}
                     {tarjetasCreditoVisibles.length > 0 && (
                       <tr className="bg-[#0b0c16]/50 border-t border-white/[0.05]">
-                        <td colSpan="2" className="px-5 py-4 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">TOTALES TARJETAS</td>
+                        <td colSpan="3" className="px-5 py-4 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest text-right">TOTALES TARJETAS</td>
                         <td className="px-5 py-4 text-right font-black text-rose-400 tabular-nums drop-shadow-[0_0_5px_rgba(244,63,94,0.4)]">{formatCOP(tcTotalDeuda)}</td>
                         <td className="px-5 py-4 text-right text-[#8A92A6] text-[10px] font-bold uppercase tracking-widest">A pagar este mes:</td>
                         <td className="px-5 py-4 text-right font-black text-emerald-400 tabular-nums drop-shadow-[0_0_5px_rgba(52,211,153,0.4)]">{formatCOP(tcTotalPagar)}</td>
@@ -809,15 +818,36 @@ const EgresosTab = ({
                 </table>
               </div>
             </div>
+          </div>
+        )}
+      </Card>
 
-            {/* --- TABLA 2B: PAGOS FIJOS REGULARES --- */}
+      {/* ============================================================================ */}
+      {/* 3. TABLA PAGOS FIJOS */}
+      {/* ============================================================================ */}
+      <Card>
+        <div 
+          className="flex justify-between items-center cursor-pointer select-none"
+          onClick={() => toggleSection('fijos')}
+        >
+          <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
+             <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">3</span>
+             Pagos Fijos (Servicios, Suscripciones, etc.)
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 uppercase tracking-widest">
+               {pagosFijosVisibles.filter(pf => !!getPagoRealizado(pf)).length} / {pagosFijosVisibles.length} Listos
+            </span>
+            <button className="text-slate-500 hover:text-white transition-colors">
+              {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            </button>
+          </div>
+        </div>
+
+        {openSections.fijos && (
+          <div className="mt-8 space-y-8 animate-in slide-in-from-top-4 fade-in duration-300">
             <div>
-              <div className="flex flex-col sm:flex-row justify-between sm:items-end mb-4 gap-3">
-                <h3 className="text-sm font-black text-amber-400 uppercase tracking-widest flex items-center gap-2">
-                  <CheckIcon size={18} />
-                  Pagos Fijos
-                </h3>
-                
+              <div className="flex flex-col sm:flex-row justify-end sm:items-end mb-4 gap-3">
                 {/* Desplegable para Restaurar Pagos Ocultos */}
                 {hiddenPFs.length > 0 && (
                   <select 
@@ -947,7 +977,6 @@ const EgresosTab = ({
                             {!isPaid ? (
                               <div className="flex items-center justify-center gap-3">
                                 <button onClick={() => startEditPf(pf)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Editar base"><Edit3 size={16}/></button>
-                                {/* ✨ MODIFICADO: Ahora usa handleDeletePf que pregunta Ocultar o Eliminar */}
                                 <button onClick={() => handleDeletePf(pf)} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar / Ocultar base"><Trash2 size={16}/></button>
                               </div>
                             ) : (
@@ -978,7 +1007,7 @@ const EgresosTab = ({
       </Card>
 
       {/* ============================================================================ */}
-      {/* 3. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
+      {/* 4. TABLA HISTORIAL COMPLETA (ACORDEÓN) */}
       {/* ============================================================================ */}
       <Card>
         <div 
@@ -987,7 +1016,7 @@ const EgresosTab = ({
         >
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
             <span className="w-6 h-6 rounded-md bg-slate-800 text-slate-400 flex items-center justify-center text-xs"><ListIcon size={14}/></span>
-            3. Historial Completo de Egresos
+            4. Historial Completo de Egresos
           </h2>
           <div className="flex items-center gap-3">
             <span className="bg-[#111222] shadow-neumorph-inset text-[#8A92A6] text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
