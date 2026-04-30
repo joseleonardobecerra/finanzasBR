@@ -1,6 +1,8 @@
 const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, removePresupuesto,
                         pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
-                        egresos, selectedMonth, showToast, categoriasMaestras }) => {
+                        egresos, selectedMonth, showToast, categoriasMaestras,
+                        privacyMode // ✨ MODO PRIVACIDAD AÑADIDO A LAS PROPS
+                      }) => {
   const { useState, useRef, useMemo } = React;
   const [tipoForm, setTipoForm] = useState('variable'); 
   const [nuevoVar, setNuevoVar] = useState({ categoria: '', limite: '' });
@@ -16,7 +18,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const [openFijos, setOpenFijos] = useState(true);
   const [openVariables, setOpenVariables] = useState(true);
 
-  // ✨ NUEVO: Estados para manejar el ordenamiento de las tablas
+  // Estados para manejar el ordenamiento de las tablas
   const [sortFijos, setSortFijos] = useState({ key: 'limite', direction: 'desc' });
   const [sortVar, setSortVar] = useState({ key: 'limite', direction: 'desc' });
 
@@ -36,6 +38,14 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     return currentSort.direction === 'asc' 
       ? <span className="ml-1 text-[10px] text-neoncyan">↑</span> 
       : <span className="ml-1 text-[10px] text-neoncyan">↓</span>;
+  };
+
+  // ✨ MODO PRIVACIDAD APLICADO
+  const formatCOP = (val) => {
+    if (privacyMode) return '****';
+    return new Intl.NumberFormat('es-CO', { 
+      style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+    }).format(val);
   };
 
   const handleExport = async () => {
@@ -202,7 +212,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     return { fijosBase: fijos, varBase: variables };
   }, [pagosFijos, presupuestos, egresosMes]);
 
-  // ✨ Función maestra para ordenar las tablas
+  // Función maestra para ordenar las tablas
   const sortData = (data, config) => {
     return [...data].sort((a, b) => {
       let aVal = a[config.key];
