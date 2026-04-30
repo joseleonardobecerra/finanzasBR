@@ -14,18 +14,24 @@ const EgresosTab = ({
   selectedMonth, 
   presupuestos, 
   categoriasMaestras, 
-  showToast 
+  showToast,
+  privacyMode // ✨ MODO PRIVACIDAD AÑADIDO A LAS PROPS
 }) => {
   const { useState, useMemo } = React;
 
   // ============================================================================
   // UTILIDADES
   // ============================================================================
-  const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
-    style: 'currency', 
-    currency: 'COP', 
-    maximumFractionDigits: 0 
-  }).format(val);
+  
+  // ✨ MODO PRIVACIDAD APLICADO
+  const formatCOP = (val) => {
+    if (privacyMode) return '****';
+    return new Intl.NumberFormat('es-CO', { 
+      style: 'currency', 
+      currency: 'COP', 
+      maximumFractionDigits: 0 
+    }).format(val);
+  };
 
   const getLocalToday = () => {
     const d = new Date();
@@ -196,8 +202,6 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
   // ============================================================================
-  
-  // ✨ CORRECCIÓN: Ahora esta función retorna el OBJETO egreso real, no solo true/false
   const getPagoRealizado = (pf) => {
     return egresosMes.find(e => {
       if (e.tipo !== 'Fijo') return false;
@@ -526,7 +530,6 @@ const EgresosTab = ({
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
                 {pagosFijosOrdenados.map(pf => {
                   
-                  // ✨ CORRECCIÓN CLAVE: Obtenemos el registro real del historial, no solo true/false
                   const egresoPagado = getPagoRealizado(pf);
                   const isPaid = !!egresoPagado;
                   
@@ -565,7 +568,6 @@ const EgresosTab = ({
                           </div>
                         </div>
 
-                        {/* ✨ CORRECCIÓN CLAVE: Monto pagado basado en la base de datos real, no en el presupuesto */}
                         {isPaid && (
                           <p className="text-sm font-black text-emerald-500/50 text-right shrink-0 pl-2">
                             {formatCOP(Number(egresoPagado.monto))}
