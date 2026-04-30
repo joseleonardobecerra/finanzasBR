@@ -57,6 +57,15 @@ const EgresosTab = ({
   const ListIcon = ({ size = 18, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
   );
+  const Edit3 = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+  );
+  const Trash2 = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+  );
+  const Plus = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  );
 
   // ============================================================================
   // 1. ESTADOS DEL FORMULARIO PRINCIPAL
@@ -88,11 +97,11 @@ const EgresosTab = ({
   });
 
   // ============================================================================
-  // 4. ESTADOS PARA LOS ACORDEONES
+  // 4. ESTADOS PARA LOS ACORDEONES Y TABLAS
   // ============================================================================
   const [openSections, setOpenSections] = useState({
     form: true,
-    fijos: false,
+    fijos: true, // Checklist abierto por defecto para mayor agilidad
     historial: false
   });
 
@@ -100,23 +109,30 @@ const EgresosTab = ({
     setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
   };
 
-  // ============================================================================
-  // 5. ESTADOS PARA EDICIÓN RÁPIDA DE PAGOS FIJOS
-  // ============================================================================
+  // Estados para Pagos Fijos y TC
   const [pfState, setPfState] = useState({});
+  const [tcState, setTcState] = useState({});
+  
+  // Estados para edición inline de la Base de Pagos Fijos
+  const [editingPfId, setEditingPfId] = useState(null);
+  const [pfEditData, setPfEditData] = useState({});
+  
+  // Estado para añadir nuevo Pago Fijo rápido
+  const [nuevoPf, setNuevoPf] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '1' });
 
   // Listas de Cuentas Filtradas Globales
-  const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'credit', 'pocket'].includes(c.type));
+  const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
   const todasLasDeudas = cuentas.filter(c => ['credit', 'loan'].includes(c.type));
+  const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
 
-  // Filtro dinámico de cuentas según el método de pago elegido
+  // Filtro dinámico de cuentas según el método de pago elegido en el formulario
   const cuentasFiltradas = useMemo(() => {
     if (!metodoPago) return [];
     if (metodoPago === 'cash') return cuentasActivas.filter(c => c.type === 'cash');
     if (metodoPago === 'bank') return cuentasActivas.filter(c => c.type === 'bank' || c.type === 'pocket');
-    if (metodoPago === 'credit') return cuentasActivas.filter(c => c.type === 'credit');
+    if (metodoPago === 'credit') return tarjetasCredito;
     return [];
-  }, [metodoPago, cuentasActivas]);
+  }, [metodoPago, cuentasActivas, tarjetasCredito]);
 
   // ============================================================================
   // CÁLCULOS PRINCIPALES DEL MES
@@ -200,19 +216,60 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // FUNCIONES PARA PAGOS FIJOS (CHECKLIST)
+  // FUNCIONES PARA TARJETAS DE CRÉDITO (CHECKLIST)
+  // ============================================================================
+  const getTCPagada = (tc) => egresosMes.find(e => e.pagoTarjetaId === tc.id);
+
+  const handleTcChange = (id, field, value) => {
+    setTcState(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+  };
+
+  const registrarPagoTC = (tc) => {
+    const cuentaSale = tcState[tc.id]?.cuentaId || (cuentasActivas.length > 0 ? cuentasActivas[0].id : null);
+    const montoPago = Number(tcState[tc.id]?.monto) || 0;
+    
+    if (!cuentaSale) return showToast("Selecciona desde qué cuenta pagarás la tarjeta.", "error");
+    if (montoPago <= 0) return showToast("Debes ingresar un monto a pagar mayor a 0.", "error");
+
+    addEgreso({
+      id: generateId(),
+      fecha: getLocalToday(),
+      descripcion: `Pago Tarjeta: ${tc.name}`,
+      categoria: 'Tarjetas y Créditos',
+      monto: montoPago,
+      cuentaId: cuentaSale,
+      tipo: 'Fijo',
+      deudaId: tc.id,
+      pagoTarjetaId: tc.id, // ID rastreador exacto
+    });
+    
+    showToast(`Pago de Tarjeta ${tc.name} registrado por ${formatCOP(montoPago)}.`);
+  };
+
+  const deshacerPagoTC = (tc) => {
+    const egreso = getTCPagada(tc);
+    if (egreso) {
+      removeEgreso(egreso.id);
+      showToast(`Pago de Tarjeta revertido.`, 'error');
+    }
+  };
+
+
+  // ============================================================================
+  // FUNCIONES PARA PAGOS FIJOS REGULARES (CHECKLIST)
   // ============================================================================
   const getPagoRealizado = (pf) => {
     return egresosMes.find(e => {
       if (e.tipo !== 'Fijo') return false;
       if (e.pagoFijoId) return e.pagoFijoId === pf.id;
+      // Fallback a nombre para compatibilidad con registros antiguos
       return e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
     });
   };
 
   const getPfMonto = (pf) => pfState[pf.id]?.monto !== undefined 
     ? pfState[pf.id].monto 
-    : Number(pf.monto || pf.montoEstimado || 0);
+    : Number(pf.monto || 0);
 
   const getPfCuenta = (pf) => pfState[pf.id]?.cuentaId !== undefined 
     ? pfState[pf.id].cuentaId 
@@ -243,7 +300,7 @@ const EgresosTab = ({
       cuentaId: cuentaFinal,
       tipo: 'Fijo',
       deudaId: deudaFinal,
-      pagoFijoId: pf.id,
+      pagoFijoId: pf.id, // Vinculación directa
     });
     
     showToast(`Pago de ${pf.descripcion} registrado.`);
@@ -255,6 +312,44 @@ const EgresosTab = ({
       removeEgreso(egresoAEliminar.id);
       showToast(`Se ha revertido el pago de ${pf.descripcion}.`, 'error');
     }
+  };
+
+  // --- Edición en línea de Pagos Fijos ---
+  const startEditPf = (pf) => {
+    setEditingPfId(pf.id);
+    setPfEditData({ descripcion: pf.descripcion, categoria: pf.categoria, monto: pf.monto, diaPago: pf.diaPago });
+  };
+
+  const saveEditPf = () => {
+    if (!pfEditData.descripcion || !pfEditData.monto) return showToast('El nombre y el monto son obligatorios.', 'error');
+    updatePagoFijo(editingPfId, {
+      descripcion: pfEditData.descripcion,
+      categoria: pfEditData.categoria,
+      monto: Number(pfEditData.monto),
+      diaPago: Number(pfEditData.diaPago)
+    });
+    setEditingPfId(null);
+    showToast("Pago Fijo base actualizado.");
+  };
+
+  const handleDeletePf = (pf) => {
+    if(window.confirm(`¿Seguro que quieres eliminar la configuración de "${pf.descripcion}"?\n(Los pagos ya registrados este mes no se borrarán).`)) {
+      removePagoFijo(pf.id);
+      showToast("Gasto Fijo eliminado de la lista.", "error");
+    }
+  };
+
+  const handleCreateNuevoPf = () => {
+    if (!nuevoPf.descripcion || !nuevoPf.monto) return showToast('Escribe un nombre y un monto.', 'error');
+    addPagoFijo({
+      id: generateId(),
+      descripcion: nuevoPf.descripcion,
+      categoria: nuevoPf.categoria,
+      monto: Number(nuevoPf.monto),
+      diaPago: Number(nuevoPf.diaPago)
+    });
+    setNuevoPf({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '1' });
+    showToast("Nuevo Pago Fijo agregado exitosamente.");
   };
 
   const pagosFijosOrdenados = useMemo(() => {
@@ -332,7 +427,7 @@ const EgresosTab = ({
         >
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
             <span className="w-6 h-6 rounded-md bg-neonmagenta/20 text-neonmagenta flex items-center justify-center text-xs">1</span>
-            Registrar Gasto o Pago a Deuda
+            Registrar Gasto o Pago Libre
           </h2>
           <button className="text-slate-500 hover:text-white transition-colors">
             {openSections.form ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -364,7 +459,7 @@ const EgresosTab = ({
                 required 
                 value={descripcion} 
                 onChange={(e) => setDescripcion(e.target.value)} 
-                placeholder="Ej. Almuerzo, Pago de tarjeta..." 
+                placeholder="Ej. Almuerzo, Pago libre..." 
                 className={inputBaseClass}
               />
             </div>
@@ -499,7 +594,7 @@ const EgresosTab = ({
       </Card>
 
       {/* ============================================================================ */}
-      {/* 2. PAGOS FIJOS (CHECKLIST) */}
+      {/* 2. PAGOS FIJOS (NUEVAS TABLAS SEPARADAS: TC Y FIJOS) */}
       {/* ============================================================================ */}
       <Card>
         <div 
@@ -508,11 +603,11 @@ const EgresosTab = ({
         >
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
              <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">2</span>
-             Checklist de Pagos Fijos
+             Checklist Mensual
           </h2>
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20 uppercase tracking-widest">
-               {pagosFijos.filter(pf => !!getPagoRealizado(pf)).length} / {pagosFijos.length} Listo
+               {pagosFijos.filter(pf => !!getPagoRealizado(pf)).length + tarjetasCredito.filter(tc => !!getTCPagada(tc)).length} Listos
             </span>
             <button className="text-slate-500 hover:text-white transition-colors">
               {openSections.fijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -521,106 +616,245 @@ const EgresosTab = ({
         </div>
 
         {openSections.fijos && (
-          <div className="mt-6">
-            {pagosFijosOrdenados.length === 0 ? (
-              <div className="bg-[#111222] shadow-neumorph-inset rounded-2xl p-10 text-center border border-transparent">
-                <p className="text-sm text-[#8A92A6] font-bold uppercase tracking-widest">No has configurado pagos fijos en Presupuestos.</p>
+          <div className="mt-8 space-y-8 animate-in slide-in-from-top-4 fade-in duration-300">
+            
+            {/* --- TABLA 2A: TARJETAS DE CRÉDITO --- */}
+            <div>
+              <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                Pagar Tarjetas de Crédito
+              </h3>
+              <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent">
+                <table className="w-full text-sm text-left min-w-[700px]">
+                  <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
+                    <tr>
+                      <th className="px-5 py-4 w-[10%] text-center">Estado</th>
+                      <th className="px-5 py-4 w-[25%]">Tarjeta</th>
+                      <th className="px-5 py-4 w-[20%] text-right">Deuda Total</th>
+                      <th className="px-5 py-4 w-[25%]">Pagar desde...</th>
+                      <th className="px-5 py-4 w-[20%] text-right">Monto a pagar</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02]">
+                    {tarjetasCredito.length === 0 ? (
+                      <tr><td colSpan="5" className="p-6 text-center text-[#8A92A6] font-bold italic">No hay tarjetas de crédito registradas en la pestaña Cuentas.</td></tr>
+                    ) : (
+                      tarjetasCredito.map(tc => {
+                        const isPaid = !!getTCPagada(tc);
+                        const egresoTc = getTCPagada(tc);
+                        
+                        return (
+                          <tr key={tc.id} className={`transition-colors ${isPaid ? 'bg-emerald-900/10 opacity-60' : 'hover:bg-white/[0.02]'}`}>
+                            
+                            <td className="px-5 py-3 text-center">
+                              <button 
+                                onClick={() => isPaid ? deshacerPagoTC(tc) : registrarPagoTC(tc)} 
+                                className={`w-6 h-6 rounded-md flex items-center justify-center border-2 mx-auto transition-all ${
+                                  isPaid 
+                                    ? 'bg-emerald-500 border-emerald-500 text-[#0b0c16] shadow-[0_0_10px_rgba(16,185,129,0.5)] cursor-pointer hover:bg-rose-500 hover:border-rose-500' 
+                                    : 'bg-[#111222] border-slate-600 text-transparent hover:border-amber-500 cursor-pointer'
+                                }`}
+                              >
+                                {isPaid ? <CheckIcon size={14} className="hover:hidden block"/> : null}
+                                {isPaid ? <XIcon size={14} className="hidden hover:block"/> : null}
+                              </button>
+                            </td>
+                            
+                            <td className={`px-5 py-3 font-bold tracking-wide ${isPaid ? 'line-through text-emerald-500/70' : 'text-white'}`}>
+                              {tc.name}
+                            </td>
+                            
+                            <td className="px-5 py-3 text-right font-black text-rose-400 tabular-nums">
+                              {formatCOP(tc.currentDebt)}
+                            </td>
+                            
+                            <td className="px-5 py-3">
+                              {!isPaid ? (
+                                <select 
+                                  value={tcState[tc.id]?.cuentaId || ''} 
+                                  onChange={(e) => handleTcChange(tc.id, 'cuentaId', e.target.value)} 
+                                  className="w-full bg-[#0b0c16] border border-white/[0.05] rounded-lg px-3 py-2 text-xs text-white outline-none shadow-neumorph-inset focus:border-indigo-500"
+                                >
+                                  <option value="">Seleccione cuenta...</option>
+                                  {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                              ) : (
+                                <span className="text-xs text-slate-500 uppercase tracking-widest font-bold">Pagada</span>
+                              )}
+                            </td>
+                            
+                            <td className="px-5 py-3 text-right">
+                              {!isPaid ? (
+                                <input 
+                                  type="number" 
+                                  placeholder="0" 
+                                  value={tcState[tc.id]?.monto || ''} 
+                                  onChange={(e) => handleTcChange(tc.id, 'monto', e.target.value)} 
+                                  className="w-24 bg-[#0b0c16] border border-white/[0.05] rounded-lg px-3 py-2 text-xs text-emerald-400 font-black outline-none text-right shadow-neumorph-inset focus:border-emerald-500 ml-auto" 
+                                />
+                              ) : (
+                                <span className="font-black text-emerald-500 tabular-nums">
+                                  {formatCOP(egresoTc.monto)}
+                                </span>
+                              )}
+                            </td>
+                            
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
-                {pagosFijosOrdenados.map(pf => {
-                  
-                  const egresoPagado = getPagoRealizado(pf);
-                  const isPaid = !!egresoPagado;
-                  
-                  return (
-                    <div 
-                      key={pf.id} 
-                      className={`p-5 rounded-2xl flex flex-col transition-all gap-4 border ${
-                        isPaid 
-                          ? 'bg-emerald-500/5 border-emerald-500/20 opacity-70' 
-                          : 'bg-[#111222] shadow-neumorph-inset border-transparent hover:border-amber-500/30 hover:shadow-[0_0_15px_rgba(251,191,36,0.1)]'
-                      }`}
-                    >
-                      {/* Fila 1: Botón y Título */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <button 
-                            onClick={() => isPaid ? deshacerPagoFijo(pf) : registrarPagoFijo(pf)} 
-                            title={isPaid ? "Desmarcar y eliminar registro de este mes" : "Registrar pago de este mes"}
-                            className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all shrink-0 ${
-                              isPaid 
-                                ? 'bg-emerald-500 border-emerald-500 text-[#0b0c16] shadow-[0_0_10px_rgba(16,185,129,0.5)] cursor-pointer hover:bg-rose-500 hover:border-rose-500 hover:shadow-[0_0_10px_rgba(244,63,94,0.5)]' 
-                                : 'bg-[#111222] border-slate-600 text-transparent hover:border-amber-500 cursor-pointer'
-                            }`}
-                          >
-                            {isPaid ? <CheckIcon size={14} className="hover:hidden block"/> : null}
-                            {isPaid ? <XIcon size={14} className="hidden hover:block"/> : null}
-                          </button>
-                          
-                          <div className="truncate">
-                            <p className={`text-sm font-bold tracking-wide truncate ${isPaid ? 'text-emerald-500/70 line-through' : 'text-white'}`}>
-                              {pf.descripcion}
-                            </p>
-                            <p className="text-[10px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5">
-                              Día sugerido: {pf.diaPago || 1}
-                            </p>
-                          </div>
-                        </div>
+            </div>
 
-                        {isPaid && (
-                          <p className="text-sm font-black text-emerald-500/50 text-right shrink-0 pl-2">
-                            {formatCOP(Number(egresoPagado.monto))}
-                          </p>
-                        )}
-                      </div>
-                      
-                      {/* Fila 2: Controles de edición ANTES de pagar */}
-                      {!isPaid && (
-                        <div className="flex flex-col gap-2 pt-3 border-t border-white/[0.05]">
-                          <div className="flex gap-2">
-                            {/* Origen del dinero */}
-                            <select 
-                              value={getPfCuenta(pf)} 
-                              onChange={(e) => handlePfChange(pf.id, 'cuentaId', e.target.value)}
-                              title="Cuenta desde la que pagas"
-                              className="bg-appcard border border-white/[0.02] text-[10px] font-bold uppercase tracking-wider text-slate-300 rounded-lg p-2.5 outline-none focus:border-amber-500 flex-1 w-full appearance-none cursor-pointer shadow-neumorph"
+            {/* --- TABLA 2B: PAGOS FIJOS REGULARES --- */}
+            <div>
+              <h3 className="text-sm font-black text-amber-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <CheckIcon size={18} />
+                Pagos Fijos (Servicios, Suscripciones, etc.)
+              </h3>
+              
+              <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent">
+                <table className="w-full text-sm text-left min-w-[900px]">
+                  <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
+                    <tr>
+                      <th className="px-5 py-4 w-[8%] text-center">Estado</th>
+                      <th className="px-5 py-4 w-[20%]">Nombre</th>
+                      <th className="px-5 py-4 w-[15%]">Categoría</th>
+                      <th className="px-5 py-4 w-[8%] text-center">Día</th>
+                      <th className="px-5 py-4 w-[15%] text-right">Monto Base</th>
+                      <th className="px-5 py-4 w-[15%] text-right">Pagar este mes</th>
+                      <th className="px-5 py-4 w-[15%] text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02]">
+                    
+                    {/* Filas de Pagos Fijos Existentes */}
+                    {pagosFijosOrdenados.map(pf => {
+                      const isPaid = !!getPagoRealizado(pf);
+                      const isEditingBase = editingPfId === pf.id;
+
+                      if (isEditingBase) {
+                        return (
+                          <tr key={pf.id} className="bg-amber-900/10">
+                            <td className="px-3 py-3 text-center">-</td>
+                            <td className="px-3 py-3">
+                              <input type="text" value={pfEditData.descripcion} onChange={e=>setPfEditData({...pfEditData, descripcion: e.target.value})} className="w-full bg-[#111222] border border-amber-500/50 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-amber-500" placeholder="Nombre" />
+                            </td>
+                            <td className="px-3 py-3">
+                              <select value={pfEditData.categoria} onChange={e=>setPfEditData({...pfEditData, categoria: e.target.value})} className="w-full bg-[#111222] border border-amber-500/50 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-amber-500">
+                                {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-3 py-3">
+                              <input type="number" value={pfEditData.diaPago} onChange={e=>setPfEditData({...pfEditData, diaPago: e.target.value})} className="w-full bg-[#111222] border border-amber-500/50 rounded-lg px-2 py-1.5 text-xs text-white outline-none text-center shadow-neumorph-inset focus:border-amber-500" placeholder="1" />
+                            </td>
+                            <td className="px-3 py-3">
+                              <input type="number" value={pfEditData.monto} onChange={e=>setPfEditData({...pfEditData, monto: e.target.value})} className="w-full bg-[#111222] border border-amber-500/50 rounded-lg px-2 py-1.5 text-xs text-amber-400 font-bold outline-none text-right shadow-neumorph-inset focus:border-amber-500" placeholder="Monto" />
+                            </td>
+                            <td className="px-3 py-3 text-right text-slate-500">-</td>
+                            <td className="px-3 py-3 text-center flex justify-center gap-2 mt-1">
+                              <button onClick={saveEditPf} className="text-[#0b0c16] p-1.5 bg-emerald-400 rounded hover:bg-emerald-300 transition-colors shadow-glow-cyan" title="Guardar"><CheckIcon size={14}/></button>
+                              <button onClick={() => setEditingPfId(null)} className="text-rose-400 p-1.5 bg-rose-500/10 rounded hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14}/></button>
+                            </td>
+                          </tr>
+                        )
+                      }
+
+                      return (
+                        <tr key={pf.id} className={`transition-colors ${isPaid ? 'bg-emerald-900/10 opacity-60' : 'hover:bg-white/[0.02]'}`}>
+                          
+                          <td className="px-5 py-3 text-center">
+                            <button 
+                              onClick={() => isPaid ? deshacerPagoFijo(pf) : registrarPagoFijo(pf)} 
+                              className={`w-6 h-6 rounded-md flex items-center justify-center border-2 mx-auto transition-all ${
+                                isPaid 
+                                  ? 'bg-emerald-500 border-emerald-500 text-[#0b0c16] shadow-[0_0_10px_rgba(16,185,129,0.5)] cursor-pointer hover:bg-rose-500 hover:border-rose-500 hover:shadow-[0_0_10px_rgba(244,63,94,0.5)]' 
+                                  : 'bg-[#111222] border-slate-600 text-transparent hover:border-amber-500 cursor-pointer'
+                              }`}
                             >
-                              <option value="">De dónde sale...</option>
-                              {cuentasActivas.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                            </select>
-
-                            {/* Monto exacto */}
-                            <input 
-                              type="number" 
-                              value={getPfMonto(pf)} 
-                              onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)}
-                              title="Monto exacto a pagar"
-                              className="bg-appcard border border-white/[0.02] text-[11px] font-black text-amber-400 rounded-lg p-2.5 outline-none focus:border-amber-500 w-[100px] text-right shadow-neumorph"
-                            />
-                          </div>
+                              {isPaid ? <CheckIcon size={14} className="hover:hidden block"/> : null}
+                              {isPaid ? <XIcon size={14} className="hidden hover:block"/> : null}
+                            </button>
+                          </td>
                           
-                          {/* Selector de Abono a Deuda en Pagos Fijos */}
-                          <select 
-                            value={getPfDeuda(pf)} 
-                            onChange={(e) => handlePfChange(pf.id, 'deudaId', e.target.value)}
-                            title="Deuda a la que vas a abonar (Opcional)"
-                            className="bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-bold uppercase tracking-wider text-indigo-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 w-full appearance-none cursor-pointer"
-                          >
-                            <option value="">No es pago a deuda (Opcional)</option>
-                            {todasLasDeudas.map(d => (
-                              <option key={d.id} value={d.id}>Abonar a: {d.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                          <td className={`px-5 py-3 font-bold tracking-wide ${isPaid ? 'line-through text-emerald-500/70' : 'text-white'}`}>
+                            {pf.descripcion}
+                          </td>
+                          
+                          <td className="px-5 py-3 text-xs text-[#8A92A6] font-bold uppercase tracking-wider">
+                            {pf.categoria}
+                          </td>
+                          
+                          <td className="px-5 py-3 text-center text-[#8A92A6] font-black">
+                            {pf.diaPago || 1}
+                          </td>
+                          
+                          <td className="px-5 py-3 text-right text-slate-400 tabular-nums">
+                            {formatCOP(pf.monto)}
+                          </td>
+                          
+                          <td className="px-5 py-3 text-right">
+                            {!isPaid ? (
+                              <input 
+                                type="number" 
+                                placeholder={pf.monto} 
+                                value={pfState[pf.id]?.monto !== undefined ? pfState[pf.id].monto : pf.monto} 
+                                onChange={(e) => handlePfChange(pf.id, 'monto', e.target.value)} 
+                                className="w-24 bg-[#0b0c16] border border-white/[0.05] rounded-lg px-2 py-1.5 text-xs text-amber-400 font-black outline-none text-right shadow-neumorph-inset focus:border-amber-500 ml-auto" 
+                                title="Monto a pagar este mes" 
+                              />
+                            ) : (
+                              <span className="font-black text-emerald-500 tabular-nums">{formatCOP(getPagoRealizado(pf).monto)}</span>
+                            )}
+                          </td>
+                          
+                          <td className="px-5 py-3 text-center">
+                            {!isPaid ? (
+                              <div className="flex items-center justify-center gap-3">
+                                <button onClick={() => startEditPf(pf)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Editar base"><Edit3 size={16}/></button>
+                                <button onClick={() => handleDeletePf(pf)} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar base"><Trash2 size={16}/></button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-black">Listo</span>
+                            )}
+                          </td>
+
+                        </tr>
+                      );
+                    })}
+
+                    {/* Fila Fija al final para CREAR uno nuevo rápidamente */}
+                    <tr className="bg-amber-500/5 border-t-2 border-amber-500/20">
+                      <td className="px-3 py-3 text-center">
+                        <Plus size={16} className="text-amber-500 mx-auto" />
+                      </td>
+                      <td className="px-3 py-3">
+                        <input type="text" value={nuevoPf.descripcion} onChange={e=>setNuevoPf({...nuevoPf, descripcion: e.target.value})} className="w-full bg-[#111222] border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-amber-500" placeholder="Nuevo Pago Fijo..." />
+                      </td>
+                      <td className="px-3 py-3">
+                        <select value={nuevoPf.categoria} onChange={e=>setNuevoPf({...nuevoPf, categoria: e.target.value})} className="w-full bg-[#111222] border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-amber-500">
+                          {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-3 py-3">
+                        <input type="number" value={nuevoPf.diaPago} onChange={e=>setNuevoPf({...nuevoPf, diaPago: e.target.value})} className="w-full bg-[#111222] border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none text-center shadow-neumorph-inset focus:border-amber-500" placeholder="1" />
+                      </td>
+                      <td className="px-3 py-3">
+                        <input type="number" value={nuevoPf.monto} onChange={e=>setNuevoPf({...nuevoPf, monto: e.target.value})} className="w-full bg-[#111222] border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-amber-400 font-bold outline-none text-right shadow-neumorph-inset focus:border-amber-500" placeholder="Monto base" />
+                      </td>
+                      <td className="px-3 py-3 text-right text-slate-500">-</td>
+                      <td className="px-3 py-3 text-center">
+                        <button onClick={handleCreateNuevoPf} className="text-[#0b0c16] px-3 py-1.5 bg-amber-400 rounded hover:bg-amber-300 transition-colors shadow-glow-amber text-[10px] font-black uppercase tracking-widest" title="Guardar nuevo">AGREGAR</button>
+                      </td>
+                    </tr>
+
+                  </tbody>
+                </table>
               </div>
-            )}
+            </div>
+
           </div>
         )}
       </Card>
