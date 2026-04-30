@@ -1,6 +1,6 @@
 const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                           transferencias, addTransferencia, removeTransferencia,
-                          addEgreso, showToast }) => {
+                          addEgreso, showToast, privacyMode }) => {
       
       // 1. PRIMERO DEFINIMOS LAS FUNCIONES DE UTILIDAD (Para evitar ReferenceError)
       const getLocalToday = () => {
@@ -9,9 +9,13 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
         return d.toISOString().slice(0, 10);
       };
 
-      const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
-        style: 'currency', currency: 'COP', maximumFractionDigits: 0 
-      }).format(val);
+      // ✨ MODO PRIVACIDAD APLICADO
+      const formatCOP = (val) => {
+        if (privacyMode) return '****';
+        return new Intl.NumberFormat('es-CO', { 
+          style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+        }).format(val);
+      };
 
       // ✨ Helper para colores dinámicos basados en el valor
       const getValueColor = (val) => {
