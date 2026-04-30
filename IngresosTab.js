@@ -10,16 +10,21 @@ const IngresosTab = ({
   cuentas, 
   selectedMonth, 
   showToast, 
-  filtroPersona 
+  filtroPersona,
+  privacyMode // ✨ MODO PRIVACIDAD AÑADIDO A LAS PROPS
 }) => {
   const { useState, useMemo } = React;
 
   // --- FORMATEADORES ---
-  const formatCOP = (val) => new Intl.NumberFormat('es-CO', { 
-    style: 'currency', 
-    currency: 'COP', 
-    maximumFractionDigits: 0 
-  }).format(val);
+  // ✨ MODO PRIVACIDAD APLICADO
+  const formatCOP = (val) => {
+    if (privacyMode) return '****';
+    return new Intl.NumberFormat('es-CO', { 
+      style: 'currency', 
+      currency: 'COP', 
+      maximumFractionDigits: 0 
+    }).format(val);
+  };
 
   const getLocalToday = () => {
     const d = new Date();
