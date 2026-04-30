@@ -1,4 +1,4 @@
-const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, egresos }) => {
+const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, egresos, privacyMode }) => {
   const { useState, useRef } = React;
   const [showNewCard, setShowNewCard] = useState(false);
   const [showNewLoan, setShowNewLoan] = useState(false);
@@ -9,6 +9,14 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const fileInputRef = useRef(null);
+
+  // ✨ MODO PRIVACIDAD APLICADO
+  const formatCOP = (val) => {
+    if (privacyMode) return '****';
+    return new Intl.NumberFormat('es-CO', { 
+      style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+    }).format(val);
+  };
 
   // ============================================================================
   // ÍCONOS SVG NATIVOS (Prevención de ReferenceError)
