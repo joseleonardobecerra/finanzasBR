@@ -1,6 +1,8 @@
 const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                            ingresos, addIngreso,
-                           egresos, transferencias, selectedMonth, showToast, getOwner }) => {
+                           egresos, transferencias, selectedMonth, showToast, getOwner,
+                           privacyMode // ✨ MODO PRIVACIDAD AÑADIDO A LAS PROPS
+                         }) => {
       const { useState, useRef } = React;
       const [showForm, setShowForm] = useState(false);
       const [editId, setEditId] = useState(null);
@@ -10,6 +12,14 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       const fileInputRef = useRef(null);
       
       const [nuevo, setNuevo] = useState({ name: '', initialBalance: '', tasaEA: '' });
+
+      // ✨ MODO PRIVACIDAD APLICADO
+      const formatCOP = (val) => {
+        if (privacyMode) return '****';
+        return new Intl.NumberFormat('es-CO', { 
+          style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+        }).format(val);
+      };
 
       // ============================================================================
       // ÍCONOS SVG NATIVOS (Prevención de ReferenceError)
@@ -258,7 +268,6 @@ const InversionesTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                       <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-5 py-4 font-bold text-white tracking-wide">
                            {c.name}
-                           {/* ✨ Etiqueta de dueño eliminada aquí */}
                         </td>
                         <td className="px-5 py-4 text-right text-[#8A92A6] tabular-nums">{formatCOP(c.sInicial)}</td>
                         <td className="px-5 py-4 text-right font-black text-emerald-400 tabular-nums">
