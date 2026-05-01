@@ -33,32 +33,34 @@ const Select = ({ label, options, value, onChange, error, className }) => (
   </div>
 );
 
-// ✨ NUEVO COMPONENTE: Logos de Bancos Dinámicos
+// ✨ NUEVO COMPONENTE: Logos de Bancos Dinámicos (Búsqueda por palabra clave)
 const BankLogo = ({ name, type, className = "w-6 h-6 rounded-full shrink-0" }) => {
   const { useState } = React;
   const [error, setError] = useState(false);
+  
+  // Convertimos a minúsculas para buscar fragmentos (ej: "Bancolombia Leo" -> "bancolombia leo")
   const lowerName = (name || '').toLowerCase();
 
   // Si es efectivo, siempre mostramos el emoji (no hay logo para el efectivo físico)
   if (type === 'cash') return <span className="text-lg shrink-0">💵</span>;
 
-  // Diccionario inteligente para detectar el banco según el nombre de tu cuenta
+  // Diccionario inteligente para detectar el banco según si el nombre INCLUYE esa palabra
   let domain = null;
   if (lowerName.includes('bancolombia')) domain = 'bancolombia.com';
   else if (lowerName.includes('nequi')) domain = 'nequi.com.co';
-  else if (lowerName.includes('daviplata')) domain = 'daviplata.com';
-  else if (lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com';
-  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes(' nu ')) domain = 'nu.com.co';
+  else if (lowerName.includes('daviplata') || lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com'; // Redirige a la casita roja
+  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes('nu ')) domain = 'nubank.com.br'; // Dominio global de Nu
   else if (lowerName.includes('bogot')) domain = 'bancodebogota.com';
   else if (lowerName.includes('lulo')) domain = 'lulobank.com';
-  else if (lowerName.includes('rappi')) domain = 'rappipay.co';
-  else if (lowerName.includes('falabella')) domain = 'bancofalabella.com.co';
-  else if (lowerName.includes('bbva')) domain = 'bbva.com.co';
-  else if (lowerName.includes('colpatria') || lowerName.includes('scotiabank')) domain = 'scotiabankcolpatria.com';
+  else if (lowerName.includes('rappi')) domain = 'rappi.com';
+  else if (lowerName.includes('falabella')) domain = 'falabella.com';
+  else if (lowerName.includes('bbva')) domain = 'bbva.com';
+  else if (lowerName.includes('colpatria') || lowerName.includes('scotia')) domain = 'scotiabank.com';
   else if (lowerName.includes('caja social')) domain = 'bancocajasocial.com';
-  else if (lowerName.includes('bancamia')) domain = 'bancamia.com.co';
   else if (lowerName.includes('av villas')) domain = 'bancoavvillas.com.co';
   else if (lowerName.includes('popular')) domain = 'bancopopular.com.co';
+  else if (lowerName.includes('itau') || lowerName.includes('itaú')) domain = 'itau.co';
+  else if (lowerName.includes('occidente')) domain = 'bancodeoccidente.com.co';
 
   // Si encontramos un dominio y la imagen carga bien
   if (domain && !error) {
@@ -346,14 +348,12 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                  leoAccounts.map(c => (
                    <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3.5 rounded-xl border border-transparent group transition-all hover:border-white/[0.05]">
                       <div className="flex items-center gap-3 pr-2 overflow-hidden">
-                        {/* ✨ APLICACIÓN DEL LOGO O EMOJI AQUÍ */}
                         <BankLogo name={c.name} type={c.type} />
                         <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
                       </div>
                       
                       <div className="flex items-center gap-3 shrink-0">
                         <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
-                        {/* Botones de edición integrados al hover */}
                         <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
                           <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
@@ -364,7 +364,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                )}
              </div>
              
-             {/* Totales consolidados de Leo */}
              <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
                 <div className="flex justify-between items-center">
                   <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
@@ -397,14 +396,12 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                  andreAccounts.map(c => (
                    <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3.5 rounded-xl border border-transparent group transition-all hover:border-white/[0.05]">
                       <div className="flex items-center gap-3 pr-2 overflow-hidden">
-                        {/* ✨ APLICACIÓN DEL LOGO O EMOJI AQUÍ */}
                         <BankLogo name={c.name} type={c.type} />
                         <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
                       </div>
                       
                       <div className="flex items-center gap-3 shrink-0">
                         <span className={`font-black tabular-nums text-[13px] ${getValueColor(c.currentBalance)}`}>{formatCOP(c.currentBalance)}</span>
-                        {/* Botones de edición integrados al hover */}
                         <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button onClick={() => cargarParaEditar(c)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={14}/></button>
                           <button onClick={() => { removeCuenta(c.id); showToast("Cuenta eliminada"); }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={14}/></button>
@@ -415,7 +412,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                )}
              </div>
              
-             {/* Totales consolidados de Andre */}
              <div className="pt-4 mt-4 px-1 border-t border-white/[0.05] space-y-1.5">
                 <div className="flex justify-between items-center">
                   <span className="text-[#8A92A6] font-bold text-[10px] uppercase tracking-wider">Total Bancos</span>
@@ -498,7 +494,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
              {sharedAccounts.map(c => (
                <div key={c.id} className="flex justify-between items-center text-sm bg-appcard shadow-neumorph p-3.5 rounded-xl border border-white/[0.02] group transition-all hover:border-white/[0.05]">
                   <div className="flex items-center gap-3 pr-2 overflow-hidden">
-                    {/* ✨ APLICACIÓN DEL LOGO O EMOJI AQUÍ */}
                     <BankLogo name={c.name} type={c.type} />
                     <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
                   </div>
@@ -515,7 +510,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
         </Card>
       )}
 
-      {/* ✨ NUEVO: TABLA HISTORIAL DE TRANSFERENCIAS */}
+      {/* HISTORIAL DE TRANSFERENCIAS */}
       <Card className="!border-transparent mt-6 flex flex-col">
         <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
           <ArrowRightLeft size={18} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/> 
