@@ -93,22 +93,41 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   };
 
   // ============================================================================
-  // LÓGICA DE DATOS ORIGINAL
+  // LÓGICA DE DATOS MEJORADA (Sin saltos de tiempo y con identidad correcta)
   // ============================================================================
   
+  const identifyOwner = (cuentaId, itemPersona, textDesc) => {
+    if (itemPersona === 'L' || itemPersona === 'Leo') return 'Leo';
+    if (itemPersona === 'A' || itemPersona === 'Andre') return 'Andre';
+    let targetName = textDesc || '';
+    if (cuentaId) {
+        const c = cuentas.find(acc => acc.id === cuentaId);
+        if (c) targetName = c.name;
+    }
+    const t = targetName.toUpperCase();
+    const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
+    const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
+    if (hasL && !hasA) return 'Leo';
+    if (hasA && !hasL) return 'Andre';
+    return 'Shared';
+  };
+
   const {
     historialMensual, totalIngresosAnual, totalEgresosAnual, totalFijosAnual, totalVariablesAnual, mesesConSuperavit
   } = useMemo(() => {
     const APP_START = '2026-04';
     const meses = [];
-    const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
     let sumIng = 0, sumEgr = 0, sumFijos = 0, sumVar = 0, superavitCount = 0;
 
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(fechaBase);
-      d.setMonth(d.getMonth() - i);
+    // ✨ CORRECCIÓN: Fechas locales sin toISOString
+    const [selYear, selMonth] = selectedMonth.split('-');
 
-      const mesStr = d.toISOString().slice(0, 7);
+    for (let i = 11; i >= 0; i--) {
+      // Calculamos usando el día 15 para evitar saltos de mes por horas nocturnas
+      const d = new Date(Number(selYear), Number(selMonth) - 1 - i, 15);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const mesStr = `${y}-${m}`;
       
       if (mesStr >= APP_START) {
         const label = d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).replace(/^\w/, c => c.toUpperCase());
@@ -137,7 +156,17 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   }, [cuentas]);
 
   const ingMesActual = historialMensual[historialMensual.length - 1]?.ingresos || 0;
-  const cuotasMesActual = cuentas.reduce((sum, c) => sum + (c.currentDebt > 0 ? (Number(c.cuotaMinima) || 0) : 0), 0);
+  
+  // ✨ CORRECCIÓN: Carga de Deuda Dinámica (Evita el 0% falso en Tarjetas)
+  const cuotasMesActual = cuentas.reduce((sum, c) => {
+    if (c.currentDebt <= 0) return sum;
+    if (c.type === 'credit') {
+        const cuotaTC = Number(c.cuotaMinima) || 0;
+        // Si el usuario configuró $0, estimamos un 5% de la deuda como pago mínimo para medir el impacto financiero.
+        return sum + (cuotaTC > 0 ? cuotaTC : c.currentDebt * 0.05);
+    }
+    return sum + (Number(c.cuotaMinima) || 0);
+  }, 0);
   
   const cargaDeuda = ingMesActual > 0 ? (cuotasMesActual / ingMesActual) * 100 : 0;
   const tasaAhorroAnual = totalIngresosAnual > 0 ? ((totalIngresosAnual - totalEgresosAnual) / totalIngresosAnual) * 100 : 0;
@@ -145,22 +174,23 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
 
   const recomendaciones = useMemo(() => {
     const recs = [];
-    if (cargaDeuda > 40) recs.push({ tipo: 'alerta', ico: '🚨', title: 'Carga de Deuda Crítica', desc: `Estás comprometiendo el ${cargaDeuda.toFixed(1)}% de tus ingresos solo en cuotas.` });
-    else if (cargaDeuda > 20) recs.push({ tipo: 'precaucion', ico: '⚠️', title: 'Carga de Deuda Moderada', desc: `Tus cuotas consumen el ${cargaDeuda.toFixed(1)}% de tu ingreso.` });
+    if (cargaDeuda > 40) recs.push({ tipo: 'alerta', ico: '🚨', title: 'Carga de Deuda Crítica', desc: `Estás comprometiendo aprox. el ${cargaDeuda.toFixed(1)}% de tus ingresos en cuotas y pagos mínimos.` });
+    else if (cargaDeuda > 20) recs.push({ tipo: 'precaucion', ico: '⚠️', title: 'Carga de Deuda Moderada', desc: `Tus cuotas consumen aprox. el ${cargaDeuda.toFixed(1)}% de tu ingreso.` });
 
-    if (tasaAhorroAnual < 5) recs.push({ tipo: 'alerta', ico: '📉', title: 'Capacidad de Ahorro Mínima', desc: 'Tu retención de capital es muy baja. Revisa tu Estructura de Gasto.' });
-    else if (tasaAhorroAnual >= 20) recs.push({ tipo: 'exito', ico: '🏆', title: 'Excelente Tasa de Retención', desc: `Estás ahorrando el ${tasaAhorroAnual.toFixed(1)}% de tu dinero.` });
+    if (tasaAhorroAnual < 5) recs.push({ tipo: 'alerta', ico: '📉', title: 'Capacidad de Ahorro Mínima', desc: 'Tu retención de capital anual es muy baja. Revisa tu Estructura de Gasto.' });
+    else if (tasaAhorroAnual >= 20) recs.push({ tipo: 'exito', ico: '🏆', title: 'Excelente Tasa de Retención', desc: `Históricamente estás reteniendo el ${tasaAhorroAnual.toFixed(1)}% de tu dinero.` });
 
     scoreData.recs.forEach(r => { if (!recs.find(existing => existing.title === r.title)) recs.push({ tipo: 'info', ico: r.ico, title: r.title, desc: r.txt }); });
 
-    if (recs.length === 0) recs.push({ tipo: 'exito', ico: '🚀', title: 'Finanzas Saludables', desc: 'Tus indicadores están perfectos.' });
+    if (recs.length === 0) recs.push({ tipo: 'exito', ico: '🚀', title: 'Finanzas Saludables', desc: 'Tus indicadores a largo plazo están perfectos.' });
     return recs;
   }, [cargaDeuda, tasaAhorroAnual, scoreData.recs]);
 
   const topCategoriasAnual = useMemo(() => {
-    const fechaBase = new Date(`${selectedMonth}-01T12:00:00`);
-    fechaBase.setMonth(fechaBase.getMonth() - 11);
-    const hace12MesesStr = fechaBase.toISOString().slice(0, 7);
+    // ✨ CORRECCIÓN: Tiempo Local para topCategorias
+    const [sY, sM] = selectedMonth.split('-');
+    const dateBase = new Date(Number(sY), Number(sM) - 1 - 11, 15);
+    const hace12MesesStr = `${dateBase.getFullYear()}-${String(dateBase.getMonth() + 1).padStart(2, '0')}`;
     
     const APP_START = '2026-04';
     const filterStart = hace12MesesStr < APP_START ? APP_START : hace12MesesStr;
@@ -172,8 +202,9 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   }, [egresos, selectedMonth]);
 
   const { mejorMes, peorMes } = useMemo(() => {
+    if (historialMensual.length === 0) return { mejorMes: null, peorMes: null };
     let mejor = historialMensual[0]; let peor = historialMensual[0];
-    historialMensual.forEach(m => { if (m.neto > mejor?.neto) mejor = m; if (m.neto < peor?.neto) peor = m; });
+    historialMensual.forEach(m => { if (m.neto > mejor.neto) mejor = m; if (m.neto < peor.neto) peor = m; });
     return { mejorMes: mejor, peorMes: peor };
   }, [historialMensual]);
 
@@ -182,21 +213,20 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   const pctVariables = totalEgresosAnual > 0 ? (totalVariablesAnual / totalEgresosAnual) * 100 : 0;
 
   // ============================================================================
-  // ✨ NUEVA LÓGICA: DATOS PARA GRÁFICO RECHARTS LEO VS ANDRE
+  // ✨ CORRECCIÓN: DATOS PARA GRÁFICO RECHARTS LEO VS ANDRE (Identidad)
   // ============================================================================
   const datosComparativos = useMemo(() => {
-    const egresosMes = egresos.filter(e => e.fecha.startsWith(selectedMonth));
+    const egresosMesFiltrados = egresos.filter(e => e.fecha.startsWith(selectedMonth));
     const categoriasObj = {};
 
-    egresosMes.forEach(e => {
+    egresosMesFiltrados.forEach(e => {
       const cat = e.categoria || 'Otros';
       if (!categoriasObj[cat]) categoriasObj[cat] = { name: cat, Leo: 0, Andre: 0, Shared: 0 };
       
-      const cuentaAsociada = cuentas.find(c => c.id === e.cuentaId);
-      const owner = cuentaAsociada ? cuentaAsociada.ownerId || 'Shared' : 'Shared';
+      const owner = identifyOwner(e.cuentaId, e.persona, e.descripcion);
 
-      if (owner === 'Leo' || e.persona === 'Leo') categoriasObj[cat].Leo += e.monto;
-      else if (owner === 'Andre' || e.persona === 'Andre') categoriasObj[cat].Andre += e.monto;
+      if (owner === 'Leo') categoriasObj[cat].Leo += e.monto;
+      else if (owner === 'Andre') categoriasObj[cat].Andre += e.monto;
       else categoriasObj[cat].Shared += e.monto;
     });
 
@@ -257,45 +287,45 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </header>
 
       {/* ---------------------------------------------------- */}
-      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA              */}
+      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA             */}
       {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Gráfica Circular de Score */}
-        <Card className="flex flex-col items-center justify-center p-6 !border-t-0 shadow-neumorph-inset bg-[#111222]">
+        <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] flex flex-col items-center justify-center p-6 !border-t-0 shadow-neumorph-inset bg-[#111222]">
           <p className="text-[10px] md:text-xs text-[#8A92A6] uppercase font-black tracking-widest mb-4">Salud Financiera</p>
           <ScoreGauge score={scoreData.score} />
-        </Card>
+        </div>
 
         {/* Tarjetas de KPI */}
         <div className="flex flex-col gap-4 lg:col-span-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-            <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-magenta transition-all">
+            <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-magenta transition-all">
               <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1 group-hover:text-neonmagenta transition-colors">Carga de Deuda</p>
               <p className={`text-3xl font-black tabular-nums drop-shadow-md ${cargaDeuda > 40 ? 'text-neonmagenta drop-shadow-[0_0_10px_rgba(255,0,122,0.5)]' : 'text-white'}`}>
                 {cargaDeuda.toFixed(1)}%
               </p>
-            </Card>
+            </div>
 
-            <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-cyan transition-all">
+            <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-cyan transition-all">
               <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1 group-hover:text-neoncyan transition-colors">Tasa de Ahorro</p>
               <p className="text-3xl font-black text-neoncyan tabular-nums drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]">{tasaAhorroAnual.toFixed(1)}%</p>
-            </Card>
+            </div>
 
-            <Card className="p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222]">
+            <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222]">
               <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Flujo Promedio</p>
               <p className={`text-2xl font-black tabular-nums ${flujoPromedioMes >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
                 {formatCOP(flujoPromedioMes)}
               </p>
-            </Card>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ---------------------------------------------------- */}
-      {/* ✨ SECCIÓN NUEVA: GRÁFICO RECHARTS LEO VS ANDRE      */}
+      {/* SECCIÓN NUEVA: GRÁFICO RECHARTS LEO VS ANDRE         */}
       {/* ---------------------------------------------------- */}
-      <Card className="flex flex-col h-[400px]">
+      <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 flex flex-col h-[400px]">
         <h2 className="text-xs font-black text-white uppercase tracking-widest mb-2 flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neoncyan"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
           Top Gastos: Leo vs Andre
@@ -320,7 +350,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
             <EmptyStateAnalitica />
           )}
         </div>
-      </Card>
+      </div>
 
       {/* ---------------------------------------------------- */}
       {/* SECCIÓN PROYECCIÓN Y RECOMENDACIONES                 */}
@@ -328,7 +358,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
         {proyeccionLiquidez ? (
-          <Card className="xl:col-span-2 flex flex-col justify-center">
+          <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 xl:col-span-2 flex flex-col justify-center">
             <h2 className="text-lg font-black text-white mb-6 tracking-wide flex items-center gap-2">
               <TrendingUp size={20} className="text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"/> 
               Proyección de Liquidez (90 Días)
@@ -350,14 +380,14 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         ) : (
-          <Card className="xl:col-span-2 flex items-center justify-center">
+          <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 xl:col-span-2 flex items-center justify-center">
             <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Calculando proyección de liquidez...</p>
-          </Card>
+          </div>
         )}
 
-        <Card className="flex flex-col">
+        <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 flex flex-col">
            <div className="flex items-center gap-2 mb-6">
               <Zap className="text-amber-400 w-5 h-5 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/>
               <h2 className="text-lg font-black tracking-wide text-white">Acciones Sugeridas</h2>
@@ -381,7 +411,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
                 </div>
               ))}
            </div>
-        </Card>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -389,7 +419,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
         {/* ---------------------------------------------------- */}
         {/* TARJETA 5: ESTRATEGIA AVALANCHA                      */}
         {/* ---------------------------------------------------- */}
-        <Card className="flex flex-col">
+        <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-black tracking-wide text-white flex items-center gap-2">Estrategia Avalancha</h2>
             <div className="hidden md:block px-3 py-1.5 bg-neonmagenta/10 text-neonmagenta rounded-lg text-[10px] font-black uppercase tracking-widest border border-neonmagenta/30 shadow-[0_0_10px_rgba(255,0,122,0.2)]">
@@ -427,13 +457,13 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
                </div>
              )}
           </div>
-        </Card>
+        </div>
 
         <div className="flex flex-col gap-6">
           {/* ---------------------------------------------------- */}
           {/* TARJETA 6: EXTREMOS DEL AÑO                          */}
           {/* ---------------------------------------------------- */}
-          <Card className="flex flex-col justify-center gap-4">
+          <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 flex flex-col justify-center gap-4">
             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-2">Extremos de tu Historial</h3>
             
             <div className="bg-[#111222] shadow-neumorph-inset border border-transparent p-4 rounded-2xl flex items-center gap-5">
@@ -455,12 +485,12 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
                 <p className="text-2xl font-black text-white tabular-nums">{formatCOP(peorMes?.neto || 0)}</p>
               </div>
             </div>
-          </Card>
+          </div>
 
           {/* ---------------------------------------------------- */}
           {/* TARJETA 7: TOP 5 FUGAS                               */}
           {/* ---------------------------------------------------- */}
-          <Card className="flex flex-col flex-1">
+          <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 flex flex-col flex-1">
             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Top Fugas ({topCategoriasAnual.length > 0 ? topCategoriasAnual.length : 0})</h3>
             <div className="space-y-5 flex-1 flex flex-col justify-center">
               {topCategoriasAnual.map(([cat, amount], i) => {
@@ -484,13 +514,13 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
               })}
               {topCategoriasAnual.length === 0 && <p className="text-sm text-[#8A92A6] font-bold text-center">Sin datos registrados.</p>}
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* ---------------------------------------------------- */}
         {/* TARJETA 8: ESTRUCTURA DE GASTO CON DONA SVG          */}
         {/* ---------------------------------------------------- */}
-        <Card className="lg:col-span-2 flex flex-col justify-center">
+        <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 lg:col-span-2 flex flex-col justify-center">
           <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Estructura de Gasto Real</h3>
           
           <div className="flex flex-col md:flex-row items-center gap-8 bg-[#111222] shadow-neumorph-inset border border-transparent rounded-[30px] p-6 md:p-8">
@@ -514,7 +544,7 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
               Relación de Vida: <strong className="text-white text-sm tracking-wide">{(totalVariablesAnual > 0 ? (totalFijosAnual/totalVariablesAnual).toFixed(1) : 0)} a 1</strong> <span className="lowercase font-bold tracking-normal text-[10px] ml-1">(Fijos / Variable)</span>
             </p>
           </div>
-        </Card>
+        </div>
 
       </div>
     </div>
