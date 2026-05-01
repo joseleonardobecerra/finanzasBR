@@ -133,19 +133,63 @@ const AnaliticaTab = (() => {
     const tasaAhorroAnual = totalIngresosAnual > 0 ? ((totalIngresosAnual - totalEgresosAnual) / totalIngresosAnual) * 100 : 0;
     const flujoPromedioMes = (totalIngresosAnual - totalEgresosAnual) / (historialMensual.length || 1);
 
+    // ✨ CÁLCULOS AVANZADOS PARA NUEVOS INSIGHTS
+    const liquidezEfectiva = cuentas.filter(c => ['bank', 'cash'].includes(c.type)).reduce((s, c) => s + c.currentBalance, 0);
+    const liquidezInvertida = cuentas.filter(c => c.type === 'pocket').reduce((s, c) => s + c.currentBalance, 0);
+    const liquidezTotalCalc = liquidezEfectiva + liquidezInvertida;
+    const gastoPromedioMes = totalEgresosAnual / (historialMensual.length || 1);
+    const mesesCobertura = gastoPromedioMes > 0 ? liquidezTotalCalc / gastoPromedioMes : 0;
+
+    // ✨ MOTOR DE RECOMENDACIONES (SUPER MEJORADO)
     const recomendaciones = useMemo(() => {
       const recs = [];
-      if (cargaDeuda > 40) recs.push({ tipo: 'alerta', ico: '🚨', title: 'Carga de Deuda Crítica', desc: `Estás comprometiendo aprox. el ${cargaDeuda.toFixed(1)}% de tus ingresos en cuotas y pagos mínimos.` });
-      else if (cargaDeuda > 20) recs.push({ tipo: 'precaucion', ico: '⚠️', title: 'Carga de Deuda Moderada', desc: `Tus cuotas consumen aprox. el ${cargaDeuda.toFixed(1)}% de tu ingreso.` });
+      
+      // 1. Carga de Deuda
+      if (cargaDeuda > 40) recs.push({ tipo: 'alerta', ico: '🚨', title: 'Carga de Deuda Crítica', desc: `Estás comprometiendo aprox. el ${cargaDeuda.toFixed(1)}% de tus ingresos en pagar créditos. Cuidado con tu flujo de caja.` });
+      else if (cargaDeuda > 20) recs.push({ tipo: 'precaucion', ico: '⚠️', title: 'Carga de Deuda Moderada', desc: `Tus cuotas consumen el ${cargaDeuda.toFixed(1)}% de tu ingreso. Mantén a raya las compras a plazos.` });
+      else if (cargaDeuda > 0) recs.push({ tipo: 'exito', ico: '🛡️', title: 'Deuda Controlada', desc: `Tus deudas representan solo el ${cargaDeuda.toFixed(1)}% de tu ingreso mensual. Excelente capacidad de pago.` });
 
-      if (tasaAhorroAnual < 5) recs.push({ tipo: 'alerta', ico: '📉', title: 'Capacidad de Ahorro Mínima', desc: 'Tu retención de capital anual es muy baja. Revisa tu Estructura de Gasto.' });
-      else if (tasaAhorroAnual >= 20) recs.push({ tipo: 'exito', ico: '🏆', title: 'Excelente Tasa de Retención', desc: `Históricamente estás reteniendo el ${tasaAhorroAnual.toFixed(1)}% de tu dinero.` });
+      // 2. Fondo de Emergencia (Cobertura)
+      if (mesesCobertura < 1) recs.push({ tipo: 'alerta', ico: '🛟', title: 'Fondo de Emergencia Crítico', desc: 'Tu liquidez actual no alcanza para cubrir ni 1 mes de gastos en caso de imprevistos. Prioriza el ahorro líquido.' });
+      else if (mesesCobertura >= 3) recs.push({ tipo: 'exito', ico: '🏰', title: 'Fondo de Emergencia Sólido', desc: `Tienes ${mesesCobertura.toFixed(1)} meses de gastos cubiertos. Esto te otorga una gran paz mental y resiliencia.` });
 
-      scoreData.recs.forEach(r => { if (!recs.find(existing => existing.title === r.title)) recs.push({ tipo: 'info', ico: r.ico, title: r.title, desc: r.txt }); });
+      // 3. Tasa de Ahorro
+      if (tasaAhorroAnual < 5) recs.push({ tipo: 'alerta', ico: '📉', title: 'Capacidad de Retención Baja', desc: 'Estás gastando casi todo lo que ganas. Revisa tus gastos "hormiga" o tus suscripciones fijas.' });
+      else if (tasaAhorroAnual >= 20) recs.push({ tipo: 'exito', ico: '🏆', title: 'Excelente Ahorrador', desc: `Históricamente estás reteniendo el ${tasaAhorroAnual.toFixed(1)}% de tu dinero. ¡Sigue así!` });
 
-      if (recs.length === 0) recs.push({ tipo: 'exito', ico: '🚀', title: 'Finanzas Saludables', desc: 'Tus indicadores a largo plazo están perfectos.' });
+      // 4. Deuda Tóxica (Tasas EA Altas)
+      if (deudasOrdenadas.length > 0 && deudasOrdenadas[0].tasaEA >= 28) {
+        recs.push({ tipo: 'alerta', ico: '🔥', title: 'Crédito de Alto Costo Detectado', desc: `Tienes saldo en una cuenta con ${deudasOrdenadas[0].tasaEA}% de interés EA. Prioriza liquidarla mediante el Método Avalancha.` });
+      }
+
+      // 5. Estructura Fijo vs Variable
+      if (totalVariablesAnual > totalFijosAnual && totalFijosAnual > 0) {
+        recs.push({ tipo: 'precaucion', ico: '⚖️', title: 'Gasto Variable Dominante', desc: 'Gastas más en cosas variables (ocio, salidas, varios) que en tus obligaciones fijas mensuales. Ajustar esto es clave para ahorrar más.' });
+      }
+
+      // 6. Dinero Ocioso (Inflación)
+      if (liquidezEfectiva > (gastoPromedioMes * 1.5) && liquidezInvertida === 0) {
+        recs.push({ tipo: 'info', ico: '💡', title: 'Dinero Ocioso Detectado', desc: 'Tienes buena liquidez en el banco, pero $0 en Inversiones. La inflación le está quitando valor a tu dinero. Considera abrir un "Bolsillo" que rente intereses.' });
+      }
+
+      // 7. Tendencia de Flujo
+      if (historialMensual.length >= 2) {
+        const last = historialMensual[historialMensual.length - 1];
+        const prev = historialMensual[historialMensual.length - 2];
+        if (last.neto < 0 && prev.neto < 0) {
+          recs.push({ tipo: 'alerta', ico: '⚠️', title: 'Déficit Sostenido', desc: 'Llevas varios meses gastando más de lo que ingresas. Si no ajustas el presupuesto pronto, tendrás que recurrir a endeudamiento.' });
+        }
+      }
+
+      // 8. Integrar recomendaciones previas del score general
+      scoreData.recs.forEach(r => { 
+        if (!recs.find(existing => existing.title === r.title)) recs.push({ tipo: 'info', ico: r.ico, title: r.title, desc: r.txt }); 
+      });
+
+      if (recs.length === 0) recs.push({ tipo: 'exito', ico: '🚀', title: 'Finanzas Impecables', desc: 'Todos tus indicadores macro están en niveles óptimos.' });
+      
       return recs;
-    }, [cargaDeuda, tasaAhorroAnual, scoreData.recs]);
+    }, [cargaDeuda, tasaAhorroAnual, scoreData.recs, mesesCobertura, deudasOrdenadas, totalVariablesAnual, totalFijosAnual, liquidezEfectiva, liquidezInvertida, gastoPromedioMes, historialMensual]);
 
     const topCategoriasAnual = useMemo(() => {
       const [sY, sM] = selectedMonth.split('-');
@@ -160,6 +204,13 @@ const AnaliticaTab = (() => {
       gastos12m.forEach(g => { const c = g.categoria || 'Otros'; catMap[c] = (catMap[c] || 0) + Number(g.monto); });
       return Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
     }, [egresos, selectedMonth]);
+
+    const { mejorMes, peorMes } = useMemo(() => {
+      if (historialMensual.length === 0) return { mejorMes: null, peorMes: null };
+      let mejor = historialMensual[0]; let peor = historialMensual[0];
+      historialMensual.forEach(m => { if (m.neto > mejor.neto) mejor = m; if (m.neto < peor.neto) peor = m; });
+      return { mejorMes: mejor, peorMes: peor };
+    }, [historialMensual]);
 
     const maxValCat = topCategoriasAnual.length > 0 ? topCategoriasAnual[0][1] : 1;
     const pctFijos = totalEgresosAnual > 0 ? (totalFijosAnual / totalEgresosAnual) * 100 : 0;
