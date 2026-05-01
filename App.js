@@ -6,7 +6,12 @@ function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+  const d = new Date();
+  const año = d.getFullYear(); // Saca el año local (Ej: 2026)
+  const mes = String(d.getMonth() + 1).padStart(2, '0'); // Saca el mes local (Ej: 04)
+  return `${año}-${mes}`; 
+});
   const [toast, setToast] = useState(null);
   const [filtroPersona, setFiltroPersona] = useState('Total');
   const [scoreHistory, setScoreHistory] = useState({});
