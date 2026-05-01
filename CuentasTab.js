@@ -1,8 +1,8 @@
 // ============================================================================
-// COMPONENTES UI EXTERNOS (Soluciona el bug de pérdida de foco al escribir)
+// COMPONENTES UI EXTERNOS
 // ============================================================================
 const Edit3 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
-const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
 const Plus = ({ size = 16, strokeWidth = "2", className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const Upload = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
 const Download = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
@@ -33,6 +33,52 @@ const Select = ({ label, options, value, onChange, error, className }) => (
   </div>
 );
 
+// ✨ NUEVO COMPONENTE: Logos de Bancos Dinámicos
+const BankLogo = ({ name, type, className = "w-6 h-6 rounded-full shrink-0" }) => {
+  const { useState } = React;
+  const [error, setError] = useState(false);
+  const lowerName = (name || '').toLowerCase();
+
+  // Si es efectivo, siempre mostramos el emoji (no hay logo para el efectivo físico)
+  if (type === 'cash') return <span className="text-lg shrink-0">💵</span>;
+
+  // Diccionario inteligente para detectar el banco según el nombre de tu cuenta
+  let domain = null;
+  if (lowerName.includes('bancolombia')) domain = 'bancolombia.com';
+  else if (lowerName.includes('nequi')) domain = 'nequi.com.co';
+  else if (lowerName.includes('daviplata')) domain = 'daviplata.com';
+  else if (lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com';
+  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes(' nu ')) domain = 'nu.com.co';
+  else if (lowerName.includes('bogot')) domain = 'bancodebogota.com';
+  else if (lowerName.includes('lulo')) domain = 'lulobank.com';
+  else if (lowerName.includes('rappi')) domain = 'rappipay.co';
+  else if (lowerName.includes('falabella')) domain = 'bancofalabella.com.co';
+  else if (lowerName.includes('bbva')) domain = 'bbva.com.co';
+  else if (lowerName.includes('colpatria') || lowerName.includes('scotiabank')) domain = 'scotiabankcolpatria.com';
+  else if (lowerName.includes('caja social')) domain = 'bancocajasocial.com';
+  else if (lowerName.includes('bancamia')) domain = 'bancamia.com.co';
+  else if (lowerName.includes('av villas')) domain = 'bancoavvillas.com.co';
+  else if (lowerName.includes('popular')) domain = 'bancopopular.com.co';
+
+  // Si encontramos un dominio y la imagen carga bien
+  if (domain && !error) {
+    return (
+      <img
+        src={`https://logo.clearbit.com/${domain}`}
+        alt={name}
+        className={`object-contain bg-white border border-white/[0.2] ${className}`}
+        style={{ padding: '2px' }}
+        onError={() => setError(true)} // Si falla el internet o la API, activa el error
+      />
+    );
+  }
+
+  // Fallbacks: Si no reconoce el nombre o falló la imagen, vuelve a los emojis seguros
+  if (type === 'pocket') return <span className="text-lg shrink-0">📈</span>;
+  if (type === 'credit') return <span className="text-lg shrink-0">💳</span>;
+  return <span className="text-lg shrink-0">🏦</span>;
+};
+
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
@@ -60,7 +106,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
     return 'text-[#8A92A6]';
   };
 
-  // ✨ Ajuste: Solo mantenemos en el formulario los datos relevantes para bancos/efectivo
   const [cuentaEdit, setCuentaEdit] = useState({ id: null, name: '', type: 'bank', initialBalance: '' });
   const [nuevaTx, setNuevaTx] = useState({ fecha: getLocalToday(), fromId: '', toId: '', monto: '', costoAvance: '0', descripcion: '' });
   
@@ -116,7 +161,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
     if (!cuentaEdit.name) errs.name = "Obligatorio";
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
-    // ✨ Ajuste: No guardamos variables basura como 'limit' o 'tasaEA' para las cuentas bancarias
     const baseData = {
       name: cuentaEdit.name, 
       type: cuentaEdit.type,
@@ -287,7 +331,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
       {/* TRES COLUMNAS PRINCIPALES */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 items-start">
         
-        {/* --- COLUMNA 1: Tarjeta Leo (Cyan Theme) --- */}
+        {/* --- COLUMNA 1: Liquidez Leo (Cyan Theme) --- */}
         <Card className="!border-transparent flex flex-col overflow-hidden relative h-full">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-neoncyan/10 blur-[50px] rounded-full pointer-events-none"></div>
           <h3 className="text-xs font-black text-neoncyan uppercase tracking-widest mb-5 flex items-center gap-2 relative z-10">
@@ -301,8 +345,9 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                ) : (
                  leoAccounts.map(c => (
                    <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3.5 rounded-xl border border-transparent group transition-all hover:border-white/[0.05]">
-                      <div className="flex items-center gap-2 pr-2 overflow-hidden">
-                        <span className="text-lg shrink-0">{c.type === 'cash' ? '💵' : c.type === 'pocket' ? '📈' : '🏦'}</span>
+                      <div className="flex items-center gap-3 pr-2 overflow-hidden">
+                        {/* ✨ APLICACIÓN DEL LOGO O EMOJI AQUÍ */}
+                        <BankLogo name={c.name} type={c.type} />
                         <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
                       </div>
                       
@@ -337,7 +382,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
           </div>
         </Card>
 
-        {/* --- COLUMNA 2: Tarjeta Andre (Magenta Theme) --- */}
+        {/* --- COLUMNA 2: Liquidez Andre (Magenta Theme) --- */}
         <Card className="!border-transparent flex flex-col overflow-hidden relative h-full">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-neonmagenta/10 blur-[50px] rounded-full pointer-events-none"></div>
           <h3 className="text-xs font-black text-neonmagenta uppercase tracking-widest mb-5 flex items-center gap-2 relative z-10">
@@ -351,8 +396,9 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                ) : (
                  andreAccounts.map(c => (
                    <div key={c.id} className="flex justify-between items-center text-sm bg-[#111222] shadow-neumorph-inset p-3.5 rounded-xl border border-transparent group transition-all hover:border-white/[0.05]">
-                      <div className="flex items-center gap-2 pr-2 overflow-hidden">
-                        <span className="text-lg shrink-0">{c.type === 'cash' ? '💵' : c.type === 'pocket' ? '📈' : '🏦'}</span>
+                      <div className="flex items-center gap-3 pr-2 overflow-hidden">
+                        {/* ✨ APLICACIÓN DEL LOGO O EMOJI AQUÍ */}
+                        <BankLogo name={c.name} type={c.type} />
                         <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
                       </div>
                       
@@ -451,8 +497,9 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              {sharedAccounts.map(c => (
                <div key={c.id} className="flex justify-between items-center text-sm bg-appcard shadow-neumorph p-3.5 rounded-xl border border-white/[0.02] group transition-all hover:border-white/[0.05]">
-                  <div className="flex items-center gap-2 pr-2 overflow-hidden">
-                    <span className="text-lg shrink-0">{c.type === 'cash' ? '💵' : c.type === 'pocket' ? '📈' : '🏦'}</span>
+                  <div className="flex items-center gap-3 pr-2 overflow-hidden">
+                    {/* ✨ APLICACIÓN DEL LOGO O EMOJI AQUÍ */}
+                    <BankLogo name={c.name} type={c.type} />
                     <span className="text-white font-bold truncate text-[13px] tracking-wide">{c.name}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
