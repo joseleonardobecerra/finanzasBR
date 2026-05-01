@@ -3,7 +3,7 @@
 // COMPONENTES UI EXTERNOS (Privados para CuentasTab)
 // ============================================================================
 const Edit3 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
-const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7c-1 0-2-1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
 const Plus = ({ size = 16, strokeWidth = "2", className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const Upload = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
 const Download = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
@@ -34,20 +34,20 @@ const Select = ({ label, options, value, onChange, error, className }) => (
   </div>
 );
 
-// ✨ NUEVO MOTOR DE LOGOS (Google Favicons: Invencible a bloqueadores)
-const BankLogo = ({ name, type, className = "w-6 h-6 shrink-0" }) => {
+// ✨ NUEVO MOTOR DE LOGOS (Doble motor: Clearbit + Icon.Horse)
+const BankLogo = ({ name, type, className = "w-6 h-6 rounded-full shrink-0" }) => {
   const { useState } = React;
-  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   
   const lowerName = (name || '').toLowerCase();
 
   if (type === 'cash') return <span className="text-lg shrink-0">💵</span>;
 
   let domain = null;
-  if (lowerName.includes('bancolombia')) domain = 'bancolombia.com';
+  if (lowerName.includes('bancolombia')) domain = 'grupobancolombia.com';
   else if (lowerName.includes('nequi')) domain = 'nequi.com.co';
   else if (lowerName.includes('daviplata') || lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com'; 
-  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes('nu ')) domain = 'nubank.com.br'; 
+  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes('nu ')) domain = 'nu.com.co'; 
   else if (lowerName.includes('bogot')) domain = 'bancodebogota.com';
   else if (lowerName.includes('lulo')) domain = 'lulobank.com';
   else if (lowerName.includes('rappi')) domain = 'rappi.com.co';
@@ -60,14 +60,18 @@ const BankLogo = ({ name, type, className = "w-6 h-6 shrink-0" }) => {
   else if (lowerName.includes('itau') || lowerName.includes('itaú')) domain = 'itau.co';
   else if (lowerName.includes('occidente')) domain = 'bancodeoccidente.com.co';
 
-  if (domain && !error) {
+  if (domain && attempt < 2) {
+    const src = attempt === 0 
+      ? `https://logo.clearbit.com/${domain}` 
+      : `https://icon.horse/icon/${domain}`;
+
     return (
       <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
+        src={src}
         alt={name}
-        className={`object-cover bg-white border border-white/[0.2] rounded-full ${className}`}
+        className={`object-contain bg-white border border-white/[0.2] ${className}`}
         style={{ padding: '2px' }}
-        onError={() => setError(true)}
+        onError={() => setAttempt(prev => prev + 1)}
       />
     );
   }
@@ -80,7 +84,7 @@ const BankLogo = ({ name, type, className = "w-6 h-6 shrink-0" }) => {
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
-const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
+const CuentasTabComponent = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                       transferencias, addTransferencia, removeTransferencia,
                       addEgreso, showToast, privacyMode }) => {
   const { useState, useRef } = React;
