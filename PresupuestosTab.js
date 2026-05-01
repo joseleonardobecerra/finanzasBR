@@ -222,8 +222,18 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       const catName = p.categoria || '';
       
       const gastado = egresosMes.filter(e => {
-        // Cálculo clásico y simple: Si coincide la categoría y NO es fijo, suma. (Revertido a original)
-        return (e.categoria || '').trim().toLowerCase() === catName.trim().toLowerCase() && e.tipo !== 'Fijo';
+        const matchCat = (e.categoria || '').trim().toLowerCase() === catName.trim().toLowerCase();
+        
+        if (matchCat) {
+          // ✨ SOLUCIÓN: Si la categoría es de tarjetas/créditos, sumamos TODOS los movimientos 
+          // (tanto pagos fijos a las TC, como compras variables, si es que existen).
+          if (catName.toLowerCase().includes('tarjeta') || catName.toLowerCase().includes('crédito')) {
+             return true; 
+          }
+          // Para el resto de los presupuestos (Mercado, Gasolina, etc), solo sumamos los Variables para no mezclar.
+          return e.tipo !== 'Fijo';
+        }
+        return false;
       }).reduce((s, e) => s + e.monto, 0);
       
       variables.push({ id: p.id, tipo: 'Variable', nombre: budgetName, categoria: catName, limite: p.limite, gastado });
