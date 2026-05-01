@@ -97,7 +97,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // ============================================================================
-// --- UTILIDADES ---
+// --- UTILIDADES GLOBALES ---
 // ============================================================================
 const formatCOP = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
 const getTasaMensual = (tasaEA) => Math.pow(1 + tasaEA / 100, 1 / 12) - 1;
@@ -126,7 +126,7 @@ const loadSheetJS = async () => {
 };
 
 // ============================================================================
-// 💎 COMPONENTES UI BASE (NUEVO DISEÑO DARK NEUMORPHISM & NEON)
+// 💎 COMPONENTES UI BASE (DISEÑO DARK NEUMORPHISM & NEON)
 // ============================================================================
 
 // ✨ 1. TARJETA BASE (Card 3D)
@@ -194,7 +194,7 @@ const Toast = ({ toast, onClose }) => {
 };
 
 // ============================================================================
-// --- COMPONENTES EXTRAS ADAPTADOS ---
+// --- COMPONENTES EXTRAS (TARJETAS DE PAGOS FIJOS/INGRESOS RÁPIDOS) ---
 // ============================================================================
 const PagoFijoCard = ({ pf, cuentasPermitidas, onPay }) => {
   const [cuentaId, setCuentaId] = useState('');
