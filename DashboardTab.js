@@ -45,11 +45,10 @@ const DashboardTab = (() => {
     const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
     const idsTarjetas = tarjetasCredito.map(c => c.id);
 
+    // ✨ CORRECCIÓN: Eliminamos totalPresupuestadoTC para que no duplique el presupuesto
     const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
-    // ✨ Conectamos las cuotas totales calculadas en App.js
-    const totalPresupuestadoTC = cuotasMesTotal || 0; 
     const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
-    const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoTC + totalPresupuestadoVar;
+    const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoVar;
 
     const proyIngLeo = ingresosFijos ? ingresosFijos.filter(i => identifyOwner(null, i.persona, i.descripcion) === 'Leo').reduce((s, i) => s + Number(i.monto), 0) : 0;
     const proyIngAndre = ingresosFijos ? ingresosFijos.filter(i => identifyOwner(null, i.persona, i.descripcion) === 'Andre').reduce((s, i) => s + Number(i.monto), 0) : 0;
@@ -291,10 +290,6 @@ const DashboardTab = (() => {
                 <div className="flex justify-between items-center text-xs mb-3">
                   <span className="text-[#8A92A6] font-bold">Gastos Fijos</span>
                   <span className="font-black text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs mb-3">
-                  <span className="text-[#8A92A6] font-bold">Cuotas TC</span>
-                  <span className="font-black text-indigo-400">{formatCOP(totalPresupuestadoTC)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-[#8A92A6] font-bold">Gastos Variables</span>
