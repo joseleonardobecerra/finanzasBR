@@ -1,8 +1,9 @@
+(() => {
 // ============================================================================
-// COMPONENTES UI EXTERNOS
+// COMPONENTES UI EXTERNOS (Privados para CuentasTab)
 // ============================================================================
 const Edit3 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
-const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7c-1 0-2-1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
 const Plus = ({ size = 16, strokeWidth = "2", className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const Upload = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
 const Download = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
@@ -33,49 +34,44 @@ const Select = ({ label, options, value, onChange, error, className }) => (
   </div>
 );
 
-// ✨ NUEVO COMPONENTE: Logos de Bancos Dinámicos (Búsqueda por palabra clave)
-const BankLogo = ({ name, type, className = "w-6 h-6 rounded-full shrink-0" }) => {
+// ✨ NUEVO MOTOR DE LOGOS (Google Favicons: Invencible a bloqueadores)
+const BankLogo = ({ name, type, className = "w-6 h-6 shrink-0" }) => {
   const { useState } = React;
   const [error, setError] = useState(false);
   
-  // Convertimos a minúsculas para buscar fragmentos (ej: "Bancolombia Leo" -> "bancolombia leo")
   const lowerName = (name || '').toLowerCase();
 
-  // Si es efectivo, siempre mostramos el emoji (no hay logo para el efectivo físico)
   if (type === 'cash') return <span className="text-lg shrink-0">💵</span>;
 
-  // Diccionario inteligente para detectar el banco según si el nombre INCLUYE esa palabra
   let domain = null;
   if (lowerName.includes('bancolombia')) domain = 'bancolombia.com';
   else if (lowerName.includes('nequi')) domain = 'nequi.com.co';
-  else if (lowerName.includes('daviplata') || lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com'; // Redirige a la casita roja
-  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes('nu ')) domain = 'nubank.com.br'; // Dominio global de Nu
+  else if (lowerName.includes('daviplata') || lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com'; 
+  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes('nu ')) domain = 'nubank.com.br'; 
   else if (lowerName.includes('bogot')) domain = 'bancodebogota.com';
   else if (lowerName.includes('lulo')) domain = 'lulobank.com';
-  else if (lowerName.includes('rappi')) domain = 'rappi.com';
-  else if (lowerName.includes('falabella')) domain = 'falabella.com';
-  else if (lowerName.includes('bbva')) domain = 'bbva.com';
-  else if (lowerName.includes('colpatria') || lowerName.includes('scotia')) domain = 'scotiabank.com';
+  else if (lowerName.includes('rappi')) domain = 'rappi.com.co';
+  else if (lowerName.includes('falabella')) domain = 'bancofalabella.com.co';
+  else if (lowerName.includes('bbva')) domain = 'bbva.com.co';
+  else if (lowerName.includes('colpatria') || lowerName.includes('scotia')) domain = 'scotiabankcolpatria.com';
   else if (lowerName.includes('caja social')) domain = 'bancocajasocial.com';
   else if (lowerName.includes('av villas')) domain = 'bancoavvillas.com.co';
   else if (lowerName.includes('popular')) domain = 'bancopopular.com.co';
   else if (lowerName.includes('itau') || lowerName.includes('itaú')) domain = 'itau.co';
   else if (lowerName.includes('occidente')) domain = 'bancodeoccidente.com.co';
 
-  // Si encontramos un dominio y la imagen carga bien
   if (domain && !error) {
     return (
       <img
-        src={`https://logo.clearbit.com/${domain}`}
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
         alt={name}
-        className={`object-contain bg-white border border-white/[0.2] ${className}`}
+        className={`object-cover bg-white border border-white/[0.2] rounded-full ${className}`}
         style={{ padding: '2px' }}
-        onError={() => setError(true)} // Si falla el internet o la API, activa el error
+        onError={() => setError(true)}
       />
     );
   }
 
-  // Fallbacks: Si no reconoce el nombre o falló la imagen, vuelve a los emojis seguros
   if (type === 'pocket') return <span className="text-lg shrink-0">📈</span>;
   if (type === 'credit') return <span className="text-lg shrink-0">💳</span>;
   return <span className="text-lg shrink-0">🏦</span>;
@@ -330,7 +326,6 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
         </Card>
       )}
 
-      {/* TRES COLUMNAS PRINCIPALES */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 items-start">
         
         {/* --- COLUMNA 1: Liquidez Leo (Cyan Theme) --- */}
@@ -510,7 +505,7 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
         </Card>
       )}
 
-      {/* HISTORIAL DE TRANSFERENCIAS */}
+      {/* ✨ TABLA HISTORIAL DE TRANSFERENCIAS */}
       <Card className="!border-transparent mt-6 flex flex-col">
         <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
           <ArrowRightLeft size={18} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"/> 
@@ -571,3 +566,5 @@ const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
     </div>
   );
 };
+  window.CuentasTab = CuentasTab;
+})();
