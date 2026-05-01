@@ -24,7 +24,7 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   };
 
   // ============================================================================
-  // ÍCONOS SVG NATIVOS (Prevención de ReferenceError)
+  // ÍCONOS SVG NATIVOS
   // ============================================================================
   const CheckIcon = ({ size = 16, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -83,15 +83,14 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
       return egresos.filter(e => e.fecha.startsWith(selectedMonth));
   }, [egresos, selectedMonth]);
 
-  // ✨ CÁLCULOS PARA LA FILA DE TOTALES DE TARJETAS
   const todasLasTC = deudasAnalizadas.filter(d => d.type === 'credit');
   const totalCupoTC = todasLasTC.reduce((sum, d) => sum + (Number(d.limit) || 0), 0);
   const totalDeudaTC = todasLasTC.reduce((sum, d) => sum + (Number(d.currentDebt) || 0), 0);
   const totalDispTC = todasLasTC.reduce((sum, d) => sum + Math.max(0, (Number(d.limit) || 0) - (Number(d.currentDebt) || 0)), 0);
   
-  // Total uso de todas las TC este mes
+  // ✨ CORRECCIÓN: Uso total del mes (Suma TODO lo que haya salido de alguna tarjeta de crédito)
   const totalUsoTCMes = todasLasTC.reduce((sum, tc) => {
-      const usoMesTC = egresosMes.filter(e => e.tipo === 'Variable' && e.cuentaId === tc.id).reduce((s, e) => s + e.monto, 0);
+      const usoMesTC = egresosMes.filter(e => e.cuentaId === tc.id).reduce((s, e) => s + Number(e.monto), 0);
       return sum + usoMesTC;
   }, 0);
 
@@ -416,8 +415,10 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
                 const isEditing = editId === d.id;
                 const tasaMV = getTasaMensual(d.tasaEA) * 100;
                 
-                // ✨ CÁLCULO INDIVIDUAL DEL USO DE LA TARJETA ESTE MES
-                const usoMesActual = egresosMes.filter(e => e.tipo === 'Variable' && e.cuentaId === d.id).reduce((s, e) => s + e.monto, 0);
+                // ✨ CORRECCIÓN EXACTA: Uso de la tarjeta en el mes (Cualquier egreso que haya "salido" de ella)
+                const usoMesActual = egresosMes
+                  .filter(e => e.cuentaId === d.id)
+                  .reduce((s, e) => s + Number(e.monto), 0);
                 
                 if (isEditing) {
                    return (
