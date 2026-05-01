@@ -1,3 +1,28 @@
+// ============================================================================
+// COMPONENTES UI EXTERNOS
+// ============================================================================
+const AlertCircle = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" x2="12" y1="8" y2="12"/>
+    <line x1="12" x2="12.01" y1="16" y2="16"/>
+  </svg>
+);
+
+const LockIcon = ({ size = 12, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+);
+
+const SpinnerIcon = ({ size = 20, className = "" }) => (
+  <div className={`border-2 border-[#0b0c16]/30 border-t-[#0b0c16] rounded-full animate-spin ${className}`} style={{ width: size, height: size }}></div>
+);
+
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
 const Login = () => {
   const { useState } = React;
   const [email, setEmail] = useState('');
@@ -42,7 +67,7 @@ const Login = () => {
 
         {error && (
           <div className="bg-[#111222] shadow-neumorph-inset border border-neonmagenta/30 text-neonmagenta p-4 rounded-xl text-xs font-black tracking-widest text-center mb-6 uppercase flex items-center justify-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+            <AlertCircle size={16}/>
             {error}
           </div>
         )}
@@ -77,15 +102,13 @@ const Login = () => {
             disabled={loading}
             className="w-full bg-neoncyan hover:bg-[#00cce6] text-[#0b0c16] font-black tracking-widest uppercase py-4 rounded-xl transition-all shadow-glow-cyan hover:scale-[1.02] active:scale-95 mt-8 flex justify-center items-center gap-2 disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none"
           >
-            {loading ? (
-               <div className="w-5 h-5 border-2 border-[#0b0c16]/30 border-t-[#0b0c16] rounded-full animate-spin"></div>
-            ) : 'Iniciar Sesión'}
+            {loading ? <SpinnerIcon size={20}/> : 'Iniciar Sesión'}
           </button>
         </form>
         
         <div className="mt-10 pt-6 border-t border-white/[0.05] text-center">
            <p className="text-[9px] text-[#8A92A6] font-black uppercase tracking-widest flex items-center justify-center gap-1.5">
-             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+             <LockIcon size={12}/>
              Sistema Privado y Encriptado
            </p>
         </div>
