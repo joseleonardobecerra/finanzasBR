@@ -80,8 +80,9 @@ const IngresosTab = ({
   // 1. ESTADOS DEL COMPONENTE
   // ============================================================================
   
-  // Estado para el acordeón (Cerrado por defecto)
+  // ✨ Estados para los acordeones (Ambos cerrados por defecto)
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isHistorialOpen, setIsHistorialOpen] = useState(false);
 
   // Formulario Nuevo Ingreso
   const [fecha, setFecha] = useState(getLocalToday());
@@ -133,6 +134,9 @@ const IngresosTab = ({
     });
   }, [ingresosMes, filters]);
 
+  // ✨ Cálculo del Total Filtrado
+  const totalFiltrado = ingresosFiltrados.reduce((sum, i) => sum + Number(i.monto), 0);
+
   // ============================================================================
   // 3. FUNCIONES DE MANEJO DE EVENTOS (CRUD)
   // ============================================================================
@@ -162,7 +166,7 @@ const IngresosTab = ({
   const startEditing = (ingreso) => {
     setEditingId(ingreso.id);
     
-    // ✨ FIX PARA CUENTAS ELIMINADAS: Verificamos si la cuenta aún existe
+    // Verificamos si la cuenta aún existe
     const cuentaExiste = cuentasActivas.some(c => c.id === ingreso.cuentaId);
     
     setEditData({ 
@@ -339,202 +343,221 @@ const IngresosTab = ({
         )}
       </div>
 
-      {/* --- SECCIÓN 2: TABLA HISTORIAL --- */}
+      {/* --- SECCIÓN 2: TABLA HISTORIAL (ACORDEÓN) --- */}
       <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8">
-        <div className="flex justify-between items-center mb-4">
+        <div 
+          className="flex justify-between items-center cursor-pointer select-none"
+          onClick={() => setIsHistorialOpen(!isHistorialOpen)}
+        >
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
             <span className="w-6 h-6 rounded-md bg-slate-800 text-slate-400 flex items-center justify-center text-xs"><ListIcon size={14} /></span>
             Historial Completo de Ingresos
           </h2>
-          <span className="bg-[#111222] shadow-neumorph-inset text-[#8A92A6] text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
-            {ingresosFiltrados.length} Movimientos
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="bg-[#111222] shadow-neumorph-inset text-[#8A92A6] text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
+              {ingresosFiltrados.length} Movimientos
+            </span>
+            <button className="text-slate-500 hover:text-white transition-colors">
+              {isHistorialOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            </button>
+          </div>
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-white/[0.05] bg-[#111222] mt-6 shadow-neumorph-inset">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              {/* Encabezados de Columna */}
-              <tr className="border-b border-white/[0.05] text-[10px] uppercase tracking-widest text-[#8A92A6] bg-[#0b0c16]/50">
-                <th className="p-4 font-black w-[12%]">Fecha</th>
-                <th className="p-4 font-black w-[28%]">Descripción</th>
-                <th className="p-4 font-black w-[15%] text-center">Tipo</th>
-                <th className="p-4 font-black w-[20%]">Destino</th>
-                <th className="p-4 font-black w-[15%] text-right">Monto</th>
-                <th className="p-4 font-black text-center w-[10%]">Acciones</th>
-              </tr>
-              
-              {/* Fila de Filtros (Estilo Inset) */}
-              <tr className="border-b-2 border-white/[0.05] bg-appcard/30">
-                <th className="p-2"></th>
-                <th className="p-2">
-                  <input 
-                    type="text" 
-                    placeholder="Buscar descripción..." 
-                    className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none placeholder:text-slate-600"
-                    value={filters.descripcion} 
-                    onChange={e => setFilters({...filters, descripcion: e.target.value})}
-                  />
-                </th>
-                <th className="p-2">
-                  <select 
-                    className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none appearance-none"
-                    value={filters.tipo} 
-                    onChange={e => setFilters({...filters, tipo: e.target.value})}
-                  >
-                    <option value="">Tipos (Todos)</option>
-                    <option value="Fijo">Fijo</option>
-                    <option value="Variable">Variable</option>
-                    <option value="Rendimiento">Rendimiento</option>
-                  </select>
-                </th>
-                <th className="p-2">
-                  <select 
-                    className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none appearance-none"
-                    value={filters.cuenta} 
-                    onChange={e => setFilters({...filters, cuenta: e.target.value})}
-                  >
-                    <option value="">Cuentas (Todas)</option>
-                    {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </th>
-                <th className="p-2"></th>
-                <th className="p-2 text-center">
-                  <button 
-                    onClick={limpiarFiltros} 
-                    className="text-[10px] uppercase font-black text-emerald-400 hover:text-[#0b0c16] bg-emerald-500/10 hover:bg-emerald-500 px-3 py-1.5 rounded-lg w-full transition-all tracking-widest"
-                  >
-                    Limpiar
-                  </button>
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="text-sm">
-              {ingresosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="p-12 text-center text-[#8A92A6] font-bold italic">
-                    No se encontraron registros que coincidan con los filtros.
-                  </td>
+        {isHistorialOpen && (
+          <div className="overflow-x-auto rounded-2xl border border-white/[0.05] bg-[#111222] mt-6 shadow-neumorph-inset animate-in slide-in-from-top-4 fade-in duration-300">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                {/* Encabezados de Columna */}
+                <tr className="border-b border-white/[0.05] text-[10px] uppercase tracking-widest text-[#8A92A6] bg-[#0b0c16]/50">
+                  <th className="p-4 font-black w-[12%]">Fecha</th>
+                  <th className="p-4 font-black w-[28%]">Descripción</th>
+                  <th className="p-4 font-black w-[15%] text-center">Tipo</th>
+                  <th className="p-4 font-black w-[20%]">Destino</th>
+                  <th className="p-4 font-black w-[15%] text-right">Monto</th>
+                  <th className="p-4 font-black text-center w-[10%]">Acciones</th>
                 </tr>
-              ) : (
-                ingresosFiltrados.map(ingreso => {
-                  const isEditing = editingId === ingreso.id;
-                  const cuentaObj = cuentas.find(c => c.id === ingreso.cuentaId);
-                  const cuentaName = cuentaObj?.name || 'Cuenta eliminada';
-                  const isPocket = cuentaObj?.type === 'pocket' || cuentaObj?.type === 'investment';
-                  
-                  return (
-                    <tr key={ingreso.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
-                      
-                      {/* --- COLUMNA FECHA --- */}
-                      <td className="p-4 text-[#8A92A6] text-xs font-bold">
-                        {isEditing ? (
-                          <input 
-                            type="date" 
-                            value={editData.fecha} 
-                            onChange={e => setEditData({...editData, fecha: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]"
-                          />
-                        ) : ingreso.fecha}
-                      </td>
+                
+                {/* ✨ Fila de Filtros (Estilo Inset) */}
+                <tr className="border-b-2 border-white/[0.05] bg-appcard/30">
+                  <th className="p-2"></th>
+                  <th className="p-2">
+                    <input 
+                      type="text" 
+                      placeholder="Buscar descripción..." 
+                      className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none placeholder:text-slate-600"
+                      value={filters.descripcion} 
+                      onChange={e => setFilters({...filters, descripcion: e.target.value})}
+                    />
+                  </th>
+                  <th className="p-2">
+                    <select 
+                      className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none appearance-none"
+                      value={filters.tipo} 
+                      onChange={e => setFilters({...filters, tipo: e.target.value})}
+                    >
+                      <option value="">Tipos (Todos)</option>
+                      <option value="Fijo">Fijo</option>
+                      <option value="Variable">Variable</option>
+                      <option value="Rendimiento">Rendimiento</option>
+                    </select>
+                  </th>
+                  <th className="p-2">
+                    <select 
+                      className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-emerald-500 outline-none appearance-none"
+                      value={filters.cuenta} 
+                      onChange={e => setFilters({...filters, cuenta: e.target.value})}
+                    >
+                      <option value="">Cuentas (Todas)</option>
+                      {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </th>
+                  <th className="p-2"></th>
+                  <th className="p-2 text-center">
+                    <button 
+                      onClick={limpiarFiltros} 
+                      className="text-[10px] uppercase font-black text-emerald-400 hover:text-[#0b0c16] bg-emerald-500/10 hover:bg-emerald-500 px-3 py-1.5 rounded-lg w-full transition-all tracking-widest"
+                    >
+                      Limpiar
+                    </button>
+                  </th>
+                </tr>
+              </thead>
 
-                      {/* --- COLUMNA DESCRIPCIÓN --- */}
-                      <td className="p-4 text-white font-bold text-[13px]">
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={editData.descripcion} 
-                            onChange={e => setEditData({...editData, descripcion: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none"
-                          />
-                        ) : ingreso.descripcion}
-                      </td>
+              <tbody className="text-sm">
+                {ingresosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="p-12 text-center text-[#8A92A6] font-bold italic">
+                      No se encontraron registros que coincidan con los filtros.
+                    </td>
+                  </tr>
+                ) : (
+                  ingresosFiltrados.map(ingreso => {
+                    const isEditing = editingId === ingreso.id;
+                    const cuentaObj = cuentas.find(c => c.id === ingreso.cuentaId);
+                    const cuentaName = cuentaObj?.name || 'Cuenta eliminada';
+                    const isPocket = cuentaObj?.type === 'pocket' || cuentaObj?.type === 'investment';
+                    
+                    return (
+                      <tr key={ingreso.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                        
+                        {/* --- COLUMNA FECHA --- */}
+                        <td className="p-4 text-[#8A92A6] text-xs font-bold">
+                          {isEditing ? (
+                            <input 
+                              type="date" 
+                              value={editData.fecha} 
+                              onChange={e => setEditData({...editData, fecha: e.target.value})} 
+                              className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]"
+                            />
+                          ) : ingreso.fecha}
+                        </td>
 
-                      {/* --- COLUMNA TIPO --- */}
-                      <td className="p-4 text-center">
-                        {isEditing ? (
-                          <select 
-                            value={editData.tipo} 
-                            onChange={e => setEditData({...editData, tipo: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none cursor-pointer"
-                          >
-                            <option value="Fijo">Fijo</option>
-                            <option value="Variable">Variable</option>
-                            <option value="Rendimiento">Rendimiento</option>
-                          </select>
-                        ) : (
-                          <span className={`px-2.5 py-1.5 text-[9px] font-black rounded-md uppercase tracking-widest ${
-                            ingreso.tipo === 'Fijo' ? 'bg-indigo-500/10 text-indigo-400' :
-                            ingreso.tipo === 'Rendimiento' ? 'bg-amber-500/10 text-amber-400' :
-                            'bg-neoncyan/10 text-neoncyan'
-                          }`}>
-                            {ingreso.tipo || 'VAR'}
-                          </span>
-                        )}
-                      </td>
+                        {/* --- COLUMNA DESCRIPCIÓN --- */}
+                        <td className="p-4 text-white font-bold text-[13px]">
+                          {isEditing ? (
+                            <input 
+                              type="text" 
+                              value={editData.descripcion} 
+                              onChange={e => setEditData({...editData, descripcion: e.target.value})} 
+                              className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none"
+                            />
+                          ) : ingreso.descripcion}
+                        </td>
 
-                      {/* --- COLUMNA DESTINO --- */}
-                      <td className="p-4 text-[#8A92A6] text-xs font-bold uppercase tracking-wider">
-                        {isEditing ? (
-                          <select 
-                            value={editData.cuentaId} 
-                            onChange={e => setEditData({...editData, cuentaId: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none cursor-pointer"
-                          >
-                            <option value="" disabled>Seleccione cuenta...</option>
-                            {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${isPocket ? 'bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]' : cuentaName === 'Cuenta eliminada' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`}></div>
-                            <span className={cuentaName === 'Cuenta eliminada' ? 'text-rose-400' : 'text-[#8A92A6]'}>{cuentaName.substring(0, 18)}</span>
-                          </div>
-                        )}
-                      </td>
+                        {/* --- COLUMNA TIPO --- */}
+                        <td className="p-4 text-center">
+                          {isEditing ? (
+                            <select 
+                              value={editData.tipo} 
+                              onChange={e => setEditData({...editData, tipo: e.target.value})} 
+                              className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none cursor-pointer"
+                            >
+                              <option value="Fijo">Fijo</option>
+                              <option value="Variable">Variable</option>
+                              <option value="Rendimiento">Rendimiento</option>
+                            </select>
+                          ) : (
+                            <span className={`px-2.5 py-1.5 text-[9px] font-black rounded-md uppercase tracking-widest ${
+                              ingreso.tipo === 'Fijo' ? 'bg-indigo-500/10 text-indigo-400' :
+                              ingreso.tipo === 'Rendimiento' ? 'bg-amber-500/10 text-amber-400' :
+                              'bg-neoncyan/10 text-neoncyan'
+                            }`}>
+                              {ingreso.tipo || 'VAR'}
+                            </span>
+                          )}
+                        </td>
 
-                      {/* --- COLUMNA MONTO --- */}
-                      <td className="p-4 font-black text-emerald-400 text-right text-[14px]">
-                        {isEditing ? (
-                          <input 
-                            type="number" 
-                            value={editData.monto} 
-                            onChange={e => setEditData({...editData, monto: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-right text-emerald-400 font-black outline-none"
-                          />
-                        ) : formatCOP(ingreso.monto)}
-                      </td>
+                        {/* --- COLUMNA DESTINO --- */}
+                        <td className="p-4 text-[#8A92A6] text-xs font-bold uppercase tracking-wider">
+                          {isEditing ? (
+                            <select 
+                              value={editData.cuentaId} 
+                              onChange={e => setEditData({...editData, cuentaId: e.target.value})} 
+                              className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none cursor-pointer"
+                            >
+                              <option value="" disabled>Seleccione cuenta...</option>
+                              {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${isPocket ? 'bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]' : cuentaName === 'Cuenta eliminada' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`}></div>
+                              <span className={cuentaName === 'Cuenta eliminada' ? 'text-rose-400' : 'text-[#8A92A6]'}>{cuentaName.substring(0, 18)}</span>
+                            </div>
+                          )}
+                        </td>
 
-                      {/* --- COLUMNA ACCIONES --- */}
-                      <td className="p-4">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <button onClick={saveEdit} className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors" title="Confirmar">
-                              <CheckIcon size={18} />
-                            </button>
-                            <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors" title="Cancelar">
-                              <XIcon size={18} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-4">
-                            <button onClick={() => startEditing(ingreso)} className="text-[#8A92A6] hover:text-emerald-400 transition-colors" title="Editar">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                            </button>
-                            <button onClick={() => handleDelete(ingreso.id)} className="text-[#8A92A6] hover:text-rose-500 transition-colors" title="Eliminar">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                        {/* --- COLUMNA MONTO --- */}
+                        <td className="p-4 font-black text-emerald-400 text-right text-[14px]">
+                          {isEditing ? (
+                            <input 
+                              type="number" 
+                              value={editData.monto} 
+                              onChange={e => setEditData({...editData, monto: e.target.value})} 
+                              className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-right text-emerald-400 font-black outline-none"
+                            />
+                          ) : formatCOP(ingreso.monto)}
+                        </td>
 
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        {/* --- COLUMNA ACCIONES --- */}
+                        <td className="p-4">
+                          {isEditing ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={saveEdit} className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors" title="Confirmar">
+                                <CheckIcon size={18} />
+                              </button>
+                              <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors" title="Cancelar">
+                                <XIcon size={18} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-4">
+                              <button onClick={() => startEditing(ingreso)} className="text-[#8A92A6] hover:text-emerald-400 transition-colors" title="Editar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                              </button>
+                              <button onClick={() => handleDelete(ingreso.id)} className="text-[#8A92A6] hover:text-rose-500 transition-colors" title="Eliminar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
+                      </tr>
+                    );
+                  })
+                )}
+                
+                {/* ✨ TOTALES FILTRADOS */}
+                {ingresosFiltrados.length > 0 && (
+                  <tr className="bg-[#0b0c16]/50 border-t border-white/[0.05]">
+                    <td colSpan="4" className="px-4 py-4 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest text-right">TOTAL EN PANTALLA</td>
+                    <td className="p-4 font-black text-emerald-400 text-right text-[14px] drop-shadow-[0_0_5px_rgba(52,211,153,0.4)] tabular-nums">{formatCOP(totalFiltrado)}</td>
+                    <td></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
