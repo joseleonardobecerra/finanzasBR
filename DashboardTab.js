@@ -46,9 +46,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
   const idsTarjetas = tarjetasCredito.map(c => c.id);
 
-  // Sumas de presupuestos configurados
+  // ✨ LÓGICA CORREGIDA: Excluimos TCs del presupuesto fijo ya que ahora son manuales
   const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
-  const totalPresupuestadoTC = tarjetasCredito.reduce((sum, tc) => sum + (Number(tc.cuotaMinima) || 0), 0);
+  const totalPresupuestadoTC = 0; // <- ADIÓS FANTASMAS
   const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
   const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoTC + totalPresupuestadoVar;
 
@@ -74,13 +74,12 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const dineroDisponible = ingresosMesTotal - egresosMesTotal;
 
   // ============================================================================
-  // ✨ DETECCIÓN A PRUEBA DE BALAS DE PAGOS PENDIENTES
+  // ✨ DETECCIÓN DE PAGOS PENDIENTES
   // ============================================================================
   const isPagoFijoRealizado = (pf) => egresosMes.some(e => {
     if (e.tipo !== 'Fijo') return false;
     if (e.pagoFijoId === pf.id) return true;
     
-    // Fallback inteligente para nombres viejos o variaciones
     const descE = e.descripcion.toLowerCase();
     const descP = (pf.descripcion || '').toLowerCase();
     return descE === descP || descE.includes(descP);
@@ -90,13 +89,11 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     if (e.pagoTarjetaId === tc.id) return true;
     if (e.deudaId === tc.id && e.tipo === 'Fijo') return true;
     
-    // Fallback inteligente para tarjetas
     const descE = e.descripcion.toLowerCase();
     const tcName = tc.name.toLowerCase();
     return (descE.includes(tcName) && e.tipo === 'Fijo');
   });
 
-  // Filtramos para evitar que TCs viejas en la tabla de Fijos sumen doble
   const pagosFijosReales = pagosFijos ? pagosFijos.filter(pf => 
     !tarjetasCredito.some(tc => tc.name.toLowerCase() === (pf.descripcion || '').toLowerCase())
   ) : [];
@@ -105,7 +102,8 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const tcPendientesLista = tarjetasCredito.filter(tc => !isTCPagada(tc));
 
   const montoFijosPtes = fijosPendientesLista.reduce((s, pf) => s + pf.monto, 0);
-  const montoTCPtes = tcPendientesLista.reduce((s, tc) => s + (Number(tc.cuotaMinima) || 0), 0);
+  // ✨ LÓGICA CORREGIDA: No sumamos cuotas mínimas residuales de las TC.
+  const montoTCPtes = 0; 
   
   const pagosFijosPendientesTotal = montoFijosPtes + montoTCPtes;
 
@@ -234,7 +232,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
       
       <header>
         <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide">Dashboard Global</h1>
-        <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">Resumen de flujos, analítica de egresos y proyecciones.</p>
+        <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">Sincronizado con hora local y nueva arquitectura de pagos.</p>
       </header>
 
       {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
@@ -280,7 +278,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* ✨ TARJETA PENDIENTES (CON DETECTOR DE FANTASMAS) */}
+        {/* ✨ TARJETA PENDIENTES */}
         <div onClick={() => toggleCard('pendientes')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
@@ -294,7 +292,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           
           {expandedCard === 'pendientes' && (
             <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
-              <p className="text-[9px] font-black text-slate-500 uppercase mb-3">La app está sumando esto:</p>
+              <p className="text-[9px] font-black text-slate-500 uppercase mb-3">Pendientes confirmados:</p>
               <ul className="space-y-2">
                 {fijosPendientesLista.map(pf => (
                   <li key={pf.id} className="flex justify-between text-[11px] font-bold text-white">
@@ -304,11 +302,11 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 ))}
                 {tcPendientesLista.map(tc => (
                   <li key={tc.id} className="flex justify-between text-[11px] font-bold text-white">
-                    <span className="truncate pr-2">Mínimo {tc.name}</span>
-                    <span className="text-indigo-400 shrink-0">{formatCOP(tc.cuotaMinima)}</span>
+                    <span className="truncate pr-2">Tarjeta {tc.name}</span>
+                    <span className="text-indigo-400 shrink-0 uppercase tracking-widest text-[9px]">Pendiente</span>
                   </li>
                 ))}
-                {pagosFijosPendientesTotal === 0 && <li className="text-center text-emerald-400 text-xs py-2 font-black">✓ ¡Todo al día!</li>}
+                {pagosFijosPendientesTotal === 0 && tcPendientesLista.length === 0 && <li className="text-center text-emerald-400 text-xs py-2 font-black">✓ ¡Todo al día!</li>}
               </ul>
             </div>
           )}
@@ -332,7 +330,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
               </div>
               <div className="flex justify-between items-center text-xs mb-3">
                 <span className="text-[#8A92A6] font-bold">Cuotas TC</span>
-                <span className="font-black text-indigo-400">{formatCOP(totalPresupuestadoTC)}</span>
+                <span className="font-black text-indigo-400">Manual / $0</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-[#8A92A6] font-bold">Gastos Variables</span>
