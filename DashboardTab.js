@@ -101,10 +101,13 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     !tarjetasCredito.some(tc => tc.name.toLowerCase() === (pf.descripcion || '').toLowerCase())
   ) : [];
 
-  const pagosFijosPtes = pagosFijosReales.filter(pf => !isPagoFijoRealizado(pf)).reduce((sum, pf) => sum + pf.monto, 0);
-  const tcPtes = tarjetasCredito.filter(tc => !isTCPagada(tc)).reduce((sum, tc) => sum + (Number(tc.cuotaMinima) || 0), 0);
+  const fijosPendientesLista = pagosFijosReales.filter(pf => !isPagoFijoRealizado(pf));
+  const tcPendientesLista = tarjetasCredito.filter(tc => !isTCPagada(tc));
+
+  const montoFijosPtes = fijosPendientesLista.reduce((s, pf) => s + pf.monto, 0);
+  const montoTCPtes = tcPendientesLista.reduce((s, tc) => s + (Number(tc.cuotaMinima) || 0), 0);
   
-  const pagosFijosPendientesTotal = pagosFijosPtes + tcPtes;
+  const pagosFijosPendientesTotal = montoFijosPtes + montoTCPtes;
 
   const hoy = new Date();
   const diaHoy = hoy.getDate();
@@ -277,12 +280,38 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* ✨ TARJETA RECALCULADA A $0 AUTOMÁTICAMENTE */}
-        <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
-          <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Pagos Fijos Ptes.</h3>
-          <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] truncate">
-            {formatCOP(pagosFijosPendientesTotal)}
-          </p>
+        {/* ✨ TARJETA PENDIENTES (CON DETECTOR DE FANTASMAS) */}
+        <div onClick={() => toggleCard('pendientes')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Pagos Fijos Ptes.</h3>
+              <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] truncate">
+                {formatCOP(pagosFijosPendientesTotal)}
+              </p>
+            </div>
+            <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === 'pendientes' ? 'rotate-90' : ''}`} />
+          </div>
+          
+          {expandedCard === 'pendientes' && (
+            <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2">
+              <p className="text-[9px] font-black text-slate-500 uppercase mb-3">La app está sumando esto:</p>
+              <ul className="space-y-2">
+                {fijosPendientesLista.map(pf => (
+                  <li key={pf.id} className="flex justify-between text-[11px] font-bold text-white">
+                    <span className="truncate pr-2">{pf.descripcion}</span>
+                    <span className="text-amber-500 shrink-0">{formatCOP(pf.monto)}</span>
+                  </li>
+                ))}
+                {tcPendientesLista.map(tc => (
+                  <li key={tc.id} className="flex justify-between text-[11px] font-bold text-white">
+                    <span className="truncate pr-2">Mínimo {tc.name}</span>
+                    <span className="text-indigo-400 shrink-0">{formatCOP(tc.cuotaMinima)}</span>
+                  </li>
+                ))}
+                {pagosFijosPendientesTotal === 0 && <li className="text-center text-emerald-400 text-xs py-2 font-black">✓ ¡Todo al día!</li>}
+              </ul>
+            </div>
+          )}
         </div>
         
         <div onClick={() => toggleCard('presupuesto')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
