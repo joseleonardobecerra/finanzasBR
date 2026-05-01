@@ -1,18 +1,60 @@
+// ============================================================================
+// COMPONENTES UI EXTERNOS (Soluciona el bug de pérdida de foco al escribir)
+// ============================================================================
+const ChevronDownIcon = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>;
+const ChevronUpIcon = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"></polyline></svg>;
+const PieChartIcon = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
+const PlusIcon = ({ size = 16, className = "", strokeWidth="3" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+const UploadIcon = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+const DownloadIcon = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+const CheckSquareIcon = ({ size = 18, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>;
+const Edit3Icon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
+const Trash2Icon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+
+const CardComponent = ({ children, className }) => <div className={`bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] ${className}`}>{children}</div>;
+
+const InputComponent = ({ type="text", label, value, onChange, error, className, placeholder, min, max }) => (
+  <div className={`relative ${className?.includes('col-span') ? className : ''}`}>
+    <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
+    <input type={type} min={min} max={max} value={value} onChange={onChange} placeholder={placeholder} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neoncyan transition-all duration-300 placeholder:text-slate-600 ${className}`} />
+    {error && <p className="text-rose-500 text-[10px] mt-1 pl-1 font-bold absolute -bottom-4 left-0">{error}</p>}
+  </div>
+);
+
+const SelectComponent = ({ label, options, value, onChange, error, className }) => (
+  <div className={className}>
+    <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
+    <select value={value} onChange={onChange} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta transition-all duration-300 appearance-none cursor-pointer`}>
+      <option value="" className="bg-[#111222]">Seleccione...</option>
+      {options.map(o => <option key={o.value} value={o.value} className="bg-[#111222]">{o.label}</option>)}
+    </select>
+    {error && <p className="text-rose-500 text-[10px] mt-1 pl-1 font-bold">{error}</p>}
+  </div>
+);
+
+const SortIconUI = ({ columnKey, currentSort }) => {
+  if (currentSort.key !== columnKey) return <span className="opacity-20 ml-1 text-[10px]">↕</span>;
+  return currentSort.direction === 'asc' 
+    ? <span className="ml-1 text-[10px] text-neoncyan">↑</span> 
+    : <span className="ml-1 text-[10px] text-neoncyan">↓</span>;
+};
+
+
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
 const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, removePresupuesto,
                         pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
                         egresos, selectedMonth, showToast, categoriasMaestras,
-                        privacyMode // ✨ MODO PRIVACIDAD AÑADIDO A LAS PROPS
+                        privacyMode 
                       }) => {
   const { useState, useRef, useMemo } = React;
-  const [tipoForm, setTipoForm] = useState('variable'); 
   
-  // ✨ NUEVO: El estado inicial ahora incluye 'nombre'
+  const [tipoForm, setTipoForm] = useState('variable'); 
   const [nuevoVar, setNuevoVar] = useState({ nombre: '', categoria: categoriasMaestras[0] || 'Otros', limite: '' });
   const [nuevoFijo, setNuevoFijo] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
   const [editId, setEditId] = useState(null);
-  
   const [editOriginalType, setEditOriginalType] = useState(null); 
-  
   const [errors, setErrors] = useState({});
   const [filtroLista, setFiltroLista] = useState('Todos'); 
   const [showForm, setShowForm] = useState(false);
@@ -26,55 +68,11 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const formRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // ============================================================================
-  // ÍCONOS Y COMPONENTES UI INTERNOS
-  // ============================================================================
-  const ChevronDownIcon = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>;
-  const ChevronUpIcon = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"></polyline></svg>;
-  const PieChart = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
-  const Plus = ({ size = 16, className = "", strokeWidth="3" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-  const Upload = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
-  const Download = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
-  const CheckSquare = ({ size = 18, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>;
-  const Edit3 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
-  const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
-
-  const Card = ({ children, className }) => <div className={`bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] ${className}`}>{children}</div>;
-
-  const Input = ({ type="text", label, value, onChange, error, className, placeholder, min, max }) => (
-    <div className={`relative ${className?.includes('col-span') ? className : ''}`}>
-      <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
-      <input type={type} min={min} max={max} value={value} onChange={onChange} placeholder={placeholder} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neoncyan transition-all duration-300 placeholder:text-slate-600 ${className}`} />
-      {error && <p className="text-rose-500 text-[10px] mt-1 pl-1 font-bold absolute -bottom-4 left-0">{error}</p>}
-    </div>
-  );
-
-  const Select = ({ label, options, value, onChange, error, className }) => (
-    <div className={className}>
-      <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
-      <select value={value} onChange={onChange} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta transition-all duration-300 appearance-none cursor-pointer`}>
-        <option value="" className="bg-[#111222]">Seleccione...</option>
-        {options.map(o => <option key={o.value} value={o.value} className="bg-[#111222]">{o.label}</option>)}
-      </select>
-      {error && <p className="text-rose-500 text-[10px] mt-1 pl-1 font-bold">{error}</p>}
-    </div>
-  );
-
-  const SortIcon = ({ columnKey, currentSort }) => {
-    if (currentSort.key !== columnKey) return <span className="opacity-20 ml-1 text-[10px]">↕</span>;
-    return currentSort.direction === 'asc' 
-      ? <span className="ml-1 text-[10px] text-neoncyan">↑</span> 
-      : <span className="ml-1 text-[10px] text-neoncyan">↓</span>;
-  };
-
   const formatCOP = (val) => {
     if (privacyMode) return '****';
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
   };
 
-  // ============================================================================
-  // LOGICA PRINCIPAL
-  // ============================================================================
   const handleExport = async () => {
     try {
       const xlsx = await loadSheetJS();
@@ -82,14 +80,11 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       
       const headersFijos = ["ID", "Descripcion", "Categoria", "Monto", "DiaPago"];
       const dataFijos = pagosFijos.map(f => ({ ID: f.id, Descripcion: f.descripcion, Categoria: f.categoria, Monto: f.monto, DiaPago: f.diaPago }));
-      const wsFijos = xlsx.utils.json_to_sheet(dataFijos.length > 0 ? dataFijos : [{}], { header: headersFijos });
-      xlsx.utils.book_append_sheet(wb, wsFijos, "Pagos_Fijos");
+      xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataFijos.length > 0 ? dataFijos : [{}]), "Pagos_Fijos");
       
-      // Actualizado para reflejar Nombre y Categoría
       const headersVar = ["ID", "Nombre", "Categoria", "Limite"];
       const dataVar = presupuestos.map(p => ({ ID: p.id, Nombre: p.nombre || p.categoria, Categoria: p.categoria, Limite: p.limite }));
-      const wsVar = xlsx.utils.json_to_sheet(dataVar.length > 0 ? dataVar : [{}], { header: headersVar });
-      xlsx.utils.book_append_sheet(wb, wsVar, "Presupuestos_Variables");
+      xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(dataVar.length > 0 ? dataVar : [{}]), "Presupuestos_Variables");
       
       xlsx.writeFile(wb, `Presupuestos_y_Fijos_${new Date().toISOString().split('T')[0]}.xlsx`);
       showToast("Presupuestos exportados con éxito.");
@@ -107,8 +102,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
           let importadosFijos = 0; let importadosVar = 0;
 
           if (wb.Sheets["Pagos_Fijos"]) {
-            const dataFijos = xlsx.utils.sheet_to_json(wb.Sheets["Pagos_Fijos"]);
-            dataFijos.filter(i=>i.Monto).forEach(i => {
+            xlsx.utils.sheet_to_json(wb.Sheets["Pagos_Fijos"]).filter(i=>i.Monto).forEach(i => {
                 const exists = pagosFijos.some(pf => pf.descripcion === i.Descripcion && pf.categoria === i.Categoria && pf.monto === Number(i.Monto));
                 if (!exists) {
                     addPagoFijo({ id: i.ID || generateId(), descripcion: i.Descripcion || 'Fijo Importado', categoria: i.Categoria || 'Otros', monto: Number(i.Monto) || 0, diaPago: Number(i.DiaPago) || 1 });
@@ -117,8 +111,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
             });
           }
           if (wb.Sheets["Presupuestos_Variables"]) {
-            const dataVar = xlsx.utils.sheet_to_json(wb.Sheets["Presupuestos_Variables"]);
-            dataVar.filter(i=>i.Limite).forEach(i => {
+            xlsx.utils.sheet_to_json(wb.Sheets["Presupuestos_Variables"]).filter(i=>i.Limite).forEach(i => {
                 const exists = presupuestos.some(p => p.categoria === i.Categoria && (p.nombre || p.categoria) === (i.Nombre || i.Categoria));
                 if (!exists) {
                     addPresupuesto({ id: i.ID || generateId(), nombre: i.Nombre || i.Categoria, categoria: i.Categoria || 'Otros', limite: Number(i.Limite) || 0 });
@@ -147,11 +140,11 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       if (editId) {
         if (editOriginalType === 'variable') {
             updatePresupuesto(editId, { nombre: nuevoVar.nombre, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
-            showToast("Límite Variable actualizado.");
+            showToast("Presupuesto Variable actualizado.");
         } else {
             removePagoFijo(editId);
             addPresupuesto({ id: editId, nombre: nuevoVar.nombre, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
-            showToast("Convertido a Límite Variable.");
+            showToast("Convertido a Presupuesto Variable.");
         }
         setEditId(null); setEditOriginalType(null);
       } else {
@@ -229,13 +222,8 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
       const catName = p.categoria || '';
       
       const gastado = egresosMes.filter(e => {
-        const matchCat = (e.categoria || '').trim().toLowerCase() === catName.trim().toLowerCase();
-        if (matchCat) {
-          // Lógica inteligente: Si es variable, suma normal. Si es fijo pero pertenece a Tarjetas, también suma.
-          if (e.tipo !== 'Fijo') return true;
-          if (e.categoria === 'Tarjetas y Créditos' || e.categoria.toLowerCase().includes('tarjeta') || e.categoria.toLowerCase().includes('crédito')) return true;
-        }
-        return false;
+        // Cálculo clásico y simple: Si coincide la categoría y NO es fijo, suma. (Revertido a original)
+        return (e.categoria || '').trim().toLowerCase() === catName.trim().toLowerCase() && e.tipo !== 'Fijo';
       }).reduce((s, e) => s + e.monto, 0);
       
       variables.push({ id: p.id, tipo: 'Variable', nombre: budgetName, categoria: catName, limite: p.limite, gastado });
@@ -244,7 +232,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     return { fijosBase: fijos, varBase: variables };
   }, [pagosFijos, presupuestos, egresosMes]);
 
-  // Función maestra para ordenar las tablas
   const sortData = (data, config) => {
     return [...data].sort((a, b) => {
       let aVal = a[config.key]; let bVal = b[config.key];
@@ -266,7 +253,6 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
   const fijosItems = useMemo(() => sortData(fijosBase, sortFijos), [fijosBase, sortFijos]);
   const varItems = useMemo(() => sortData(varBase, sortVar), [varBase, sortVar]);
 
-  // Controles de clic en encabezados
   const requestSortFijos = (key) => {
     let direction = 'asc';
     if (sortFijos.key === key && sortFijos.direction === 'asc') direction = 'desc';
@@ -299,7 +285,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neoncyan to-blue-600 flex items-center justify-center shadow-glow-cyan">
-               <PieChart className="text-[#0b0c16] w-5 h-5"/>
+               <PieChartIcon className="text-[#0b0c16] w-5 h-5"/>
             </div>
             Presupuestos y Ejecución
           </h1>
@@ -310,14 +296,14 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         
         <div className="flex flex-wrap gap-3">
           <button onClick={() => { cancelarEdicion(); setShowForm(!showForm); }} className="bg-neoncyan hover:bg-[#00cce6] text-[#0b0c16] px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-glow-cyan active:scale-95">
-            <Plus size={16} strokeWidth="3"/> {showForm ? 'OCULTAR' : 'PRESUPUESTO'}
+            <PlusIcon size={16} strokeWidth="3"/> {showForm ? 'OCULTAR' : 'PRESUPUESTO'}
           </button>
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
           <button onClick={() => fileInputRef.current.click()} className="bg-[#111222] hover:bg-[#1c1e32] text-emerald-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-emerald-500/30 shadow-neumorph hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-            <Upload size={14}/> Importar
+            <UploadIcon size={14}/> Importar
           </button>
           <button onClick={handleExport} className="bg-[#111222] hover:bg-[#1c1e32] text-amber-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-amber-500/30 shadow-neumorph hover:shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-            <Download size={14}/> Exportar
+            <DownloadIcon size={14}/> Exportar
           </button>
         </div>
       </header>
@@ -376,11 +362,10 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
       </div>
 
-      {/* FORMULARIO */}
+      {/* FORMULARIO MEJORADO */}
       {showForm && (
-        <Card className={`animate-in slide-in-from-top-4 p-5 md:p-8 ${editId ? (editOriginalType === 'variable' ? '!border-neoncyan/30 shadow-glow-cyan' : '!border-amber-500/30 shadow-glow-amber') : '!border-transparent'}`}>
+        <CardComponent className={`animate-in slide-in-from-top-4 p-5 md:p-8 ${editId ? (editOriginalType === 'variable' ? '!border-neoncyan/30 shadow-glow-cyan' : '!border-amber-500/30 shadow-glow-amber') : '!border-transparent'}`}>
           <div className="flex justify-between items-center mb-6 relative" ref={formRef}>
-            
             <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto">
               <button onClick={() => setTipoForm('variable')} type="button" className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${tipoForm === 'variable' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-[#8A92A6] hover:text-white'}`}>
                 {editId ? (editOriginalType === 'variable' ? '✏️ Editando Variable' : '🔄 A Variable') : 'Límite Variable'}
@@ -389,11 +374,8 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 {editId ? (editOriginalType === 'fijo' ? '✏️ Editando Fijo' : '🔄 A Fijo') : 'Gasto Fijo'}
               </button>
             </div>
-            
             {editId && (
-              <button onClick={cancelarEdicion} className="text-[10px] uppercase font-black tracking-widest text-rose-400 hover:text-white transition-colors bg-rose-500/10 px-3 py-1.5 rounded-lg absolute right-0">
-                Cancelar
-              </button>
+              <button onClick={cancelarEdicion} className="text-[10px] uppercase font-black tracking-widest text-rose-400 hover:text-white transition-colors bg-rose-500/10 px-3 py-1.5 rounded-lg absolute right-0">Cancelar</button>
             )}
           </div>
           
@@ -401,45 +383,45 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
             {tipoForm === 'variable' ? (
               <React.Fragment>
                 <div className="sm:col-span-4">
-                  <Input label="Descripción del Presupuesto" placeholder="Ej: Tarjetas de crédito casa..." value={nuevoVar.nombre} onChange={e=>setNuevoVar({...nuevoVar, nombre: e.target.value})} error={errors.nombre} />
+                  <InputComponent label="Descripción del Presupuesto" placeholder="Ej: Tarjetas de crédito casa..." value={nuevoVar.nombre} onChange={e=>setNuevoVar({...nuevoVar, nombre: e.target.value})} error={errors.nombre} />
                 </div>
                 <div className="sm:col-span-3">
-                  <Select label="Categoría General" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} />
+                  <SelectComponent label="Categoría General" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} />
                 </div>
                 <div className="sm:col-span-3 relative">
-                  <Input type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="pl-8 font-black text-neoncyan" placeholder="0"/>
+                  <InputComponent type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="pl-8 font-black text-neoncyan" placeholder="0"/>
                   <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
                 </div>
                 <div className="sm:col-span-2 mt-[22px]">
                    <button type="submit" className={`w-full ${editId ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'bg-neoncyan hover:bg-[#00cce6] shadow-glow-cyan'} text-[#0b0c16] font-black tracking-widest uppercase py-3.5 rounded-xl transition-all active:scale-95`}>
-                     {editId ? (editOriginalType === 'variable' ? 'ACTUALIZAR' : 'CONVERTIR') : 'GUARDAR'}
+                     {editId ? 'ACTUALIZAR' : 'GUARDAR'}
                    </button>
                 </div>
               </React.Fragment>
             ) : (
               <React.Fragment>
                 <div className="sm:col-span-4">
-                  <Input label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} />
+                  <InputComponent label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} />
                 </div>
                 <div className="sm:col-span-3">
-                  <Select label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} />
+                  <SelectComponent label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} />
                 </div>
                 <div className="sm:col-span-2 relative">
-                  <Input type="number" label="Monto Estimado" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="pl-8 font-black text-amber-400" placeholder="0"/>
+                  <InputComponent type="number" label="Monto Estimado" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="pl-8 font-black text-amber-400" placeholder="0"/>
                   <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
                 </div>
                 <div className="sm:col-span-1">
-                  <Input type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} placeholder="15" className="text-center font-bold"/>
+                  <InputComponent type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} placeholder="15" className="text-center font-bold"/>
                 </div>
                 <div className="sm:col-span-2 mt-[22px]">
                    <button type="submit" className={`w-full ${editId ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'bg-amber-400 hover:bg-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]'} text-[#0b0c16] font-black tracking-widest uppercase py-3.5 rounded-xl transition-all active:scale-95`}>
-                     {editId ? (editOriginalType === 'fijo' ? 'ACTUALIZAR' : 'CONVERTIR') : 'GUARDAR'}
+                     {editId ? 'ACTUALIZAR' : 'GUARDAR'}
                    </button>
                 </div>
               </React.Fragment>
             )}
           </form>
-        </Card>
+        </CardComponent>
       )}
 
       {/* FILTROS GENERALES */}
@@ -454,13 +436,10 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         
         {/* TABLA: GASTOS FIJOS ESTIMADOS */}
         {(filtroLista === 'Todos' || filtroLista === 'Fijos') && (
-          <Card className="!border-transparent p-0 overflow-hidden flex flex-col">
-            <div 
-              className="flex justify-between items-center cursor-pointer select-none p-5 md:p-6 border-b border-white/[0.05]"
-              onClick={() => setOpenFijos(!openFijos)}
-            >
+          <CardComponent className="!border-transparent p-0 overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center cursor-pointer select-none p-5 md:p-6 border-b border-white/[0.05]" onClick={() => setOpenFijos(!openFijos)}>
               <h2 className="text-sm font-black text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)] uppercase tracking-widest flex items-center gap-2">
-                <CheckSquare size={18} /> Gastos Fijos Estimados
+                <CheckSquareIcon size={18} /> Gastos Fijos Estimados
               </h2>
               <button className="text-slate-500 hover:text-white transition-colors">
                 {openFijos ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -475,19 +454,19 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                       <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
                         <tr>
                           <th className="px-4 py-4 w-[25%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('nombre')}>
-                            <div className="flex items-center">Nombre <SortIcon columnKey="nombre" currentSort={sortFijos} /></div>
+                            <div className="flex items-center">Nombre <SortIconUI columnKey="nombre" currentSort={sortFijos} /></div>
                           </th>
                           <th className="px-4 py-4 w-[20%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('categoria')}>
-                            <div className="flex items-center">Categoría <SortIcon columnKey="categoria" currentSort={sortFijos} /></div>
+                            <div className="flex items-center">Categoría <SortIconUI columnKey="categoria" currentSort={sortFijos} /></div>
                           </th>
                           <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('limite')}>
-                            <div className="flex items-center justify-end">Presupuesto <SortIcon columnKey="limite" currentSort={sortFijos} /></div>
+                            <div className="flex items-center justify-end">Presupuesto <SortIconUI columnKey="limite" currentSort={sortFijos} /></div>
                           </th>
                           <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('gastado')}>
-                            <div className="flex items-center justify-end">Gastado <SortIcon columnKey="gastado" currentSort={sortFijos} /></div>
+                            <div className="flex items-center justify-end">Gastado <SortIconUI columnKey="gastado" currentSort={sortFijos} /></div>
                           </th>
                           <th className="px-4 py-4 w-[8%] text-center cursor-pointer hover:text-white transition-colors" onClick={() => requestSortFijos('porcentaje')}>
-                            <div className="flex items-center justify-center">% <SortIcon columnKey="porcentaje" currentSort={sortFijos} /></div>
+                            <div className="flex items-center justify-center">% <SortIconUI columnKey="porcentaje" currentSort={sortFijos} /></div>
                           </th>
                           <th className="px-4 py-4 w-[7%] text-center">Estatus</th>
                           <th className="px-4 py-4 w-[10%] text-center">Acciones</th>
@@ -502,27 +481,25 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                             <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-amber-900/10 border-amber-500/30' : 'hover:bg-white/[0.02]'}`}>
                               <td className="px-4 py-4 font-bold text-white tracking-wide truncate max-w-[150px]" title={p.nombre}>{p.nombre}</td>
                               <td className="px-4 py-4">
-                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>
-                                  {p.categoria}
-                                </span>
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>{p.categoria}</span>
                               </td>
                               <td className="px-4 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
                               <td className="px-4 py-4 text-right font-black text-amber-400 tabular-nums">{formatCOP(p.gastado)}</td>
-                              <td className={`px-4 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
-                                {porcentaje.toFixed(1)}%
-                              </td>
+                              <td className={`px-4 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>{porcentaje.toFixed(1)}%</td>
                               <td className="px-4 py-4 text-center">
-                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                                  {excede ? 'Excedido' : 'OK'}
-                                </span>
+                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>{excede ? 'Excedido' : 'OK'}</span>
                               </td>
                               <td className="px-4 py-4 text-center flex justify-center gap-3">
-                                <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Editar"><Edit3 size={16}/></button>
-                                <button onClick={() => {
-                                  if (window.confirm(`¿Seguro que quieres eliminar el gasto fijo "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
-                                    removePagoFijo(p.id); showToast("Gasto Fijo eliminado", "error");
-                                  }
-                                }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
+                                <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-amber-400 transition-colors" title="Editar">
+                                  <Edit3Icon size={16}/>
+                                </button>
+                                <button onClick={() => { 
+                                  if (window.confirm(`¿Seguro que quieres eliminar la configuración de "${p.nombre}" para siempre?\n\nTranquilo: Los pagos que ya registraste en tu historial (este mes y anteriores) NO se borrarán.`)) { 
+                                    removePagoFijo(p.id); showToast("Gasto Fijo eliminado", "error"); 
+                                  } 
+                                }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar">
+                                  <Trash2Icon size={16}/>
+                                </button>
                               </td>
                             </tr>
                           )
@@ -537,18 +514,15 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 )}
               </div>
             )}
-          </Card>
+          </CardComponent>
         )}
 
         {/* TABLA: LÍMITES DE GASTO VARIABLE */}
         {(filtroLista === 'Todos' || filtroLista === 'Variables') && (
-          <Card className="!border-transparent p-0 overflow-hidden flex flex-col">
-            <div 
-              className="flex justify-between items-center cursor-pointer select-none p-5 md:p-6 border-b border-white/[0.05]"
-              onClick={() => setOpenVariables(!openVariables)}
-            >
+          <CardComponent className="!border-transparent p-0 overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center cursor-pointer select-none p-5 md:p-6 border-b border-white/[0.05]" onClick={() => setOpenVariables(!openVariables)}>
               <h2 className="text-sm font-black text-neoncyan drop-shadow-[0_0_5px_rgba(0,229,255,0.5)] uppercase tracking-widest flex items-center gap-2">
-                <PieChart size={18} /> Límites de Gasto Variable
+                <PieChartIcon size={18} /> Límites de Gasto Variable
               </h2>
               <button className="text-slate-500 hover:text-white transition-colors">
                 {openVariables ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -563,19 +537,19 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                       <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
                         <tr>
                           <th className="px-4 py-4 w-[25%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('nombre')}>
-                            <div className="flex items-center">Nombre (Presupuesto) <SortIcon columnKey="nombre" currentSort={sortVar} /></div>
+                            <div className="flex items-center">Nombre (Presupuesto) <SortIconUI columnKey="nombre" currentSort={sortVar} /></div>
                           </th>
                           <th className="px-4 py-4 w-[20%] cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('categoria')}>
-                            <div className="flex items-center">Categoría General <SortIcon columnKey="categoria" currentSort={sortVar} /></div>
+                            <div className="flex items-center">Categoría General <SortIconUI columnKey="categoria" currentSort={sortVar} /></div>
                           </th>
                           <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('limite')}>
-                            <div className="flex items-center justify-end">Límite <SortIcon columnKey="limite" currentSort={sortVar} /></div>
+                            <div className="flex items-center justify-end">Límite <SortIconUI columnKey="limite" currentSort={sortVar} /></div>
                           </th>
                           <th className="px-4 py-4 w-[15%] text-right cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('gastado')}>
-                            <div className="flex items-center justify-end">Gastado <SortIcon columnKey="gastado" currentSort={sortVar} /></div>
+                            <div className="flex items-center justify-end">Gastado <SortIconUI columnKey="gastado" currentSort={sortVar} /></div>
                           </th>
                           <th className="px-4 py-4 w-[8%] text-center cursor-pointer hover:text-white transition-colors" onClick={() => requestSortVar('porcentaje')}>
-                            <div className="flex items-center justify-center">% <SortIcon columnKey="porcentaje" currentSort={sortVar} /></div>
+                            <div className="flex items-center justify-center">% <SortIconUI columnKey="porcentaje" currentSort={sortVar} /></div>
                           </th>
                           <th className="px-4 py-4 w-[7%] text-center">Estatus</th>
                           <th className="px-4 py-4 w-[10%] text-center">Acciones</th>
@@ -590,27 +564,25 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                             <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-cyan-900/10 border-neoncyan/30' : 'hover:bg-white/[0.02]'}`}>
                               <td className="px-4 py-4 font-bold text-white tracking-wide truncate max-w-[150px]" title={p.nombre}>{p.nombre}</td>
                               <td className="px-4 py-4">
-                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>
-                                  {p.categoria}
-                                </span>
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>{p.categoria}</span>
                               </td>
                               <td className="px-4 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
                               <td className="px-4 py-4 text-right font-black text-neoncyan tabular-nums">{formatCOP(p.gastado)}</td>
-                              <td className={`px-4 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>
-                                {porcentaje.toFixed(1)}%
-                              </td>
+                              <td className={`px-4 py-4 text-center font-black tabular-nums ${excede ? 'text-neonmagenta' : 'text-slate-300'}`}>{porcentaje.toFixed(1)}%</td>
                               <td className="px-4 py-4 text-center">
-                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                                  {excede ? 'Excedido' : 'OK'}
-                                </span>
+                                <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${excede ? 'bg-neonmagenta/10 text-neonmagenta' : 'bg-emerald-500/10 text-emerald-400'}`}>{excede ? 'Excedido' : 'OK'}</span>
                               </td>
                               <td className="px-4 py-4 text-center flex justify-center gap-3">
-                                <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
-                                <button onClick={() => {
-                                  if (window.confirm(`¿Seguro que quieres eliminar el presupuesto variable "${p.nombre}"?\n(Los pagos ya registrados se mantendrán en el historial).`)) {
-                                    removePresupuesto(p.id); showToast("Presupuesto eliminado", "error");
-                                  }
-                                }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
+                                <button onClick={() => cargarParaEditar(p)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar">
+                                  <Edit3Icon size={16}/>
+                                </button>
+                                <button onClick={() => { 
+                                  if (window.confirm(`¿Seguro que quieres eliminar la configuración de "${p.nombre}" para siempre?\n\nTranquilo: Los pagos que ya registraste en tu historial (este mes y anteriores) NO se borrarán.`)) { 
+                                    removePresupuesto(p.id); showToast("Presupuesto eliminado", "error"); 
+                                  } 
+                                }} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar">
+                                  <Trash2Icon size={16}/>
+                                </button>
                               </td>
                             </tr>
                           )
@@ -625,7 +597,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                 )}
               </div>
             )}
-          </Card>
+          </CardComponent>
         )}
       </div>
     </div>
