@@ -14,6 +14,18 @@ const XIcon = ({ size = 16, className = "" }) => (
   </svg>
 );
 
+const ChevronDownIcon = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="6 9 12 15 18 9"></polyline>
+  </svg>
+);
+
+const ChevronUpIcon = ({ size = 20, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="18 15 12 9 6 15"></polyline>
+  </svg>
+);
+
 const ListIcon = ({ size = 18, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -41,12 +53,11 @@ const IngresosTab = ({
   selectedMonth, 
   showToast, 
   filtroPersona,
-  privacyMode // ✨ MODO PRIVACIDAD AÑADIDO A LAS PROPS
+  privacyMode
 }) => {
   const { useState, useMemo } = React;
 
   // --- FORMATEADORES ---
-  // ✨ MODO PRIVACIDAD APLICADO
   const formatCOP = (val) => {
     if (privacyMode) return '****';
     return new Intl.NumberFormat('es-CO', { 
@@ -69,6 +80,9 @@ const IngresosTab = ({
   // 1. ESTADOS DEL COMPONENTE
   // ============================================================================
   
+  // Estado para el acordeón (Cerrado por defecto)
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
   // Formulario Nuevo Ingreso
   const [fecha, setFecha] = useState(getLocalToday());
   const [descripcion, setDescripcion] = useState('');
@@ -147,12 +161,20 @@ const IngresosTab = ({
 
   const startEditing = (ingreso) => {
     setEditingId(ingreso.id);
-    setEditData({ ...ingreso });
+    
+    // ✨ FIX PARA CUENTAS ELIMINADAS: Verificamos si la cuenta aún existe
+    const cuentaExiste = cuentasActivas.some(c => c.id === ingreso.cuentaId);
+    
+    setEditData({ 
+      ...ingreso,
+      // Si no existe, forzamos a que esté en blanco para obligar al usuario a elegir una nueva
+      cuentaId: cuentaExiste ? ingreso.cuentaId : '' 
+    });
   };
 
   const saveEdit = async () => {
     if (!editData.descripcion || !editData.monto || !editData.cuentaId) {
-      showToast('Faltan datos en la edición', 'error');
+      showToast('Faltan datos en la edición (Verifica la cuenta)', 'error');
       return;
     }
     await updateIngreso(editingId, { ...editData, monto: Number(editData.monto) });
@@ -220,95 +242,105 @@ const IngresosTab = ({
         </div>
       </div>
 
-      {/* --- SECCIÓN 1: FORMULARIO --- */}
-      <Card>
-        <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide mb-6">
-          <span className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">1</span>
-          Registrar Nuevo Ingreso
-        </h2>
+      {/* --- SECCIÓN 1: FORMULARIO (ACORDEÓN) --- */}
+      <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8">
+        <div 
+          className="flex justify-between items-center cursor-pointer select-none"
+          onClick={() => setIsFormOpen(!isFormOpen)}
+        >
+          <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
+            <span className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">1</span>
+            Registrar Nuevo Ingreso
+          </h2>
+          <button className="text-slate-500 hover:text-white transition-colors">
+            {isFormOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </button>
+        </div>
         
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-5 animate-in slide-in-from-top-4 fade-in duration-300">
-          
-          <div className="md:col-span-1">
-            <label className={labelBaseClass}>Fecha</label>
-            <input 
-              type="date" 
-              required 
-              value={fecha} 
-              onChange={(e) => setFecha(e.target.value)} 
-              onClick={(e) => e.target.showPicker && e.target.showPicker()} 
-              className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`}
-            />
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className={labelBaseClass}>Descripción</label>
-            <input 
-              type="text" 
-              required 
-              value={descripcion} 
-              onChange={(e) => setDescripcion(e.target.value)} 
-              placeholder="Ej. Salario, Rendimientos..." 
-              className={inputBaseClass}
-            />
-          </div>
-          
-          <div className="md:col-span-1">
-            <label className={labelBaseClass}>Tipo</label>
-            <select 
-              value={tipo} 
-              onChange={(e) => setTipo(e.target.value)} 
-              className={`${inputBaseClass} appearance-none cursor-pointer`}
-            >
-              <option value="Fijo" className="bg-[#111222]">Fijo (Salario)</option>
-              <option value="Variable" className="bg-[#111222]">Variable (Bono/Venta)</option>
-              <option value="Rendimiento" className="bg-[#111222]">Rendimiento (Interés)</option>
-            </select>
-          </div>
+        {isFormOpen && (
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-5 mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
+            
+            <div className="md:col-span-1">
+              <label className={labelBaseClass}>Fecha</label>
+              <input 
+                type="date" 
+                required 
+                value={fecha} 
+                onChange={(e) => setFecha(e.target.value)} 
+                onClick={(e) => e.target.showPicker && e.target.showPicker()} 
+                className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`}
+              />
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className={labelBaseClass}>Descripción</label>
+              <input 
+                type="text" 
+                required 
+                value={descripcion} 
+                onChange={(e) => setDescripcion(e.target.value)} 
+                placeholder="Ej. Salario, Rendimientos..." 
+                className={inputBaseClass}
+              />
+            </div>
+            
+            <div className="md:col-span-1">
+              <label className={labelBaseClass}>Tipo</label>
+              <select 
+                value={tipo} 
+                onChange={(e) => setTipo(e.target.value)} 
+                className={`${inputBaseClass} appearance-none cursor-pointer`}
+              >
+                <option value="Fijo" className="bg-[#111222]">Fijo (Salario)</option>
+                <option value="Variable" className="bg-[#111222]">Variable (Bono/Venta)</option>
+                <option value="Rendimiento" className="bg-[#111222]">Rendimiento (Interés)</option>
+              </select>
+            </div>
 
-          <div className="md:col-span-1">
-            <label className={labelBaseClass}>Destino</label>
-            <select 
-              required 
-              value={cuentaId} 
-              onChange={(e) => setCuentaId(e.target.value)} 
-              className={`${inputBaseClass} appearance-none cursor-pointer`}
-            >
-              <option value="" className="bg-[#111222]">Seleccione...</option>
-              {cuentasActivas.map(c => (
-                <option key={c.id} value={c.id} className="bg-[#111222]">
-                  {c.type === 'cash' ? '💵' : (c.type === 'pocket' || c.type === 'investment') ? '📈' : '🏦'} {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="md:col-span-1 relative">
-            <label className={labelBaseClass}>Monto</label>
-            <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
-            <input 
-              type="number" 
-              required 
-              value={monto} 
-              onChange={(e) => setMonto(e.target.value)} 
-              placeholder="0" 
-              className={`${inputBaseClass} pl-8 font-black text-lg text-emerald-400`}
-            />
-          </div>
+            <div className="md:col-span-1">
+              <label className={labelBaseClass}>Destino</label>
+              <select 
+                required 
+                value={cuentaId} 
+                onChange={(e) => setCuentaId(e.target.value)} 
+                className={`${inputBaseClass} appearance-none cursor-pointer`}
+              >
+                <option value="" className="bg-[#111222]">Seleccione...</option>
+                {cuentasActivas.map(c => (
+                  <option key={c.id} value={c.id} className="bg-[#111222]">
+                    {c.type === 'cash' ? '💵' : (c.type === 'pocket' || c.type === 'investment') ? '📈' : '🏦'} {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="md:col-span-1 relative">
+              <label className={labelBaseClass}>Monto</label>
+              <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
+              <input 
+                type="number" 
+                required 
+                value={monto} 
+                onChange={(e) => setMonto(e.target.value)} 
+                placeholder="0" 
+                className={`${inputBaseClass} pl-8 font-black text-lg text-emerald-400`}
+              />
+            </div>
 
-          <div className="md:col-span-6 flex justify-end mt-2 pt-4 border-t border-white/[0.05]">
-            <button 
-              type="submit" 
-              className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] font-black py-3.5 px-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95 tracking-wide"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14"/><path d="M12 5v14"/></svg> REGISTRAR INGRESO
-            </button>
-          </div>
-        </form>
-      </Card>
+            <div className="md:col-span-6 flex justify-end mt-2 pt-4 border-t border-white/[0.05]">
+              <button 
+                type="submit" 
+                className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] font-black py-3.5 px-10 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95 tracking-wide"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14"/><path d="M12 5v14"/></svg> REGISTRAR INGRESO
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
 
       {/* --- SECCIÓN 2: TABLA HISTORIAL --- */}
-      <Card>
+      <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
             <span className="w-6 h-6 rounded-md bg-slate-800 text-slate-400 flex items-center justify-center text-xs"><ListIcon size={14} /></span>
@@ -332,7 +364,7 @@ const IngresosTab = ({
                 <th className="p-4 font-black text-center w-[10%]">Acciones</th>
               </tr>
               
-              {/* ✨ Fila de Filtros (Estilo Inset) */}
+              {/* Fila de Filtros (Estilo Inset) */}
               <tr className="border-b-2 border-white/[0.05] bg-appcard/30">
                 <th className="p-2"></th>
                 <th className="p-2">
@@ -425,7 +457,7 @@ const IngresosTab = ({
                           <select 
                             value={editData.tipo} 
                             onChange={e => setEditData({...editData, tipo: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none cursor-pointer"
                           >
                             <option value="Fijo">Fijo</option>
                             <option value="Variable">Variable</option>
@@ -448,14 +480,15 @@ const IngresosTab = ({
                           <select 
                             value={editData.cuentaId} 
                             onChange={e => setEditData({...editData, cuentaId: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none appearance-none cursor-pointer"
                           >
+                            <option value="" disabled>Seleccione cuenta...</option>
                             {cuentasActivas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${isPocket ? 'bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`}></div>
-                            {cuentaName.substring(0, 18)}
+                            <div className={`w-2 h-2 rounded-full ${isPocket ? 'bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]' : cuentaName === 'Cuenta eliminada' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`}></div>
+                            <span className={cuentaName === 'Cuenta eliminada' ? 'text-rose-400' : 'text-[#8A92A6]'}>{cuentaName.substring(0, 18)}</span>
                           </div>
                         )}
                       </td>
@@ -502,7 +535,7 @@ const IngresosTab = ({
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
