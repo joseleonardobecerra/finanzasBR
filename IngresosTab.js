@@ -1,3 +1,33 @@
+// ============================================================================
+// COMPONENTES UI EXTERNOS (Soluciona el bug de pérdida de foco al escribir)
+// ============================================================================
+const CheckIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+
+const XIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const ListIcon = ({ size = 18, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="8" y1="6" x2="21" y2="6"></line>
+    <line x1="8" y1="12" x2="21" y2="12"></line>
+    <line x1="8" y1="18" x2="21" y2="18"></line>
+    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+  </svg>
+);
+
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
 const IngresosTab = ({ 
   ingresos, 
   addIngreso, 
@@ -26,36 +56,14 @@ const IngresosTab = ({
     }).format(val);
   };
 
+  // ✨ FUNCIÓN A PRUEBA DE BALAS PARA LA FECHA LOCAL
   const getLocalToday = () => {
     const d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 10);
+    const año = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${año}-${mes}-${dia}`;
   };
-
-  // --- ÍCONOS SVG NATIVOS (Prevención de errores de referencia) ---
-  const CheckIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
-  );
-  
-  const XIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-  );
-
-  const ListIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="8" y1="6" x2="21" y2="6"></line>
-      <line x1="8" y1="12" x2="21" y2="12"></line>
-      <line x1="8" y1="18" x2="21" y2="18"></line>
-      <line x1="3" y1="6" x2="3.01" y2="6"></line>
-      <line x1="3" y1="12" x2="3.01" y2="12"></line>
-      <line x1="3" y1="18" x2="3.01" y2="18"></line>
-    </svg>
-  );
 
   // ============================================================================
   // 1. ESTADOS DEL COMPONENTE
@@ -303,7 +311,7 @@ const IngresosTab = ({
       <Card>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2 tracking-wide">
-            <span className="w-6 h-6 rounded-md bg-slate-800 text-slate-400 flex items-center justify-center text-xs"><ListIcon /></span>
+            <span className="w-6 h-6 rounded-md bg-slate-800 text-slate-400 flex items-center justify-center text-xs"><ListIcon size={14} /></span>
             Historial Completo de Ingresos
           </h2>
           <span className="bg-[#111222] shadow-neumorph-inset text-[#8A92A6] text-[10px] px-4 py-1.5 rounded-full font-black uppercase tracking-widest">
@@ -394,7 +402,7 @@ const IngresosTab = ({
                             type="date" 
                             value={editData.fecha} 
                             onChange={e => setEditData({...editData, fecha: e.target.value})} 
-                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none"
+                            className="w-full bg-[#111222] rounded px-2 py-1 text-xs text-white outline-none cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]"
                           />
                         ) : ingreso.fecha}
                       </td>
@@ -469,10 +477,10 @@ const IngresosTab = ({
                         {isEditing ? (
                           <div className="flex items-center justify-center gap-2">
                             <button onClick={saveEdit} className="text-emerald-400 hover:text-emerald-300 p-1.5 bg-emerald-400/10 rounded transition-colors" title="Confirmar">
-                              <CheckIcon />
+                              <CheckIcon size={18} />
                             </button>
                             <button onClick={() => setEditingId(null)} className="text-rose-400 hover:text-rose-300 p-1.5 bg-rose-400/10 rounded transition-colors" title="Cancelar">
-                              <XIcon />
+                              <XIcon size={18} />
                             </button>
                           </div>
                         ) : (
