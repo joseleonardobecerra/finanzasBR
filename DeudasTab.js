@@ -1,14 +1,49 @@
+// ============================================================================
+// COMPONENTES UI EXTERNOS (Soluciona el bug de pérdida de foco al escribir)
+// ============================================================================
+const CheckIcon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>;
+const XIcon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+const ChevronDownIcon = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"></polyline></svg>;
+const ChevronUpIcon = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"></polyline></svg>;
+const ShieldAlert = ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const Plus = ({ size = 16, className = "", strokeWidth="3" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const UploadIcon = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+const DownloadIcon = ({ size = 14, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+const CreditCardIcon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>;
+const LandmarkIcon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>;
+const Edit3Icon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
+const Trash2Icon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+
+// --- Componentes Reutilizables ---
+const CardUI = ({ children, className }) => <div className={`bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 ${className}`}>{children}</div>;
+
+const InputUI = ({ type="text", label, value, onChange, className, placeholder, step, required }) => (
+  <div className={`relative ${className?.includes('col-span') ? className : 'w-full'}`}>
+    <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
+    <input type={type} step={step} value={value} onChange={onChange} placeholder={placeholder} required={required} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500 transition-all duration-300 placeholder:text-slate-600 ${className}`} />
+  </div>
+);
+
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
 const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, egresos, selectedMonth, privacyMode }) => {
   const { useState, useRef, useMemo } = React;
+  
+  // Estados de Formularios Superiores
   const [showNewCard, setShowNewCard] = useState(false);
   const [showNewLoan, setShowNewLoan] = useState(false);
   
   const [newCardData, setNewCardData] = useState({ name: '', limit: '', initialDebt: '', tasaEA: '', cuotaMinima: '' });
   const [newLoanData, setNewLoanData] = useState({ name: '', montoPrestado: '', initialDebt: '', totalPagadoPrevio: '', tasaEA: '', cuotaMinima: '', cuotasTotales: '', cuotasPagadas: '', hasIBR: false, ibrValue: '', ibrPuntos: '' });
   
+  // Estados de Edición y UI
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
+  const [openSections, setOpenSections] = useState({ tc: true, loans: true }); // Acordeones principales
   const fileInputRef = useRef(null);
+
+  const toggleSection = (sec) => setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
 
   // ✨ MODO PRIVACIDAD APLICADO
   const formatCOP = (val) => {
@@ -18,52 +53,9 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
     }).format(val);
   };
 
-  // Función Auxiliar para Tasa Mensual
   const getTasaMensual = (ea) => {
     return Math.pow(1 + (ea / 100), 1 / 12) - 1;
   };
-
-  // ============================================================================
-  // ÍCONOS SVG NATIVOS
-  // ============================================================================
-  const CheckIcon = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>
-  );
-  const XIcon = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-  );
-  const ShieldAlert = ({ size = 20, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-  );
-  const Plus = ({ size = 16, className = "", strokeWidth="3" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  );
-  const Upload = ({ size = 14, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-  );
-  const Download = ({ size = 14, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-  );
-  const CreditCard = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-  );
-  const Landmark = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
-  );
-  const Edit3 = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-  );
-  const Trash2 = ({ size = 16, className = "" }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-  );
-
-  const Card = ({ children, className }) => <div className={`bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 ${className}`}>{children}</div>;
-  const Input = ({ type="text", label, value, onChange, className, placeholder, step }) => (
-    <div className={`relative ${className?.includes('col-span') ? className : ''}`}>
-      <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
-      <input type={type} step={step} value={value} onChange={onChange} placeholder={placeholder} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-indigo-500 transition-all duration-300 placeholder:text-slate-600 ${className}`} />
-    </div>
-  );
 
   // ============================================================================
   // CÁLCULOS Y LÓGICA
@@ -88,7 +80,7 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   const totalDeudaTC = todasLasTC.reduce((sum, d) => sum + (Number(d.currentDebt) || 0), 0);
   const totalDispTC = todasLasTC.reduce((sum, d) => sum + Math.max(0, (Number(d.limit) || 0) - (Number(d.currentDebt) || 0)), 0);
   
-  // ✨ CORRECCIÓN: Uso total del mes (Suma TODO lo que haya salido de alguna tarjeta de crédito)
+  // ✨ Uso total del mes (Suma TODO lo que haya salido de alguna tarjeta de crédito)
   const totalUsoTCMes = todasLasTC.reduce((sum, tc) => {
       const usoMesTC = egresosMes.filter(e => e.cuentaId === tc.id).reduce((s, e) => s + Number(e.monto), 0);
       return sum + usoMesTC;
@@ -218,9 +210,6 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
     e.target.value = '';
   };
 
-  const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta focus:shadow-glow-magenta transition-all duration-300 placeholder:text-slate-600";
-  const labelBaseClass = "text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block";
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
@@ -247,20 +236,20 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
           
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImport} className="hidden" />
           <button onClick={() => fileInputRef.current.click()} className="bg-[#111222] hover:bg-[#1c1e32] text-rose-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-rose-500/30 shadow-neumorph hover:shadow-glow-magenta">
-            <Upload size={14}/> Importar
+            <UploadIcon size={14}/> Importar
           </button>
           <button onClick={handleExport} className="bg-[#111222] hover:bg-[#1c1e32] text-rose-400 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-rose-500/30 shadow-neumorph hover:shadow-glow-magenta">
-            <Download size={14}/> Exportar
+            <DownloadIcon size={14}/> Exportar
           </button>
         </div>
       </header>
 
       {/* FORMULARIO NUEVA TARJETA DE CRÉDITO */}
       {showNewCard && (
-        <Card className="!border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] mb-4 animate-in slide-in-from-top-4">
+        <CardUI className="!border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] mb-4 animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-               <CreditCard size={16}/> Nueva Tarjeta de Crédito
+               <CreditCardIcon size={16}/> Nueva Tarjeta de Crédito
             </h3>
             <button onClick={() => setShowNewCard(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg">
               Cerrar
@@ -269,22 +258,18 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
           
           <form onSubmit={handleAddCard} className="grid grid-cols-2 md:grid-cols-6 gap-5 items-end">
             <div className="col-span-2">
-              <label className={labelBaseClass}>Nombre de Tarjeta</label>
-              <input type="text" required value={newCardData.name} onChange={e=>setNewCardData({...newCardData, name: e.target.value})} className={inputBaseClass} placeholder="Ej. Visa Bancolombia" />
+              <InputUI required label="Nombre de Tarjeta" value={newCardData.name} onChange={e=>setNewCardData({...newCardData, name: e.target.value})} placeholder="Ej. Visa Bancolombia" />
             </div>
             <div className="col-span-1 relative">
-              <label className={labelBaseClass}>Cupo Total ($)</label>
-              <input type="number" value={newCardData.limit} onChange={e=>setNewCardData({...newCardData, limit: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="0" />
+              <InputUI type="number" label="Cupo Total ($)" value={newCardData.limit} onChange={e=>setNewCardData({...newCardData, limit: e.target.value})} className="pl-8" placeholder="0" />
               <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
             </div>
             <div className="col-span-1 relative">
-              <label className={labelBaseClass}>Deuda Actual ($)</label>
-              <input type="number" value={newCardData.initialDebt} onChange={e=>setNewCardData({...newCardData, initialDebt: e.target.value})} className={`${inputBaseClass} pl-8 text-rose-400 font-bold`} placeholder="0" />
+              <InputUI type="number" label="Deuda Actual ($)" value={newCardData.initialDebt} onChange={e=>setNewCardData({...newCardData, initialDebt: e.target.value})} className="pl-8 text-rose-400 font-bold" placeholder="0" />
               <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
             </div>
             <div className="col-span-1 relative">
-              <label className={labelBaseClass}>Tasa E.A. (%)</label>
-              <input type="number" value={newCardData.tasaEA} onChange={e=>setNewCardData({...newCardData, tasaEA: e.target.value})} step="0.01" className={`${inputBaseClass} pr-8 font-bold text-amber-400`} placeholder="0.0" />
+              <InputUI type="number" label="Tasa E.A. (%)" value={newCardData.tasaEA} onChange={e=>setNewCardData({...newCardData, tasaEA: e.target.value})} step="0.01" className="pr-8 font-bold text-amber-400" placeholder="0.0" />
               <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
             </div>
             
@@ -294,15 +279,15 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
               </button>
             </div>
           </form>
-        </Card>
+        </CardUI>
       )}
 
       {/* FORMULARIO NUEVO PRÉSTAMO */}
       {showNewLoan && (
-        <Card className="!border-neonmagenta/30 shadow-[0_0_20px_rgba(255,0,122,0.2)] mb-4 animate-in slide-in-from-top-4">
+        <CardUI className="!border-neonmagenta/30 shadow-[0_0_20px_rgba(255,0,122,0.2)] mb-4 animate-in slide-in-from-top-4">
           <div className="flex justify-between items-center mb-6 border-b border-white/[0.05] pb-4">
             <h3 className="text-sm font-black text-neonmagenta uppercase tracking-widest flex items-center gap-2">
-               <Landmark size={16}/> Nuevo Préstamo / Crédito
+               <LandmarkIcon size={16}/> Nuevo Préstamo / Crédito
             </h3>
             <button onClick={() => setShowNewLoan(false)} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg">
               Cerrar
@@ -311,31 +296,26 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
           
           <form onSubmit={handleAddLoan} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 items-end">
             <div className="sm:col-span-2">
-              <label className={labelBaseClass}>Banco / Entidad (Nombre)</label>
-              <input type="text" required value={newLoanData.name} onChange={e=>setNewLoanData({...newLoanData, name: e.target.value})} className={inputBaseClass} placeholder="Ej. Crédito Vehículo BBVA" />
+              <InputUI required label="Banco / Entidad (Nombre)" value={newLoanData.name} onChange={e=>setNewLoanData({...newLoanData, name: e.target.value})} placeholder="Ej. Crédito Vehículo BBVA" />
             </div>
             
             <div className="sm:col-span-1 relative">
-              <label className={labelBaseClass}>Monto Inicial Prestado</label>
-              <input type="number" value={newLoanData.montoPrestado} onChange={e=>setNewLoanData({...newLoanData, montoPrestado: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="0" />
+              <InputUI type="number" label="Monto Inicial Prestado" value={newLoanData.montoPrestado} onChange={e=>setNewLoanData({...newLoanData, montoPrestado: e.target.value})} className="pl-8" placeholder="0" />
               <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
             </div>
             
             <div className="sm:col-span-1 relative">
-              <label className={labelBaseClass}>Deuda Restante Actual</label>
-              <input type="number" required value={newLoanData.initialDebt} onChange={e=>setNewLoanData({...newLoanData, initialDebt: e.target.value})} className={`${inputBaseClass} pl-8 font-black text-rose-400`} placeholder="0" />
+              <InputUI required type="number" label="Deuda Restante Actual" value={newLoanData.initialDebt} onChange={e=>setNewLoanData({...newLoanData, initialDebt: e.target.value})} className="pl-8 font-black text-rose-400" placeholder="0" />
               <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
             </div>
             
             <div className="sm:col-span-1 relative">
-              <label className={labelBaseClass}>Total Pagado Previo</label>
-              <input type="number" value={newLoanData.totalPagadoPrevio} onChange={e=>setNewLoanData({...newLoanData, totalPagadoPrevio: e.target.value})} className={`${inputBaseClass} pl-8`} placeholder="Abonado antes de app" />
+              <InputUI type="number" label="Total Pagado Previo" value={newLoanData.totalPagadoPrevio} onChange={e=>setNewLoanData({...newLoanData, totalPagadoPrevio: e.target.value})} className="pl-8" placeholder="Abonado antes de app" />
               <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
             </div>
             
             <div className="sm:col-span-1 relative">
-              <label className={labelBaseClass}>Valor Cuota Fija Mensual</label>
-              <input type="number" required value={newLoanData.cuotaMinima} onChange={e=>setNewLoanData({...newLoanData, cuotaMinima: e.target.value})} className={`${inputBaseClass} pl-8 font-bold text-white`} placeholder="0" />
+              <InputUI required type="number" label="Valor Cuota Fija Mensual" value={newLoanData.cuotaMinima} onChange={e=>setNewLoanData({...newLoanData, cuotaMinima: e.target.value})} className="pl-8 font-bold text-white" placeholder="0" />
               <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
             </div>
             
@@ -360,19 +340,16 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
               {newLoanData.hasIBR ? (
                 <div className="flex w-full gap-4">
                   <div className="flex-1 relative">
-                    <label className={labelBaseClass}>IBR Actual (%)</label>
-                    <input type="number" step="0.01" value={newLoanData.ibrValue} onChange={e=>setNewLoanData({...newLoanData, ibrValue: e.target.value})} className={`${inputBaseClass} pr-8 font-bold text-amber-400`} placeholder="0.0" />
+                    <InputUI type="number" step="0.01" label="IBR Actual (%)" value={newLoanData.ibrValue} onChange={e=>setNewLoanData({...newLoanData, ibrValue: e.target.value})} className="pr-8 font-bold text-amber-400" placeholder="0.0" />
                     <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
                   </div>
                   <div className="flex-1">
-                    <label className={labelBaseClass}>Puntos Adicionales</label>
-                    <input type="number" step="0.01" value={newLoanData.ibrPuntos} onChange={e=>setNewLoanData({...newLoanData, ibrPuntos: e.target.value})} className={inputBaseClass} placeholder="+ Pts" />
+                    <InputUI type="number" step="0.01" label="Puntos Adicionales" value={newLoanData.ibrPuntos} onChange={e=>setNewLoanData({...newLoanData, ibrPuntos: e.target.value})} placeholder="+ Pts" />
                   </div>
                 </div>
               ) : (
                 <div className="w-full md:w-1/3 relative">
-                  <label className={labelBaseClass}>Tasa Interés (E.A. %)</label>
-                  <input type="number" step="0.01" value={newLoanData.tasaEA} onChange={e=>setNewLoanData({...newLoanData, tasaEA: e.target.value})} className={`${inputBaseClass} pr-8 font-bold text-amber-400`} placeholder="0.0" />
+                  <InputUI type="number" step="0.01" label="Tasa Interés (E.A. %)" value={newLoanData.tasaEA} onChange={e=>setNewLoanData({...newLoanData, tasaEA: e.target.value})} className="pr-8 font-bold text-amber-400" placeholder="0.0" />
                   <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
                 </div>
               )}
@@ -384,293 +361,305 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
               </button>
             </div>
           </form>
-        </Card>
+        </CardUI>
       )}
 
-      {/* TABLA TARJETAS DE CRÉDITO */}
-      <Card className="!border-transparent flex flex-col p-0 md:p-0">
-        <div className="p-5 md:p-8 pb-0">
+      {/* TABLA TARJETAS DE CRÉDITO (ACORDEÓN) */}
+      <CardUI className="!border-transparent flex flex-col p-0 md:p-0">
+        <div className="p-5 md:p-8 pb-0 flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('tc')}>
           <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-            <CreditCard size={18} className="text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]"/> 
+            <CreditCardIcon size={18} className="text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]"/> 
             Tarjetas de Crédito
           </h2>
+          <button className="text-slate-500 hover:text-white transition-colors mb-6">
+            {openSections.tc ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </button>
         </div>
         
-        <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent mx-5 md:mx-8 mb-5 md:mb-8">
-          <table className="w-full text-sm text-left min-w-[900px]">
-            <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
-              <tr>
-                <th className="px-5 py-4">Tarjeta</th>
-                <th className="px-5 py-4 text-right">Cupo Total</th>
-                <th className="px-5 py-4 text-right">Cupo Disp.</th>
-                <th className="px-5 py-4 text-right">Deuda Base Actual</th>
-                <th className="px-5 py-4 text-right text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]">Uso Mes Actual</th>
-                <th className="px-5 py-4 text-center">Tasa M.V.</th>
-                <th className="px-5 py-4 text-center">Tasa E.A.</th>
-                <th className="px-5 py-4 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.02]">
-              {todasLasTC.map(d => {
-                const isEditing = editId === d.id;
-                const tasaMV = getTasaMensual(d.tasaEA) * 100;
-                
-                // ✨ CORRECCIÓN EXACTA: Uso de la tarjeta en el mes (Cualquier egreso que haya "salido" de ella)
-                const usoMesActual = egresosMes
-                  .filter(e => e.cuentaId === d.id)
-                  .reduce((s, e) => s + Number(e.monto), 0);
-                
-                if (isEditing) {
-                   return (
-                     <tr key={d.id} className="bg-indigo-950/20">
-                       <td className="px-2 py-2"><input type="text" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none shadow-neumorph-inset focus:border-indigo-500" placeholder="Nombre" /></td>
-                       <td className="px-2 py-2"><input type="number" value={editData.limit} onChange={e=>setEditData({...editData, limit: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none text-right shadow-neumorph-inset" placeholder="Cupo" /></td>
-                       <td className="px-2 py-2 text-right text-slate-500">-</td>
-                       <td className="px-2 py-2"><input type="number" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="w-full bg-[#111222] border border-rose-500/50 rounded-lg px-3 py-2 text-xs text-rose-400 font-bold outline-none text-right shadow-neumorph-inset" placeholder="Deuda" title="Ajusta la deuda base" /></td>
-                       <td className="px-2 py-2 text-right text-slate-500">-</td>
-                       <td className="px-2 py-2 text-center text-slate-500">-</td>
-                       <td className="px-2 py-2">
-                         <div className="flex justify-center">
-                            <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-20 bg-[#111222] border border-amber-500/50 rounded-lg px-3 py-2 text-xs text-amber-400 font-bold outline-none text-center shadow-neumorph-inset" title="Tasa E.A." />
-                         </div>
-                       </td>
-                       <td className="px-2 py-2 text-center flex justify-center gap-2 mt-1">
-                         <button onClick={saveInlineEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-glow-cyan" title="Guardar Cambios"><CheckIcon size={14}/></button>
-                         <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14}/></button>
-                       </td>
-                     </tr>
-                   )
-                }
-
-                return (
-                  <tr key={d.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-4 font-bold text-white tracking-wide">{d.name}</td>
-                    <td className="px-5 py-4 text-right text-[#8A92A6] tabular-nums">{formatCOP(d.limit)}</td>
-                    <td className="px-5 py-4 text-right font-black text-emerald-400 tabular-nums drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">{formatCOP(Math.max(0, d.limit - d.currentDebt))}</td>
-                    <td className="px-5 py-4 text-right font-black text-neonmagenta tabular-nums drop-shadow-[0_0_5px_rgba(255,0,122,0.3)]">{formatCOP(d.currentDebt)}</td>
-                    <td className="px-5 py-4 text-right font-black text-white tabular-nums border-l border-white/[0.05] bg-white/[0.01]">{formatCOP(usoMesActual)}</td>
-                    <td className="px-5 py-4 text-center text-amber-400 font-bold tabular-nums">{tasaMV.toFixed(2)}%</td>
-                    <td className="px-5 py-4 text-center text-white font-bold tabular-nums">{d.tasaEA}%</td>
-                    <td className="px-5 py-4 text-center flex justify-center gap-3">
-                      <button onClick={() => startEdit(d)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3 size={16}/></button>
-                      <button onClick={() => {if(window.confirm(`¿Seguro que quieres eliminar la tarjeta ${d.name} para siempre?`)) { removeCuenta(d.id); showToast("Tarjeta eliminada", "error"); }}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={16}/></button>
-                    </td>
-                  </tr>
-                )
-              })}
-              {todasLasTC.length === 0 && (
-                <tr><td colSpan="8" className="px-5 py-10 text-center text-[#8A92A6] font-bold italic">No hay tarjetas de crédito registradas.</td></tr>
-              )}
-              {todasLasTC.length > 0 && (
-                <tr className="bg-[#0b0c16]/50 font-black text-white border-t border-white/[0.05]">
-                  <td className="px-5 py-5 uppercase tracking-widest text-[11px] text-[#8A92A6]">TOTAL TC</td>
-                  <td className="px-5 py-5 text-right tabular-nums">{formatCOP(totalCupoTC)}</td>
-                  <td className="px-5 py-5 text-right text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)] tabular-nums">{formatCOP(totalDispTC)}</td>
-                  <td className="px-5 py-5 text-right text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)] tabular-nums">{formatCOP(totalDeudaTC)}</td>
-                  <td className="px-5 py-5 text-right text-white tabular-nums border-l border-white/[0.05]">{formatCOP(totalUsoTCMes)}</td>
-                  <td colSpan="3" className="px-5 py-5 text-center"></td>
+        {openSections.tc && (
+          <div className="overflow-x-auto bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent mx-5 md:mx-8 mb-5 md:mb-8 animate-in slide-in-from-top-4 fade-in duration-300">
+            <table className="w-full text-sm text-left min-w-[900px]">
+              <thead className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest bg-[#0b0c16]/50 border-b border-white/[0.05]">
+                <tr>
+                  <th className="px-5 py-4">Tarjeta</th>
+                  <th className="px-5 py-4 text-right">Cupo Total</th>
+                  <th className="px-5 py-4 text-right">Cupo Disp.</th>
+                  <th className="px-5 py-4 text-right">Deuda Base Actual</th>
+                  <th className="px-5 py-4 text-right text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]">Uso Mes Actual</th>
+                  <th className="px-5 py-4 text-center">Tasa M.V.</th>
+                  <th className="px-5 py-4 text-center">Tasa E.A.</th>
+                  <th className="px-5 py-4 text-center">Acciones</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-white/[0.02]">
+                {todasLasTC.map(d => {
+                  const isEditing = editId === d.id;
+                  const tasaMV = getTasaMensual(d.tasaEA) * 100;
+                  
+                  // ✨ Uso de la tarjeta en el mes (Cualquier egreso que haya "salido" de ella)
+                  const usoMesActual = egresosMes
+                    .filter(e => e.cuentaId === d.id)
+                    .reduce((s, e) => s + Number(e.monto), 0);
+                  
+                  if (isEditing) {
+                     return (
+                       <tr key={d.id} className="bg-indigo-950/20">
+                         <td className="px-2 py-2"><input type="text" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none shadow-neumorph-inset focus:border-indigo-500" placeholder="Nombre" /></td>
+                         <td className="px-2 py-2"><input type="number" value={editData.limit} onChange={e=>setEditData({...editData, limit: e.target.value})} className="w-full bg-[#111222] border border-indigo-500/50 rounded-lg px-3 py-2 text-xs text-white outline-none text-right shadow-neumorph-inset" placeholder="Cupo" /></td>
+                         <td className="px-2 py-2 text-right text-slate-500">-</td>
+                         <td className="px-2 py-2"><input type="number" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="w-full bg-[#111222] border border-rose-500/50 rounded-lg px-3 py-2 text-xs text-rose-400 font-bold outline-none text-right shadow-neumorph-inset" placeholder="Deuda" title="Ajusta la deuda base" /></td>
+                         <td className="px-2 py-2 text-right text-slate-500">-</td>
+                         <td className="px-2 py-2 text-center text-slate-500">-</td>
+                         <td className="px-2 py-2">
+                           <div className="flex justify-center">
+                              <input type="number" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} step="0.01" className="w-20 bg-[#111222] border border-amber-500/50 rounded-lg px-3 py-2 text-xs text-amber-400 font-bold outline-none text-center shadow-neumorph-inset" title="Tasa E.A." />
+                           </div>
+                         </td>
+                         <td className="px-2 py-2 text-center flex justify-center gap-2 mt-1">
+                           <button onClick={saveInlineEdit} className="text-[#0b0c16] p-2 bg-emerald-400 rounded-lg hover:bg-emerald-300 transition-colors shadow-glow-cyan" title="Guardar Cambios"><CheckIcon size={14}/></button>
+                           <button onClick={() => setEditId(null)} className="text-rose-400 p-2 bg-rose-500/10 rounded-lg hover:bg-rose-500/20 transition-colors border border-rose-500/30" title="Cancelar"><XIcon size={14}/></button>
+                         </td>
+                       </tr>
+                     )
+                  }
+
+                  return (
+                    <tr key={d.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-4 font-bold text-white tracking-wide">{d.name}</td>
+                      <td className="px-5 py-4 text-right text-[#8A92A6] tabular-nums">{formatCOP(d.limit)}</td>
+                      <td className="px-5 py-4 text-right font-black text-emerald-400 tabular-nums drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">{formatCOP(Math.max(0, d.limit - d.currentDebt))}</td>
+                      <td className="px-5 py-4 text-right font-black text-neonmagenta tabular-nums drop-shadow-[0_0_5px_rgba(255,0,122,0.3)]">{formatCOP(d.currentDebt)}</td>
+                      <td className="px-5 py-4 text-right font-black text-white tabular-nums border-l border-white/[0.05] bg-white/[0.01]">{formatCOP(usoMesActual)}</td>
+                      <td className="px-5 py-4 text-center text-amber-400 font-bold tabular-nums">{tasaMV.toFixed(2)}%</td>
+                      <td className="px-5 py-4 text-center text-white font-bold tabular-nums">{d.tasaEA}%</td>
+                      <td className="px-5 py-4 text-center flex justify-center gap-3">
+                        <button onClick={() => startEdit(d)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar"><Edit3Icon size={16}/></button>
+                        <button onClick={() => {if(window.confirm(`¿Seguro que quieres eliminar la tarjeta ${d.name} para siempre?`)) { removeCuenta(d.id); showToast("Tarjeta eliminada", "error"); }}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2Icon size={16}/></button>
+                      </td>
+                    </tr>
+                  )
+                })}
+                {todasLasTC.length === 0 && (
+                  <tr><td colSpan="8" className="px-5 py-10 text-center text-[#8A92A6] font-bold italic">No hay tarjetas de crédito registradas.</td></tr>
+                )}
+                {todasLasTC.length > 0 && (
+                  <tr className="bg-[#0b0c16]/50 font-black text-white border-t border-white/[0.05]">
+                    <td className="px-5 py-5 uppercase tracking-widest text-[11px] text-[#8A92A6]">TOTAL TC</td>
+                    <td className="px-5 py-5 text-right tabular-nums">{formatCOP(totalCupoTC)}</td>
+                    <td className="px-5 py-5 text-right text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)] tabular-nums">{formatCOP(totalDispTC)}</td>
+                    <td className="px-5 py-5 text-right text-neonmagenta drop-shadow-[0_0_5px_rgba(255,0,122,0.5)] tabular-nums">{formatCOP(totalDeudaTC)}</td>
+                    <td className="px-5 py-5 text-right text-white tabular-nums border-l border-white/[0.05]">{formatCOP(totalUsoTCMes)}</td>
+                    <td colSpan="3" className="px-5 py-5 text-center"></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardUI>
+
+      {/* LISTA DE PRÉSTAMOS DETALLADOS (ACORDEÓN) */}
+      <CardUI className="!border-transparent flex flex-col p-5 md:p-8">
+        <div className="flex justify-between items-center cursor-pointer select-none mb-6" onClick={() => toggleSection('loans')}>
+          <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+            <LandmarkIcon size={18} className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]"/> 
+            Créditos y Préstamos Detallados
+          </h2>
+          <button className="text-slate-500 hover:text-white transition-colors">
+            {openSections.loans ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </button>
         </div>
-      </Card>
-
-      {/* LISTA DE PRÉSTAMOS DETALLADOS */}
-      <Card className="!border-transparent flex flex-col p-5 md:p-8">
-        <h2 className="text-sm font-black text-white mb-6 uppercase tracking-widest flex items-center gap-2">
-          <Landmark size={18} className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]"/> 
-          Créditos y Préstamos Detallados
-        </h2>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {deudasAnalizadas.filter(d=>d.type==='loan').map(d => {
-            const isEditing = editId === d.id;
+        {openSections.loans && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-top-4 fade-in duration-300">
+            {deudasAnalizadas.filter(d=>d.type==='loan').map(d => {
+              const isEditing = editId === d.id;
 
-            if (isEditing) {
-               return (
-                  <div key={d.id} className="bg-[#111222] shadow-neumorph-inset p-5 rounded-2xl border border-rose-500/50 flex flex-col gap-4 animate-in zoom-in-95">
-                     <div className="flex justify-between items-center mb-2 border-b border-rose-500/30 pb-4">
-                       <h3 className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                         <Edit3 size={16}/> Editando Préstamo
-                       </h3>
-                       <div className="flex gap-2">
-                         <button onClick={saveInlineEdit} className="bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-glow-cyan flex items-center gap-1"><CheckIcon size={14}/> Guardar</button>
-                         <button onClick={() => setEditId(null)} className="bg-appcard hover:bg-white/[0.05] text-[#8A92A6] border border-white/[0.02] shadow-neumorph px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1"><XIcon size={14}/> Cancelar</button>
+              if (isEditing) {
+                 return (
+                    <div key={d.id} className="bg-[#111222] shadow-neumorph-inset p-5 rounded-2xl border border-rose-500/50 flex flex-col gap-4 animate-in zoom-in-95">
+                       <div className="flex justify-between items-center mb-2 border-b border-rose-500/30 pb-4">
+                         <h3 className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                           <Edit3Icon size={16}/> Editando Préstamo
+                         </h3>
+                         <div className="flex gap-2">
+                           <button onClick={saveInlineEdit} className="bg-emerald-500 hover:bg-emerald-400 text-[#0b0c16] px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-glow-cyan flex items-center gap-1"><CheckIcon size={14}/> Guardar</button>
+                           <button onClick={() => setEditId(null)} className="bg-appcard hover:bg-white/[0.05] text-[#8A92A6] border border-white/[0.02] shadow-neumorph px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1"><XIcon size={14}/> Cancelar</button>
+                         </div>
                        </div>
-                     </div>
-                     
-                     <Input label="Banco / Entidad (Nombre)" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} />
-                     
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="relative">
-                         <Input type="number" label="Préstamo Inicial" value={editData.montoPrestado} onChange={e=>setEditData({...editData, montoPrestado: e.target.value})} className="pl-8" />
-                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
-                       </div>
-                       <div className="relative">
-                         <Input type="number" label="Deuda Restante Base" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="pl-8 font-black text-rose-400" />
-                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
-                       </div>
-                     </div>
-                     
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="relative">
-                         <Input type="number" label="Total Pagado Previo" value={editData.totalPagadoPrevio} onChange={e=>setEditData({...editData, totalPagadoPrevio: e.target.value})} className="pl-8" />
-                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
-                       </div>
-                       <div className="relative">
-                         <Input type="number" label="Valor Cuota Fija" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} className="pl-8 font-bold" />
-                         <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
-                       </div>
-                     </div>
-                     
-                     <div className="grid grid-cols-2 gap-4 bg-appcard p-3 rounded-xl shadow-neumorph border border-white/[0.02]">
-                        <Input type="number" label="Cuotas Pagadas" value={editData.cuotasPagadas} onChange={e=>setEditData({...editData, cuotasPagadas: e.target.value})} />
-                        <Input type="number" label="Cuotas Totales" value={editData.cuotasTotales} onChange={e=>setEditData({...editData, cuotasTotales: e.target.value})} />
-                     </div>
-                     
-                     <div className="bg-appcard p-4 rounded-xl shadow-neumorph border border-white/[0.02] mt-2">
-                       <label className="flex items-center gap-3 cursor-pointer text-xs font-black uppercase tracking-widest text-indigo-400 mb-4">
-                         <input type="checkbox" checked={editData.hasIBR} onChange={(e) => setEditData({...editData, hasIBR: e.target.checked})} className="form-checkbox w-5 h-5 text-indigo-500 rounded bg-[#111222] border-transparent shadow-neumorph-inset focus:ring-0 focus:ring-offset-0" />
-                         ¿Tiene Tasa Variable (IBR)?
-                       </label>
                        
-                       {editData.hasIBR ? (
-                         <div className="flex w-full gap-4">
-                           <div className="flex-1 relative">
-                             <Input type="number" step="0.01" label="IBR Actual (%)" value={editData.ibrValue} onChange={e=>setEditData({...editData, ibrValue: e.target.value})} className="pr-8 font-bold text-amber-400" />
+                       <InputUI label="Banco / Entidad (Nombre)" value={editData.name} onChange={e=>setEditData({...editData, name: e.target.value})} />
+                       
+                       <div className="grid grid-cols-2 gap-4">
+                         <div className="relative">
+                           <InputUI type="number" label="Préstamo Inicial" value={editData.montoPrestado} onChange={e=>setEditData({...editData, montoPrestado: e.target.value})} className="pl-8" />
+                           <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                         </div>
+                         <div className="relative">
+                           <InputUI type="number" label="Deuda Restante Base" value={editData.initialDebt} onChange={e=>setEditData({...editData, initialDebt: e.target.value})} className="pl-8 font-black text-rose-400" />
+                           <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                         </div>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 gap-4">
+                         <div className="relative">
+                           <InputUI type="number" label="Total Pagado Previo" value={editData.totalPagadoPrevio} onChange={e=>setEditData({...editData, totalPagadoPrevio: e.target.value})} className="pl-8" />
+                           <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                         </div>
+                         <div className="relative">
+                           <InputUI type="number" label="Valor Cuota Fija" value={editData.cuotaMinima} onChange={e=>setEditData({...editData, cuotaMinima: e.target.value})} className="pl-8 font-bold" />
+                           <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
+                         </div>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 gap-4 bg-appcard p-3 rounded-xl shadow-neumorph border border-white/[0.02]">
+                          <InputUI type="number" label="Cuotas Pagadas" value={editData.cuotasPagadas} onChange={e=>setEditData({...editData, cuotasPagadas: e.target.value})} />
+                          <InputUI type="number" label="Cuotas Totales" value={editData.cuotasTotales} onChange={e=>setEditData({...editData, cuotasTotales: e.target.value})} />
+                       </div>
+                       
+                       <div className="bg-appcard p-4 rounded-xl shadow-neumorph border border-white/[0.02] mt-2">
+                         <label className="flex items-center gap-3 cursor-pointer text-xs font-black uppercase tracking-widest text-indigo-400 mb-4">
+                           <input type="checkbox" checked={editData.hasIBR} onChange={(e) => setEditData({...editData, hasIBR: e.target.checked})} className="form-checkbox w-5 h-5 text-indigo-500 rounded bg-[#111222] border-transparent shadow-neumorph-inset focus:ring-0 focus:ring-offset-0" />
+                           ¿Tiene Tasa Variable (IBR)?
+                         </label>
+                         
+                         {editData.hasIBR ? (
+                           <div className="flex w-full gap-4">
+                             <div className="flex-1 relative">
+                               <InputUI type="number" step="0.01" label="IBR Actual (%)" value={editData.ibrValue} onChange={e=>setEditData({...editData, ibrValue: e.target.value})} className="pr-8 font-bold text-amber-400" />
+                               <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
+                             </div>
+                             <div className="flex-1">
+                               <InputUI type="number" step="0.01" label="Puntos Adicionales" value={editData.ibrPuntos} onChange={e=>setEditData({...editData, ibrPuntos: e.target.value})} placeholder="+ Pts" />
+                             </div>
+                           </div>
+                         ) : (
+                           <div className="w-1/2 relative">
+                             <InputUI type="number" step="0.01" label="Tasa Interés (E.A. %)" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} className="pr-8 font-bold text-amber-400" />
                              <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
                            </div>
-                           <div className="flex-1">
-                             <Input type="number" step="0.01" label="Puntos Adicionales" value={editData.ibrPuntos} onChange={e=>setEditData({...editData, ibrPuntos: e.target.value})} placeholder="+ Pts" />
-                           </div>
-                         </div>
-                       ) : (
-                         <div className="w-1/2 relative">
-                           <Input type="number" step="0.01" label="Tasa Interés (E.A. %)" value={editData.tasaEA} onChange={e=>setEditData({...editData, tasaEA: e.target.value})} className="pr-8 font-bold text-amber-400" />
-                           <span className="absolute right-4 top-[38px] text-base font-black text-slate-600">%</span>
-                         </div>
-                       )}
-                     </div>
-                  </div>
-               )
-            }
+                         )}
+                       </div>
+                    </div>
+                 )
+              }
 
-            const capitalPagado = (d.montoPrestado || 0) - d.currentDebt;
-            const totalIntereses = (d.totalPagado || 0) - capitalPagado;
+              const capitalPagado = (d.montoPrestado || 0) - d.currentDebt;
+              const totalIntereses = (d.totalPagado || 0) - capitalPagado;
 
-            return (
-              <div key={d.id} className="bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent flex flex-col gap-5 p-5 md:p-6 hover:border-rose-500/20 transition-all">
-                <div className="flex justify-between items-start border-b border-white/[0.05] pb-4">
-                  <div>
-                    <p className="font-black text-white text-lg tracking-wide">{d.name}</p>
-                    <p className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest mt-1">Banco / Entidad</p>
-                    {d.hasIBR && <span className="mt-3 inline-block text-[9px] text-[#0b0c16] bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.6)] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg">Tasa Variable (IBR)</span>}
+              return (
+                <div key={d.id} className="bg-[#111222] shadow-neumorph-inset rounded-2xl border border-transparent flex flex-col gap-5 p-5 md:p-6 hover:border-rose-500/20 transition-all">
+                  <div className="flex justify-between items-start border-b border-white/[0.05] pb-4">
+                    <div>
+                      <p className="font-black text-white text-lg tracking-wide">{d.name}</p>
+                      <p className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest mt-1">Banco / Entidad</p>
+                      {d.hasIBR && <span className="mt-3 inline-block text-[9px] text-[#0b0c16] bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.6)] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg">Tasa Variable (IBR)</span>}
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={() => startEdit(d)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar préstamo"><Edit3Icon size={18}/></button>
+                      <button onClick={() => {if(window.confirm(`¿Seguro que quieres eliminar el préstamo ${d.name} para siempre?`)) {removeCuenta(d.id); showToast("Préstamo eliminado", "error");}}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2Icon size={18}/></button>
+                    </div>
                   </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => startEdit(d)} className="text-[#8A92A6] hover:text-neoncyan transition-colors" title="Editar préstamo"><Edit3 size={18}/></button>
-                    <button onClick={() => {if(window.confirm(`¿Seguro que quieres eliminar el préstamo ${d.name} para siempre?`)) {removeCuenta(d.id); showToast("Préstamo eliminado", "error");}}} className="text-[#8A92A6] hover:text-neonmagenta transition-colors" title="Eliminar"><Trash2 size={18}/></button>
+                  
+                  <div className="grid grid-cols-3 gap-4 pt-1">
+                    <div>
+                      <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Préstamo</p>
+                      <p className="text-sm md:text-base font-bold text-white tabular-nums">{formatCOP(d.montoPrestado)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Deuda Restante</p>
+                      <p className="text-base md:text-xl font-black text-rose-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.4)] tabular-nums">{formatCOP(d.currentDebt)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Cuota Mes</p>
+                      <p className="text-sm md:text-base font-bold text-white tabular-nums">{formatCOP(d.cuotaMinima)}</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4 pt-1">
-                  <div>
-                    <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Préstamo</p>
-                    <p className="text-sm md:text-base font-bold text-white tabular-nums">{formatCOP(d.montoPrestado)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Deuda Restante</p>
-                    <p className="text-base md:text-xl font-black text-rose-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.4)] tabular-nums">{formatCOP(d.currentDebt)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Cuota Mes</p>
-                    <p className="text-sm md:text-base font-bold text-white tabular-nums">{formatCOP(d.cuotaMinima)}</p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-5 mt-2 bg-appcard p-5 rounded-xl shadow-neumorph border border-white/[0.02]">
-                  <div>
-                    <p className="text-[10px] text-emerald-400 uppercase font-black tracking-widest mb-1.5" title="Monto Original - Deuda Restante">Pago a Capital</p>
-                    <p className="text-base font-black text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)] tabular-nums">{formatCOP(Math.max(0, capitalPagado))}</p>
+                  <div className="grid grid-cols-2 gap-5 mt-2 bg-appcard p-5 rounded-xl shadow-neumorph border border-white/[0.02]">
+                    <div>
+                      <p className="text-[10px] text-emerald-400 uppercase font-black tracking-widest mb-1.5" title="Monto Original - Deuda Restante">Pago a Capital</p>
+                      <p className="text-base font-black text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)] tabular-nums">{formatCOP(Math.max(0, capitalPagado))}</p>
+                    </div>
+                    <div className="text-right border-l border-white/[0.05] pl-5">
+                      <p className="text-[10px] text-amber-400 uppercase font-black tracking-widest mb-1.5" title="Total Histórico Pagado - Capital Pago">Pago Intereses</p>
+                      <p className="text-base font-black text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.3)] tabular-nums">{formatCOP(Math.max(0, totalIntereses))}</p>
+                    </div>
                   </div>
-                  <div className="text-right border-l border-white/[0.05] pl-5">
-                    <p className="text-[10px] text-amber-400 uppercase font-black tracking-widest mb-1.5" title="Total Histórico Pagado - Capital Pago">Pago Intereses</p>
-                    <p className="text-base font-black text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.3)] tabular-nums">{formatCOP(Math.max(0, totalIntereses))}</p>
-                  </div>
-                </div>
 
-                <div className="flex flex-col md:flex-row justify-between md:items-end gap-5 mt-3 pt-5 border-t border-white/[0.05]">
-                   
-                   {/* Progreso Cuotas */}
-                   <div className="flex flex-col gap-2 flex-1 w-full">
-                     <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest">Progreso Cuotas</span>
+                  <div className="flex flex-col md:flex-row justify-between md:items-end gap-5 mt-3 pt-5 border-t border-white/[0.05]">
                      
-                     <div className="flex items-center gap-2 bg-appcard px-3 py-2 rounded-xl shadow-neumorph border border-white/[0.02] w-max mb-1">
-                       <input type="number" value={d.cuotasPagadas || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasPagadas', e.target.value)} className="w-10 bg-transparent text-emerald-400 text-sm font-black outline-none text-right placeholder:text-slate-700" placeholder="0" title="Edición rápida" />
-                       <span className="text-[#8A92A6] text-[10px] font-black">/</span>
-                       <input type="number" value={d.cuotasTotales || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasTotales', e.target.value)} className="w-10 bg-transparent text-white text-sm font-black outline-none placeholder:text-slate-700" placeholder="0" title="Edición rápida" />
-                     </div>
-                     
-                     {/* ✨ BARRAS DE PROGRESO */}
-                     <div className="flex flex-col gap-3 mt-1 w-full pr-4">
-                       {d.cuotasTotales > 0 && (
-                         <div className="w-full">
-                           <div className="flex justify-between mb-1.5">
-                             <span className="text-[9px] text-[#8A92A6] uppercase font-bold tracking-wider">Tiempo</span>
-                             <span className="text-[9px] text-emerald-400 font-black">{Math.round(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100)}%</span>
-                           </div>
-                           <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 overflow-hidden">
-                             <div className="h-full rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${Math.min(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100, 100)}%` }}></div>
-                           </div>
-                         </div>
-                       )}
+                     {/* Progreso Cuotas */}
+                     <div className="flex flex-col gap-2 flex-1 w-full">
+                       <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest">Progreso Cuotas</span>
                        
-                       {d.montoPrestado > 0 && (
-                         <div className="w-full">
-                           <div className="flex justify-between mb-1.5">
-                             <span className="text-[9px] text-[#8A92A6] uppercase font-bold tracking-wider">Capital</span>
-                             <span className="text-[9px] text-indigo-400 font-black">{Math.round((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100)}%</span>
+                       <div className="flex items-center gap-2 bg-appcard px-3 py-2 rounded-xl shadow-neumorph border border-white/[0.02] w-max mb-1">
+                         <input type="number" value={d.cuotasPagadas || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasPagadas', e.target.value)} className="w-10 bg-transparent text-emerald-400 text-sm font-black outline-none text-right placeholder:text-slate-700" placeholder="0" title="Edición rápida" />
+                         <span className="text-[#8A92A6] text-[10px] font-black">/</span>
+                         <input type="number" value={d.cuotasTotales || 0} onChange={(e)=>actualizarCampo(d.id, 'cuotasTotales', e.target.value)} className="w-10 bg-transparent text-white text-sm font-black outline-none placeholder:text-slate-700" placeholder="0" title="Edición rápida" />
+                       </div>
+                       
+                       {/* ✨ BARRAS DE PROGRESO */}
+                       <div className="flex flex-col gap-3 mt-1 w-full pr-4">
+                         {d.cuotasTotales > 0 && (
+                           <div className="w-full">
+                             <div className="flex justify-between mb-1.5">
+                               <span className="text-[9px] text-[#8A92A6] uppercase font-bold tracking-wider">Tiempo</span>
+                               <span className="text-[9px] text-emerald-400 font-black">{Math.round(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100)}%</span>
+                             </div>
+                             <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 overflow-hidden">
+                               <div className="h-full rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-all duration-1000" style={{ width: `${Math.min(((d.cuotasPagadas || 0) / d.cuotasTotales) * 100, 100)}%` }}></div>
+                             </div>
                            </div>
-                           <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 overflow-hidden">
-                             <div className="h-full rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] transition-all duration-1000" style={{ width: `${Math.min((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100, 100)}%` }}></div>
+                         )}
+                         
+                         {d.montoPrestado > 0 && (
+                           <div className="w-full">
+                             <div className="flex justify-between mb-1.5">
+                               <span className="text-[9px] text-[#8A92A6] uppercase font-bold tracking-wider">Capital</span>
+                               <span className="text-[9px] text-indigo-400 font-black">{Math.round((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100)}%</span>
+                             </div>
+                             <div className="w-full bg-[#0b0c16] shadow-neumorph-inset rounded-full h-1.5 overflow-hidden">
+                               <div className="h-full rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] transition-all duration-1000" style={{ width: `${Math.min((Math.max(0, d.montoPrestado - d.currentDebt) / d.montoPrestado) * 100, 100)}%` }}></div>
+                             </div>
                            </div>
-                         </div>
-                       )}
+                         )}
+                       </div>
                      </div>
-                   </div>
-                   
-                   {/* Tasas (Edición en línea) */}
-                   <div className="flex-1 w-full flex justify-start md:justify-end">
-                      {d.hasIBR ? (
-                         <div className="flex flex-col md:items-end">
-                           <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-2">IBR Actual (%) + Puntos</span>
-                           <div className="flex items-center gap-2">
-                             <input type="number" step="0.01" value={d.ibrValue} onChange={(e)=>actualizarIBR(d.id, e.target.value, d.ibrPuntos)} className="w-20 bg-appcard shadow-neumorph border border-white/[0.02] text-amber-400 text-sm font-black px-3 py-2 rounded-xl outline-none text-center focus:border-amber-500/50 transition-colors" title="Editar IBR" />
-                             <span className="text-sm text-[#8A92A6] font-black uppercase tracking-wider">+{d.ibrPuntos}</span>
+                     
+                     {/* Tasas (Edición en línea) */}
+                     <div className="flex-1 w-full flex justify-start md:justify-end">
+                        {d.hasIBR ? (
+                           <div className="flex flex-col md:items-end">
+                             <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-2">IBR Actual (%) + Puntos</span>
+                             <div className="flex items-center gap-2">
+                               <input type="number" step="0.01" value={d.ibrValue} onChange={(e)=>actualizarIBR(d.id, e.target.value, d.ibrPuntos)} className="w-20 bg-appcard shadow-neumorph border border-white/[0.02] text-amber-400 text-sm font-black px-3 py-2 rounded-xl outline-none text-center focus:border-amber-500/50 transition-colors" title="Editar IBR" />
+                               <span className="text-sm text-[#8A92A6] font-black uppercase tracking-wider">+{d.ibrPuntos}</span>
+                             </div>
+                             <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-3 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">Tasa E.A: {d.tasaEA.toFixed(2)}%</span>
                            </div>
-                           <span className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mt-3 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">Tasa E.A: {d.tasaEA.toFixed(2)}%</span>
-                         </div>
-                      ) : (
-                         <div className="flex flex-col md:items-end">
-                           <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-2">Tasa Interés (E.A.)</span>
-                           <div className="flex items-center gap-2">
-                              <input type="number" step="0.1" value={d.tasaEA.toFixed(2)} onChange={(e)=>actualizarCampo(d.id, 'tasaEA', e.target.value)} className="w-24 bg-appcard shadow-neumorph border border-white/[0.02] text-amber-400 text-sm font-black px-3 py-2 rounded-xl outline-none text-center focus:border-amber-500/50 transition-colors" title="Editar Tasa" />
-                              <span className="text-[#8A92A6] font-black">%</span>
+                        ) : (
+                           <div className="flex flex-col md:items-end">
+                             <span className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-2">Tasa Interés (E.A.)</span>
+                             <div className="flex items-center gap-2">
+                                <input type="number" step="0.1" value={d.tasaEA.toFixed(2)} onChange={(e)=>actualizarCampo(d.id, 'tasaEA', e.target.value)} className="w-24 bg-appcard shadow-neumorph border border-white/[0.02] text-amber-400 text-sm font-black px-3 py-2 rounded-xl outline-none text-center focus:border-amber-500/50 transition-colors" title="Editar Tasa" />
+                                <span className="text-[#8A92A6] font-black">%</span>
+                             </div>
                            </div>
-                         </div>
-                      )}
-                   </div>
+                        )}
+                     </div>
+                  </div>
                 </div>
+              )
+            })}
+            {deudasAnalizadas.filter(d=>d.type==='loan').length === 0 && (
+              <div className="col-span-1 lg:col-span-2 text-center py-12 bg-[#111222] shadow-neumorph-inset rounded-3xl border border-transparent">
+                <p className="text-[#8A92A6] text-sm font-bold uppercase tracking-widest">No hay préstamos configurados.</p>
               </div>
-            )
-          })}
-          {deudasAnalizadas.filter(d=>d.type==='loan').length === 0 && (
-            <div className="col-span-1 lg:col-span-2 text-center py-12 bg-[#111222] shadow-neumorph-inset rounded-3xl border border-transparent">
-              <p className="text-[#8A92A6] text-sm font-bold uppercase tracking-widest">No hay préstamos configurados.</p>
-            </div>
-          )}
-        </div>
-      </Card>
+            )}
+          </div>
+        )}
+      </CardUI>
     </div>
   );
 };
