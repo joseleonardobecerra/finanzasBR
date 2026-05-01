@@ -24,7 +24,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const BarChart3 = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18"/><rect width="4" height="7" x="7" y="10" rx="1"/><rect width="4" height="12" x="15" y="5" rx="1"/></svg>;
 
   // ============================================================================
-  // LÓGICA DE DATOS ORIGINAL
+  // LÓGICA DE DATOS
   // ============================================================================
   const identifyOwner = (cuentaId, itemPersona, textDesc) => {
     if (itemPersona === 'L' || itemPersona === 'Leo') return 'Leo';
@@ -42,11 +42,14 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     return 'Shared';
   };
 
-  const idsTarjetas = cuentas.filter(c => c.type === 'credit').map(c => c.id);
+  const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
+  const idsTarjetas = tarjetasCredito.map(c => c.id);
 
+  // ✨ NUEVA LÓGICA: Sincronizada con la doble tabla de EgresosTab
   const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
+  const totalPresupuestadoTC = tarjetasCredito.reduce((sum, tc) => sum + (Number(tc.cuotaMinima) || 0), 0);
   const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
-  const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoVar;
+  const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoTC + totalPresupuestadoVar;
 
   const proyIngLeo = ingresosFijos ? ingresosFijos.filter(i => identifyOwner(null, i.persona, i.descripcion) === 'Leo').reduce((s, i) => s + Number(i.monto), 0) : 0;
   const proyIngAndre = ingresosFijos ? ingresosFijos.filter(i => identifyOwner(null, i.persona, i.descripcion) === 'Andre').reduce((s, i) => s + Number(i.monto), 0) : 0;
@@ -69,12 +72,18 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const dineroDisponible = ingresosMesTotal - egresosMesTotal;
 
+  // ✨ DETECCIÓN EXACTA DE PAGOS PENDIENTES
   const isPagoFijoRealizado = (pf) => egresosMes.some(e => {
-    if (e.tipo !== 'Fijo') return false;
     if (e.pagoFijoId) return e.pagoFijoId === pf.id;
-    return e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
+    return e.tipo === 'Fijo' && e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
   });
-  const pagosFijosPendientesTotal = pagosFijos ? pagosFijos.filter(pf => !isPagoFijoRealizado(pf)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
+
+  const isTCPagada = (tc) => egresosMes.some(e => e.pagoTarjetaId === tc.id);
+
+  const pagosFijosPtes = pagosFijos ? pagosFijos.filter(pf => !isPagoFijoRealizado(pf)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
+  const tcPtes = tarjetasCredito.filter(tc => !isTCPagada(tc)).reduce((sum, tc) => sum + (Number(tc.cuotaMinima) || 0), 0);
+  
+  const pagosFijosPendientesTotal = pagosFijosPtes + tcPtes;
 
   const hoy = new Date();
   const diaHoy = hoy.getDate();
@@ -201,10 +210,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">Resumen de flujos, analítica de egresos y proyecciones.</p>
       </header>
 
-      {/* 1. TARJETAS DE RESUMEN SUPERIORES (Restauradas a 6 tarjetas) */}
+      {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         
-        {/* Tarjeta 1 */}
         <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
           <p className="text-xl md:text-3xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)] truncate">
@@ -212,7 +220,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* Tarjeta 2 */}
         <div onClick={() => toggleCard('egresos')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
@@ -238,7 +245,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </div>
 
-        {/* Tarjeta 3 */}
         <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-neoncyan/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest relative z-10">Flujo del mes</h3>
@@ -247,7 +253,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* Tarjeta 4 (¡Restaurada!) */}
+        {/* ✨ LA TARJETA CORREGIDA QUE SUMA TC + FIJOS */}
         <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Pagos Fijos Ptes.</h3>
           <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] truncate">
@@ -255,7 +261,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* Tarjeta 5 (¡Restaurada!) */}
         <div onClick={() => toggleCard('presupuesto')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
@@ -272,6 +277,10 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
                 <span className="text-[#8A92A6] font-bold">Gastos Fijos</span>
                 <span className="font-black text-amber-400">{formatCOP(totalPresupuestadoFijo)}</span>
               </div>
+              <div className="flex justify-between items-center text-xs mb-3">
+                <span className="text-[#8A92A6] font-bold">Cuotas TC</span>
+                <span className="font-black text-indigo-400">{formatCOP(totalPresupuestadoTC)}</span>
+              </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-[#8A92A6] font-bold">Gastos Variables</span>
                 <span className="font-black text-neoncyan">{formatCOP(totalPresupuestadoVar)}</span>
@@ -280,7 +289,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </div>
         
-        {/* Tarjeta 6 */}
         <div onClick={() => toggleCard('cuentas')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
