@@ -1,1457 +1,835 @@
-// app.js v3.4 — MOTOR COMPLETO LEOENGLISH (Firebase, Roles, Admin Preview & Guided Route)
+const { useState, useMemo, useEffect, useRef } = React;
 
-import { auth, db, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, doc, setDoc, getDoc, collection, getDocs } from './firebase-config.js';
-
-// ============================================================
-// ESTADO GLOBAL
-// ============================================================
-let state = {
-    role: 'student', 
-    adminView: false, // <-- NUEVO: Controla si el admin tiene los candados apagados
-    xp: 0,
-    level: 1,
-    streak: 1,
-    dailyXP: 0,
-    dailyGoal: 50,
-    totalAnswers: 0,
-    correctAnswers: 0,
-    modulesCompleted: 0,
-    activityLog: [],
-    scores: {
-        to_be_pronouns: null, articles_dem: null, possessives: null, there_is_are: null,
-        present_simple: null, present_cont: null, simple_vs_cont: null,
-        numbers: null, past_to_be: null, past_simple: null, future_going_to: null, 
-        prepositions: null, imperatives: null, can_could: null, future_will: null,
-        comparisons: null, quantifiers: null, past_continuous: null, present_perfect: null,
-        future_mixed: null, modals_obligation: null, conditionals: null, phrasal_gerunds: null
-    },
-    readingScores: {},
-    writingDone: {},
-    vocabScores: {},
-    userName: 'Estudiante'
+// ============================================================================
+// ☁️ CONFIGURACIÓN DE FIREBASE (Global)
+// ============================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDRreZW3bVZG7h7frWeOy0jqrgqLpTw6cw",
+  authDomain: "finanzasbr2026.firebaseapp.com",
+  projectId: "finanzasbr2026",
+  storageBucket: "finanzasbr2026.firebasestorage.app",
+  messagingSenderId: "718446857856",
+  appId: "1:718446857856:web:9720f19c580a464d616065",
+  measurementId: "G-8XXLCBGP0Z"
 };
 
-// ============================================================
-// ESTADO DE SESIÓN (no persiste)
-// ============================================================
-let isChecking = false;
-let currentModuleId = '';
-let currentExerciseIdx = 0;
-let currentScore = 0;
-let currentErrors = 0;
-let currentReadingId = '';
-let currentReadingQIdx = 0;
-let currentReadingScore = 0;
-let vocabCurrentTopic = null;
-let vocabMode = 'flash';
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-// ============================================================
-// AUTENTICACIÓN Y PERSISTENCIA (FIREBASE)
-// ============================================================
-
-onAuthStateChanged(auth, (user) => {
-    const loginOverlay = document.getElementById('login-overlay');
-    if (user) {
-        if (loginOverlay) loginOverlay.classList.add('hidden');
-        state.userName = user.displayName || user.email.split('@')[0];
-        loadState(user.uid);
-    } else {
-        if (loginOverlay) loginOverlay.classList.remove('hidden');
-    }
+db.enablePersistence().catch((err) => {
+    console.warn("Error habilitando persistencia offline:", err.code);
 });
 
-window.handleGoogleLogin = async function() {
-    try {
-        await signInWithPopup(auth, googleProvider);
-        window.showToast('¡Bienvenido!', 'success');
-    } catch (error) {
-        console.error(error);
-        window.showToast('Error al iniciar con Google', 'error');
-    }
+// ============================================================================
+// --- UTILIDADES GLOBALES (Disponibles para todas las pestañas) ---
+// ============================================================================
+const formatCOP = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
+const getTasaMensual = (tasaEA) => Math.pow(1 + tasaEA / 100, 1 / 12) - 1;
+const deleteItem = (setter, id) => setter(prev => prev.filter(item => item.id !== id));
+
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
 };
 
-window.handleEmailLogin = async function() {
-    const email = document.getElementById('auth-email').value.trim();
-    const pass = document.getElementById('auth-password').value.trim();
-    if(!email || !pass) return window.showToast('Completa los campos', 'warn');
-    
-    try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        window.showToast('Sesión iniciada', 'success');
-    } catch (error) {
-        console.error(error);
-        window.showToast('Credenciales incorrectas', 'error');
-    }
+const getLocalToday = () => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split('T')[0];
 };
 
-window.handleEmailRegister = async function() {
-    const email = document.getElementById('auth-email').value.trim();
-    const pass = document.getElementById('auth-password').value.trim();
-    if(!email || !pass) return window.showToast('Completa los campos', 'warn');
-    if(pass.length < 6) return window.showToast('La contraseña debe tener al menos 6 caracteres', 'warn');
-    
-    try {
-        await createUserWithEmailAndPassword(auth, email, pass);
-        state.userName = email.split('@')[0];
-        await saveState(); 
-        window.showToast('Cuenta creada con éxito', 'success');
-    } catch (error) {
-        console.error(error);
-        window.showToast('Error al crear cuenta. Quizás ya existe.', 'error');
-    }
+const loadSheetJS = async () => {
+  if (window.XLSX) return window.XLSX;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = () => reject(new Error('No se pudo cargar SheetJS'));
+    document.head.appendChild(script);
+  });
 };
 
-window.handleLogout = async function() {
-    try {
-        await signOut(auth);
-        state = { role: 'student', adminView: false, xp: 0, level: 1, streak: 1, dailyXP: 0, dailyGoal: 50, totalAnswers: 0, correctAnswers: 0, modulesCompleted: 0, activityLog: [], scores: {}, readingScores: {}, writingDone: {}, vocabScores: {}, userName: 'Estudiante' };
-        document.getElementById('auth-email').value = '';
-        document.getElementById('auth-password').value = '';
-        window.showScreen('dashboard');
-        window.showToast('Sesión cerrada', 'success');
-    } catch (error) {
-        window.showToast('Error al cerrar sesión', 'error');
-    }
-};
 
-async function saveState() {
-    if (!auth.currentUser) return;
-    try {
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        await setDoc(userRef, state, { merge: true });
-    } catch(e) {
-        console.error("Error guardando progreso: ", e);
-    }
-}
+// ============================================================================
+// 🛡️ CÁPSULA PRINCIPAL DE LA APLICACIÓN (Aísla componentes para evitar Bugs)
+// ============================================================================
+const App = (() => {
 
-async function loadState(uid) {
-    try {
-        const userRef = doc(db, "users", uid);
-        const docSnap = await getDoc(userRef);
-        
-        if (docSnap.exists()) {
-            state = { ...state, ...docSnap.data() };
-        } 
-        
-        // OVERRIDE DE SEGURIDAD PARA EL ADMIN
-        if (auth.currentUser && auth.currentUser.email === 'joseleonardobecerrac@gmail.com') {
-            state.role = 'admin';
-        } else if (!docSnap.exists()) {
-            state.role = 'student';
+  // --- ÍCONOS SVG ---
+  const SvgWrapper = ({ size=18, className="", children }) => (
+    <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+  );
+
+  const LayoutDashboard = (p) => <SvgWrapper {...p}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></SvgWrapper>;
+  const Wallet = (p) => <SvgWrapper {...p}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></SvgWrapper>;
+  const Receipt = (p) => <SvgWrapper {...p}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></SvgWrapper>;
+  const ShieldAlert = (p) => <SvgWrapper {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></SvgWrapper>;
+  const Target = (p) => <SvgWrapper {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></SvgWrapper>;
+  const TrendingUp = (p) => <SvgWrapper {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></SvgWrapper>;
+  const TrendingDown = (p) => <SvgWrapper {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></SvgWrapper>;
+  const Calculator = (p) => <SvgWrapper {...p}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></SvgWrapper>;
+  const Plus = (p) => <SvgWrapper {...p}><path d="M5 12h14"/><path d="M12 5v14"/></SvgWrapper>;
+  const Trash2 = (p) => <SvgWrapper {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></SvgWrapper>;
+  const AlertCircle = (p) => <SvgWrapper {...p}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></SvgWrapper>;
+  const CheckCircle2 = (p) => <SvgWrapper {...p}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></SvgWrapper>;
+  const Info = (p) => <SvgWrapper {...p}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></SvgWrapper>;
+  const Settings2 = (p) => <SvgWrapper {...p}><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></SvgWrapper>;
+  const Download = (p) => <SvgWrapper {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></SvgWrapper>;
+  const Upload = (p) => <SvgWrapper {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></SvgWrapper>;
+  const Landmark = (p) => <SvgWrapper {...p}><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></SvgWrapper>;
+  const ArrowRightLeft = (p) => <SvgWrapper {...p}><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></SvgWrapper>;
+  const ChevronLeft = (p) => <SvgWrapper {...p}><path d="m15 18-6-6 6-6"/></SvgWrapper>;
+  const ChevronRight = (p) => <SvgWrapper {...p}><path d="m9 18 6-6-6-6"/></SvgWrapper>;
+  const ChevronDownIcon = (p) => <SvgWrapper {...p}><polyline points="6 9 12 15 18 9"/></SvgWrapper>;
+  const ChevronUpIcon = (p) => <SvgWrapper {...p}><polyline points="18 15 12 9 6 15"/></SvgWrapper>;
+  const Calendar = (p) => <SvgWrapper {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></SvgWrapper>;
+  const ShoppingCart = (p) => <SvgWrapper {...p}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></SvgWrapper>;
+  const Check = (p) => <SvgWrapper {...p}><path d="M20 6 9 17l-5-5"/></SvgWrapper>;
+  const FileSpreadsheet = (p) => <SvgWrapper {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></SvgWrapper>;
+  const Activity = (p) => <SvgWrapper {...p}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></SvgWrapper>;
+  const Edit3 = (p) => <SvgWrapper {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></SvgWrapper>;
+  const BarChart3 = (p) => <SvgWrapper {...p}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></SvgWrapper>;
+  const CreditCard = (p) => <SvgWrapper {...p}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></SvgWrapper>;
+  const PiggyBank = (p) => <SvgWrapper {...p}><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.5-1 2-1.5L20 8.5c0-2.5-1.5-3.5-1-3.5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></SvgWrapper>;
+  const PieChart = (p) => <SvgWrapper {...p}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></SvgWrapper>;
+  const CheckSquare = (p) => <SvgWrapper {...p}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></SvgWrapper>;
+  const MoreHorizontal = (p) => <SvgWrapper {...p}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></SvgWrapper>;
+  const ArrowUpRight = (p) => <SvgWrapper {...p}><path d="M7 7h10v10"/><path d="M7 17 17 7"/></SvgWrapper>;
+  const ArrowDownRight = (p) => <SvgWrapper {...p}><path d="M7 17h10V7"/><path d="M7 7l10 10"/></SvgWrapper>;
+  const Minus = (p) => <SvgWrapper {...p}><path d="M5 12h14"/></SvgWrapper>;
+  const BarChart = (p) => <SvgWrapper {...p}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></SvgWrapper>;
+  const XIconGlobal = (p) => <SvgWrapper {...p}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></SvgWrapper>;
+
+  const SearchIcon = (p) => <SvgWrapper {...p}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></SvgWrapper>;
+  const ArrowLeftIcon = (p) => <SvgWrapper {...p}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></SvgWrapper>;
+  const EyeIcon = ({ size=20, off=false, className="" }) => (
+    off ? <SvgWrapper size={size} className={className}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></SvgWrapper>
+        : <SvgWrapper size={size} className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></SvgWrapper>
+  );
+
+  // --- Sistema Anticaídas de React ---
+  class ErrorBoundary extends React.Component {
+    constructor(props) { 
+      super(props); 
+      this.state = { hasError: false, error: null }; 
+    }
+    static getDerivedStateFromError(error) { return { hasError: true, error }; }
+    componentDidCatch(error, errorInfo) { console.error("Error en pestaña:", error, errorInfo); }
+    render() {
+      if (this.state.hasError) {
+        return (
+          <div className="p-6 bg-appcard shadow-neumorph-inset border-l-4 border-neonmagenta rounded-2xl m-4 md:m-8 text-neonmagenta">
+            <h2 className="font-black text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error en esta sección</h2>
+            <p className="text-sm opacity-80">{this.state.error.toString()}</p>
+            <button onClick={() => this.setState({hasError: false})} className="mt-4 px-5 py-2.5 bg-[#111222] hover:shadow-glow-magenta text-neonmagenta rounded-xl text-sm font-bold transition-all border border-neonmagenta/30">Intentar cargar de nuevo</button>
+          </div>
+        );
+      }
+      return this.props.children; 
+    }
+  }
+
+  // 💎 COMPONENTES UI BASE (NUEVO DISEÑO DARK NEUMORPHISM & NEON)
+  const Card = ({ children, className = "", onClick }) => {
+    const baseClass = "bg-appcard rounded-[20px] shadow-neumorph border border-white/[0.02] p-4 md:p-6 transition-all duration-300";
+    const interactiveClass = onClick ? "cursor-pointer hover:shadow-glow-cyan hover:-translate-y-1 active:translate-y-0 active:shadow-neumorph-inset" : "";
+    return (
+      <div onClick={onClick} className={`${baseClass} ${interactiveClass} ${className}`}>
+        {children}
+      </div>
+    );
+  };
+
+  const Input = ({ label, type = "text", value, onChange, placeholder, className="", min, max, step, disabled, error, title, required, autoFocus }) => (
+    <div className={`flex flex-col gap-1.5 w-full ${className}`}>
+      {label && (
+        <label className={`text-[10px] font-black uppercase tracking-widest pl-1 ${error ? 'text-neonmagenta' : 'text-[#8A92A6]'}`}>
+          {label}
+        </label>
+      )}
+      <input 
+        type={type} value={value} onChange={onChange} placeholder={placeholder} 
+        min={min} max={max} step={step} disabled={disabled} title={title} required={required} autoFocus={autoFocus}
+        className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-neonmagenta focus:shadow-glow-magenta' : 'border-transparent focus:border-neoncyan focus:shadow-glow-cyan'} rounded-xl px-4 py-3 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-600 disabled:opacity-50`}
+      />
+      {error && <span className="text-[10px] text-neonmagenta pl-1 font-bold tracking-wide">{error}</span>}
+    </div>
+  );
+
+  const Select = ({ label, value, onChange, options, className="", required, error, disabled, title }) => (
+    <div className={`flex flex-col gap-1.5 w-full ${className}`}>
+      {label && <label className={`text-[10px] font-black uppercase tracking-widest pl-1 ${error ? 'text-neonmagenta' : 'text-[#8A92A6]'}`}>{label}</label>}
+      <div className="relative">
+        <select 
+          value={value} onChange={onChange} required={required} disabled={disabled} title={title}
+          className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-neonmagenta focus:shadow-glow-magenta' : 'border-transparent focus:border-neoncyan focus:shadow-glow-cyan'} rounded-xl px-4 py-3 text-sm text-white outline-none transition-all duration-300 appearance-none cursor-pointer disabled:opacity-50`}
+        >
+          <option value="" className="bg-[#111222] text-slate-500">Seleccione...</option>
+          {options.map((opt, i) => {
+            const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
+            const lbl = typeof opt === 'object' && opt !== null ? opt.label : opt;
+            return <option key={i} value={val} className="bg-[#111222] text-white">{lbl}</option>;
+          })}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+          <ChevronDownIcon size={16} />
+        </div>
+      </div>
+      {error && <span className="text-[10px] text-neonmagenta pl-1 font-bold tracking-wide">{error}</span>}
+    </div>
+  );
+
+  const Toast = ({ toast, onClose }) => {
+    if (!toast) return null;
+    return (
+      <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-5 py-4 rounded-2xl shadow-neumorph z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 border ${toast.type === 'success' ? 'bg-appcard border-neoncyan/50 text-neoncyan' : 'bg-appcard border-neonmagenta/50 text-neonmagenta'}`}>
+        {toast.type === 'success' ? <CheckCircle2 size={20}/> : <AlertCircle size={20}/>}
+        <span className="text-sm font-bold tracking-wide">{toast.msg}</span>
+        <button onClick={onClose} className="ml-4 p-1 rounded-full hover:bg-white/10 transition-colors"><XIconGlobal size={14}/></button>
+      </div>
+    );
+  };
+
+  // --- APLICACIÓN PRINCIPAL ---
+  const AppComponent = () => {
+    const { useState, useMemo, useEffect, useRef } = React;
+    const [appCargando, setAppCargando] = useState(true);
+    const [authUser, setAuthUser] = useState(null);
+    const [authChecking, setAuthChecking] = useState(true);
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [selectedMonth, setSelectedMonth] = useState(() => {
+      const d = new Date();
+      const año = d.getFullYear(); 
+      const mes = String(d.getMonth() + 1).padStart(2, '0'); 
+      return `${año}-${mes}`; 
+    });
+    const [toast, setToast] = useState(null);
+    const [filtroPersona, setFiltroPersona] = useState('Total');
+    const [scoreHistory, setScoreHistory] = useState({});
+
+    // ✨ MEJORA UX: Modo Privacidad y Buscador Global
+    const [privacyMode, setPrivacyMode] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Wizard Registro Rápido
+    const [quickEntryOpen, setQuickEntryOpen] = useState(false);
+    const [qeStep, setQeStep] = useState(1);
+    const [qeType, setQeType] = useState('');
+    const [qeMonto, setQeMonto] = useState('');
+    const [qeDescripcion, setQeDescripcion] = useState('');
+    const [qeCategoria, setQeCategoria] = useState('');
+    const [qeMethod, setQeMethod] = useState('');
+    const [qeCuenta, setQeCuenta] = useState('');
+
+    // ✨ DESHACER ELIMINACIÓN
+    const [undoItem, setUndoItem] = useState(null);
+    const undoTimerRef = useRef(null);
+
+    useEffect(() => {
+      const on = () => setIsOffline(false);
+      const off = () => setIsOffline(true);
+      window.addEventListener('online', on);
+      window.addEventListener('offline', off);
+      return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+    }, []);
+
+    useEffect(() => {
+      const unsubscribe = auth.onAuthStateChanged(user => { setAuthUser(user); setAuthChecking(false); });
+      return () => unsubscribe();
+    }, []);
+
+    const showToast = (msg, type = 'success', undoData = null) => {
+      setToast({ msg, type, undoData });
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = setTimeout(() => { setToast(null); setUndoItem(null); }, 5000);
+    };
+
+    const changeMonth = (offset) => {
+      const [y, m] = selectedMonth.split('-');
+      const d = new Date(y, parseInt(m) - 1 + offset, 1);
+      setSelectedMonth(d.toISOString().slice(0, 7));
+    };
+    const getMonthName = (ym) => {
+      const [y, m] = ym.split('-');
+      return new Date(y, parseInt(m) - 1, 1).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+    };
+
+    // ✨ Detectar mes histórico
+    const currentRealMonth = new Date().toISOString().slice(0, 7);
+    const isHistoricalMonth = selectedMonth !== currentRealMonth;
+
+    const [cuentas, setCuentas] = useState([]);
+    const [transferencias, setTransferencias] = useState([]);
+    const [ingresos, setIngresos] = useState([]);
+    const [egresos, setEgresos] = useState([]);
+    const [comprasCuotas, setComprasCuotas] = useState([]);
+    const [presupuestos, setPresupuestos] = useState([]);
+    const [pagosFijos, setPagosFijos] = useState([]);
+    const [ingresosFijos, setIngresosFijos] = useState([]);
+
+    const loadedRef = useRef(0);
+    const TOTAL_COL = 9;
+    const markLoaded = () => { loadedRef.current += 1; if (loadedRef.current >= TOTAL_COL) setAppCargando(false); };
+
+    useEffect(() => {
+      if (!authUser) return;
+      loadedRef.current = 0;
+      setAppCargando(true);
+      const col = (name, setter) => db.collection(name).onSnapshot(snap => { setter(snap.docs.map(d => d.data())); markLoaded(); });
+      const unsubs = [
+        col('cuentas', setCuentas), col('transferencias', setTransferencias), col('ingresos', setIngresos),
+        col('egresos', setEgresos), col('comprasCuotas', setComprasCuotas), col('presupuestos', setPresupuestos),
+        col('pagosFijos', setPagosFijos), col('ingresosFijos', setIngresosFijos),
+        db.collection('sistema').doc('scoreHistory').onSnapshot(snap => { if (snap.exists) setScoreHistory(snap.data()); markLoaded(); }),
+      ];
+      return () => unsubs.forEach(u => u());
+    }, [authUser]);
+
+    const fire = {
+      add: (colName, data) => db.collection(colName).doc(data.id).set(data),
+      update: (colName, id, data) => db.collection(colName).doc(id).set(data, { merge: true }),
+      remove: (colName, id) => db.collection(colName).doc(id).delete(),
+      bulkReplace: async (colName, newArray) => {
+        const existing = await db.collection(colName).get();
+        for (let i = 0; i < existing.docs.length; i += 450) {
+          const batch = db.batch(); existing.docs.slice(i, i + 450).forEach(d => batch.delete(d.ref)); await batch.commit();
         }
-        
-        await saveState();
-        updateHeaderUI();
-        
-        // LÓGICA PARA MOSTRAR/OCULTAR MODO ADMIN
-        const adminZone = document.getElementById('admin-zone');
-        if (adminZone && auth.currentUser) {
-            if (state.role === 'admin') {
-                adminZone.style.display = 'block';
-            } else {
-                adminZone.style.display = 'none';
-            }
+        for (let i = 0; i < newArray.length; i += 450) {
+          const batch = db.batch(); newArray.slice(i, i + 450).forEach(item => batch.set(db.collection(colName).doc(item.id), item)); await batch.commit();
         }
-        
-        window.renderDashboard();
-        lucide.createIcons();
-    } catch(e) {
-        console.error("Error cargando progreso: ", e);
-    }
-}
+      },
+    };
 
-// ============================================================
-// INICIALIZACIÓN
-// ============================================================
-window.onload = function() {
-    lucide.createIcons();
-};
+    const removeWithUndo = (colName, id, data, label) => {
+      fire.remove(colName, id);
+      setUndoItem({ colName, data });
+      showToast(`${label} eliminado/a.`, 'error', { colName, data });
+    };
+    const handleUndo = () => {
+      if (!undoItem) return;
+      fire.add(undoItem.colName, undoItem.data);
+      setUndoItem(null);
+      setToast(null);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      showToast('¡Registro restaurado!', 'success');
+    };
 
-function setGreeting() {
-    const h = new Date().getHours();
-    const g = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
-    const el = document.getElementById('greeting-text');
-    if (el) el.textContent = `${g}, ${state.userName}!`;
-}
+    const addCuenta = (d) => fire.add('cuentas', d);
+    const updateCuenta = (id, d) => fire.update('cuentas', id, d);
+    const removeCuenta = (id, data) => data ? removeWithUndo('cuentas', id, data, 'Cuenta') : fire.remove('cuentas', id);
+    const addTransferencia = (d) => fire.add('transferencias', d);
+    const removeTransferencia = (id, data) => data ? removeWithUndo('transferencias', id, data, 'Transferencia') : fire.remove('transferencias', id);
+    const addEgreso = (d) => fire.add('egresos', d);
+    const updateEgreso = (id, d) => fire.update('egresos', id, d);
+    const removeEgreso = (id, data) => data ? removeWithUndo('egresos', id, data, 'Gasto') : fire.remove('egresos', id);
+    const addIngreso = (d) => fire.add('ingresos', d);
+    const updateIngreso = (id, d) => fire.update('ingresos', id, d);
+    const removeIngreso = (id, data) => data ? removeWithUndo('ingresos', id, data, 'Ingreso') : fire.remove('ingresos', id);
+    const addComprasCuotas = (d) => fire.add('comprasCuotas', d);
+    const removeComprasCuotas = (id, data) => data ? removeWithUndo('comprasCuotas', id, data, 'Cuota') : fire.remove('comprasCuotas', id);
+    const addPresupuesto = (d) => fire.add('presupuestos', d);
+    const updatePresupuesto = (id, d) => fire.update('presupuestos', id, d);
+    const removePresupuesto = (id) => fire.remove('presupuestos', id);
+    const addPagoFijo = (d) => fire.add('pagosFijos', d);
+    const updatePagoFijo = (id, d) => fire.update('pagosFijos', id, d);
+    const removePagoFijo = (id) => fire.remove('pagosFijos', id);
+    const addIngresoFijo = (d) => fire.add('ingresosFijos', d);
+    const updateIngresoFijo = (id, d) => fire.update('ingresosFijos', id, d);
+    const removeIngresoFijo = (id) => fire.remove('ingresosFijos', id);
 
-// ============================================================
-// NAVEGACIÓN
-// ============================================================
-window.showScreen = function(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    const el = document.getElementById('screen-' + screenId);
-    if (el) { el.classList.add('active'); el.scrollTop = 0; }
-    document.getElementById('main-content').scrollTop = 0;
+    const importAllState = async (p) => {
+      const cols = [['cuentas', p.cuentas], ['transferencias', p.transferencias], ['ingresos', p.ingresos], ['egresos', p.egresos], ['presupuestos', p.presupuestos], ['pagosFijos', p.pagosFijos], ['comprasCuotas', p.comprasCuotas], ['ingresosFijos', p.ingresosFijos]];
+      for (const [n, a] of cols) { if (a && a.length) await fire.bulkReplace(n, a); }
+    };
 
-    if (screenId === 'dashboard') window.renderDashboard();
-    else if (screenId === 'reading-hub') window.renderReadingHub();
-    else if (screenId === 'writing-hub') window.renderWritingHub();
-    else if (screenId === 'vocab-hub') window.renderVocabHub();
-    else if (screenId === 'settings') window.renderSettings();
-    lucide.createIcons();
-};
+    const addPagoFijoToState = (pf) => addPagoFijo({ ...pf, id: generateId(), diaPago: pf.diaPago || 1, categoria: pf.categoria || 'Otros' });
 
-window.setActiveNav = function(btn) {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-};
+    const categoriasMaestras = useMemo(() => {
+      const cats = new Set(['Inversión', 'Gasolina', 'Mercado', 'Mercado Aseo', 'Aseo hogar', 'Botellón Agua', 'Panadería', 'Alimentación', 'Ocio']);
+      presupuestos.forEach(p => cats.add(String(p.categoria)));
+      pagosFijos.forEach(pf => { if (pf.categoria && pf.categoria !== 'Otros') cats.add(String(pf.categoria)); });
+      egresos.forEach(e => { if (e.categoria && e.categoria !== 'Otros') cats.add(String(e.categoria)); });
+      return Array.from(cats).sort();
+    }, [presupuestos, pagosFijos, egresos]);
 
-window.setActiveNavById = function(id) {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    const dashBtn = document.querySelector(`.nav-btn[onclick*="${id}"]`);
-    if (dashBtn) dashBtn.classList.add('active');
-};
-
-window.toggleSidebar = function() {
-    const sb = document.getElementById('sidebar');
-    const icon = document.getElementById('toggle-icon');
-    sb.classList.toggle('collapsed');
-    const collapsed = sb.classList.contains('collapsed');
-    icon.setAttribute('data-lucide', collapsed ? 'panel-left-open' : 'panel-left-close');
-    lucide.createIcons();
-};
-
-
-// ============================================================
-// DASHBOARD & LEADERBOARD
-// ============================================================
-window.renderDashboard = function() {
-    updateHeaderUI();
-    setGreeting();
-
-    const acc = state.totalAnswers > 0 ? Math.round((state.correctAnswers / state.totalAnswers) * 100) + '%' : '—';
-    safeSet('stat-xp', state.xp);
-    safeSet('stat-done', state.modulesCompleted);
-    safeSet('stat-streak', state.streak);
-    safeSet('stat-accuracy', acc);
-
-    const validModuleKeys = Object.keys(modulesData);
-    const grammarScores = validModuleKeys.map(k => state.scores[k] || 0);
-    const grammar = grammarScores.length ? Math.round(grammarScores.reduce((a,b)=>a+b,0) / grammarScores.length) : 0;
-    
-    const reading = Object.values(state.readingScores).length ? Math.round(Object.values(state.readingScores).reduce((a,b)=>a+b,0) / Object.values(state.readingScores).length) : 0;
-    const writing = Object.values(state.writingDone).length ? Math.round(Object.values(state.writingDone).reduce((a,b)=>a+b,0) / Object.values(state.writingDone).length) : 0;
-    const vocab = Object.values(state.vocabScores).length ? Math.round(Object.values(state.vocabScores).reduce((a,b)=>a+b,0) / Object.values(state.vocabScores).length) : 0;
-
-    const skills = [
-        { name: 'Gramática', val: grammar, color: '#534AB7' },
-        { name: 'Vocabulario', val: vocab, color: '#1D9E75' },
-        { name: 'Reading', val: reading, color: '#378ADD' },
-        { name: 'Writing', val: writing, color: '#D85A30' }
-    ];
-    
-    const barsEl = document.getElementById('skills-bars');
-    if (barsEl) {
-        barsEl.innerHTML = skills.map(s => `
-            <div class="skill-row-item">
-                <div class="skill-info"><span>${s.name}</span><span>${s.val}%</span></div>
-                <div class="s-bar"><div class="s-fill" style="width:${s.val}%;background:${s.color}"></div></div>
-            </div>`).join('');
-    }
-
-    const allScores = [grammar, reading, writing, vocab].filter(v => v > 0);
-    const totalAvg = allScores.length ? Math.round(allScores.reduce((a,b)=>a+b,0)/allScores.length) : 0;
-    safeSet('total-progress-pct', totalAvg + '%');
-    const fill = document.getElementById('total-progress-fill');
-    if (fill) fill.style.width = totalAvg + '%';
-
-    renderFeedback(grammar, reading, writing, vocab);
-
-    const rank = getrank(totalAvg);
-    safeSet('rank-display', rank.name);
-    const cefr = document.getElementById('cefr-badge');
-    if (cefr) { cefr.textContent = rank.cefr; }
-
-    const grid = document.getElementById('modules-status-grid');
-    if (grid) {
-        grid.innerHTML = '';
-        
-        const curriculum = [
-            {
-                levelName: 'Nivel A1: Fundamentos',
-                color: '#38A169',
-                modules: [
-                    'to_be_pronouns', 'articles_dem', 'possessives', 'there_is_are',
-                    'present_simple', 'present_cont', 'prepositions', 'imperatives',
-                    'can_could', 'past_to_be', 'past_simple', 'future_going_to'
-                ]
-            },
-            {
-                levelName: 'Nivel A2: Explorador Avanzado',
-                color: '#3182CE',
-                modules: [
-                    'comparisons', 'quantifiers', 'past_continuous', 'present_perfect',
-                    'future_mixed', 'modals_obligation', 'conditionals', 'phrasal_gerunds'
-                ]
-            }
-        ];
-
-        let isLocked = false; 
-        let globalModuleIndex = 1;
-
-        curriculum.forEach(level => {
-            const levelHeader = document.createElement('div');
-            levelHeader.className = 'level-divider';
-            levelHeader.innerHTML = `<h4 style="color:${level.color}; font-size:18px; font-weight:800; margin: 24px 0 16px 0; border-bottom: 2px solid ${level.color}30; padding-bottom: 8px;">${level.levelName}</h4>`;
-            grid.appendChild(levelHeader);
-
-            const levelGrid = document.createElement('div');
-            levelGrid.className = 'modules-grid';
-            levelGrid.style = 'margin-bottom: 32px;';
-
-            level.modules.forEach(modId => {
-                if(!modulesData[modId]) return; 
-
-                const m = modulesData[modId];
-                const score = state.scores[m.id];
-                const isPassed = score !== null && score >= 80;
-                
-                // Lógica de visualización con el Modo Administrador
-                let visualLocked = isLocked;
-                if (state.role === 'admin' && state.adminView) {
-                    visualLocked = false; // El admin rompe visualmente el candado
-                }
-
-                const isCurrent = !isPassed && !isLocked;
-
-                const div = document.createElement('div');
-                div.className = `mod-card ${isPassed ? 'mod-done' : ''} ${(!isPassed && !visualLocked) ? 'mod-current' : ''} ${visualLocked ? 'mod-locked' : ''}`;
-
-                if (visualLocked) {
-                    div.innerHTML = `
-                        <div class="mod-icon-wrap">
-                            <i data-lucide="lock"></i>
-                        </div>
-                        <div style="flex:1;min-width:0">
-                            <div class="mod-title">${globalModuleIndex}. ${m.title}</div>
-                            <div class="mod-status" style="color:#A0AEC0">Bloqueado</div>
-                        </div>`;
-                    div.onclick = () => window.showToast('Debes aprobar la lección anterior con 80% o más.', 'warn');
-                } else if (isPassed) {
-                    div.innerHTML = `
-                        <div class="mod-icon-wrap" style="background:${m.color}18;color:${m.color}">
-                            <i data-lucide="check-circle"></i>
-                        </div>
-                        <div style="flex:1;min-width:0">
-                            <div class="mod-title">${globalModuleIndex}. ${m.title}</div>
-                            <div class="mod-status" style="color:#38A169">✓ Aprobado: ${score}%</div>
-                            <div class="mod-score-bar"><div class="mod-score-fill" style="width:${score}%;background:${m.color}"></div></div>
-                        </div>`;
-                    div.onclick = () => window.openModule(m.id);
-                } else {
-                    // Diseño desbloqueado (o Current normal)
-                    const isAdminBypassed = state.adminView && !isCurrent;
-                    
-                    div.innerHTML = `
-                        <div class="mod-icon-wrap" style="background:${m.color};color:white">
-                            <i data-lucide="${isAdminBypassed ? 'unlock' : 'play'}"></i>
-                        </div>
-                        <div style="flex:1;min-width:0">
-                            <div class="mod-title">${globalModuleIndex}. ${m.title}</div>
-                            <div class="mod-status" style="color:var(--primary-mid);font-weight:800;">
-                                ${isAdminBypassed ? 'Admin: Desbloqueado' : 'Siguiente lección'}
-                            </div>
-                            ${score !== null ? `<div style="font-size:11px; color:#E53E3E; margin-top:4px;">Último intento: ${score}% (Necesitas 80%)</div>` : ''}
-                        </div>`;
-                    div.onclick = () => window.openModule(m.id);
-                }
-                
-                // El motor real sigue bloqueando el resto si no has superado este
-                if (!isPassed) {
-                    isLocked = true; 
-                }
-                
-                levelGrid.appendChild(div);
-                globalModuleIndex++;
-            });
-
-            grid.appendChild(levelGrid);
-        });
-        
-        lucide.createIcons();
-    }
-
-    renderActivity();
-    renderLeaderboard();
-};
-
-async function renderLeaderboard() {
-    const lbContainer = document.getElementById('leaderboard-list');
-    if (!lbContainer) return;
-
-    try {
-        const usersRef = collection(db, "users");
-        const snapshot = await getDocs(usersRef);
-        
-        let usersList = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            usersList.push({
-                id: doc.id,
-                name: data.userName || 'Jugador',
-                xp: data.xp || 0,
-                level: data.level || 1
-            });
-        });
-
-        usersList.sort((a, b) => b.xp - a.xp);
-
-        if (usersList.length === 0) {
-            lbContainer.innerHTML = '<div class="activity-empty">Aún no hay datos familiares.</div>';
-            return;
+    const calculatedAccounts = useMemo(() => {
+      const accMap = {};
+      cuentas.forEach(c => { accMap[c.id] = { ...c, currentBalance: Number(c.initialBalance) || 0, currentDebt: Number(c.initialDebt) || 0, montoPrestado: Number(c.montoPrestado) || Number(c.initialDebt) || 0, totalPagado: Number(c.totalPagadoPrevio) || 0, lastPaymentDate: c.lastPaymentDate || null }; });
+      ingresos.forEach(i => { if (accMap[i.cuentaId]) accMap[i.cuentaId].currentBalance += Number(i.monto); });
+      const sortedEgresos = [...egresos].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      sortedEgresos.forEach(e => {
+        if (accMap[e.cuentaId]) {
+          if (['credit', 'loan'].includes(accMap[e.cuentaId].type)) accMap[e.cuentaId].currentDebt += Number(e.monto);
+          else accMap[e.cuentaId].currentBalance -= Number(e.monto);
         }
-
-        lbContainer.innerHTML = usersList.map((u, index) => {
-            const isFirst = index === 0;
-            const isMe = auth.currentUser && auth.currentUser.uid === u.id;
-            const rankDisplay = isFirst ? '👑' : `${index + 1}`;
-            const initial = u.name.charAt(0).toUpperCase();
-            
-            return `
-            <div class="leaderboard-item ${isMe ? 'lb-me' : ''}">
-                <div class="lb-rank ${isFirst ? 'rank-1' : ''}">${rankDisplay}</div>
-                <div class="lb-avatar">${initial}</div>
-                <div class="lb-info">
-                    <span class="lb-name">${u.name} ${isMe ? '(Tú)' : ''}</span>
-                    <span class="lb-level">Nivel ${u.level}</span>
-                </div>
-                <div class="lb-xp">${u.xp} XP</div>
-            </div>`;
-        }).join('');
-
-    } catch (error) {
-        console.error("Error cargando leaderboard:", error);
-        lbContainer.innerHTML = '<div class="activity-empty" style="color:#E53E3E;">Error al cargar el ranking.</div>';
-    }
-}
-
-function renderFeedback(grammar, reading, writing, vocab) {
-    const el = document.getElementById('teacher-feedback');
-    if (!el) return;
-    const items = [];
-    if (state.modulesCompleted === 0) {
-        items.push({ type: 'fb-info', icon: 'info', text: '¡Bienvenido! Completa tu primer módulo para recibir feedback personalizado.' });
-    } else {
-        if (grammar >= 80) items.push({ type: 'fb-success', icon: 'check-circle', text: `Excelente dominio de la gramática (${grammar}%). ¡Sigue así!` });
-        else if (grammar > 0) items.push({ type: 'fb-warn', icon: 'alert-triangle', text: `Tu gramática está en ${grammar}%. Repasa los tiempos verbales.` });
-        
-        if (reading >= 80) items.push({ type: 'fb-success', icon: 'check-circle', text: `Muy buena comprensión lectora (${reading}%).` });
-        else if (reading > 0) items.push({ type: 'fb-warn', icon: 'alert-triangle', text: `Practica más reading. Tu comprensión actual: ${reading}%.` });
-        else items.push({ type: 'fb-info', icon: 'book-open', text: 'Aún no has practicado Reading. ¡Prueba los textos graduados!' });
-        
-        if (writing > 0 && writing < 70) items.push({ type: 'fb-warn', icon: 'pen-line', text: `Tu writing necesita práctica. Intenta los ejercicios guiados.` });
-        if (vocab > 0) items.push({ type: 'fb-success', icon: 'layers', text: `Has estudiado vocabulario con ${vocab}% de precisión.` });
-    }
-    el.innerHTML = items.map(i => `<div class="fb-item ${i.type}"><i data-lucide="${i.icon}"></i><span>${i.text}</span></div>`).join('') || '<div class="fb-item fb-info"><i data-lucide="info"></i><span>Sigue completando módulos.</span></div>';
-}
-
-function renderActivity() {
-    const el = document.getElementById('activity-log');
-    if (!el) return;
-    if (state.activityLog.length === 0) {
-        el.innerHTML = '<div class="activity-empty">Aún no hay actividad. ¡Empieza una lección!</div>';
-        return;
-    }
-    el.innerHTML = state.activityLog.slice(0, 6).map(a => `
-        <div class="activity-item">
-            <div class="activity-dot" style="background:${a.color||'#534AB7'}"></div>
-            <div class="activity-text">${a.text}</div>
-            <div class="activity-xp">+${a.xp} XP</div>
-            <div class="activity-time">${a.time}</div>
-        </div>`).join('');
-}
-
-function getrank(avg) {
-    if (avg >= 90) return { name: 'Maestro del Inglés', cefr: 'B1' };
-    if (avg >= 75) return { name: 'Explorador Avanzado', cefr: 'A2+' };
-    if (avg >= 50) return { name: 'Viajero del Idioma', cefr: 'A2' };
-    if (avg >= 25) return { name: 'Aprendiz Curioso', cefr: 'A1+' };
-    return { name: 'Explorador Novato', cefr: 'A1' };
-}
-
-// ============================================================
-// MÓDULOS DE GRAMÁTICA
-// ============================================================
-window.openModule = function(modId) {
-    currentModuleId = modId;
-    currentExerciseIdx = 0;
-    currentScore = 0;
-    currentErrors = 0;
-    isChecking = false;
-    window.showScreen('module');
-    const mod = modulesData[modId];
-    const content = document.getElementById('module-content');
-    content.innerHTML = `
-        <div class="lesson-header">
-            <button class="back-btn" onclick="showScreen('dashboard');setActiveNavById('dashboard')">
-                <i data-lucide="arrow-left"></i> Volver
-            </button>
-            <span class="lesson-title">${mod.title}</span>
-        </div>
-        <div class="tab-nav">
-            <button class="tab-btn active" id="btn-theory" onclick="setPhase('theory')"><i data-lucide="book-open" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px"></i> Teoría</button>
-            <button class="tab-btn" id="btn-practice" onclick="setPhase('practice')"><i data-lucide="zap" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px"></i> Ejercicios (${mod.exercises.length})</button>
-        </div>
-        <div id="phase-content"></div>`;
-    lucide.createIcons();
-    window.setPhase('theory');
-};
-
-window.setPhase = function(phase) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById('btn-' + phase);
-    if (btn) btn.classList.add('active');
-    const mod = modulesData[currentModuleId];
-    const content = document.getElementById('phase-content');
-    
-    if (phase === 'theory') {
-        content.innerHTML = `
-            <div class="card-theory animate-pop">${mod.theory}
-                <div style="text-align:right;margin-top:20px">
-                    <button class="btn-check" onclick="setPhase('practice')">
-                        <i data-lucide="zap"></i> Empezar ejercicios →
-                    </button>
-                </div>
-            </div>`;
-        lucide.createIcons();
-    } else {
-        currentExerciseIdx = 0; currentScore = 0; currentErrors = 0; isChecking = false;
-        renderExercise();
-    }
-};
-
-function renderExercise() {
-    isChecking = false;
-    const mod = modulesData[currentModuleId];
-    const q = mod.exercises[currentExerciseIdx];
-    const dots = mod.exercises.map((_, i) => `<div class="ex-dot ${i < currentExerciseIdx ? 'done' : i === currentExerciseIdx ? 'current' : ''}"></div>`).join('');
-    const typeLabel = q.type === 'choice' ? 'Selección múltiple' : q.type === 'write' ? 'Escritura' : 'Ordenar';
-    const typeIcon = q.type === 'choice' ? 'list' : q.type === 'write' ? 'pen-line' : 'move';
-
-    let bodyHtml = '';
-    if (q.type === 'choice') {
-        bodyHtml = `<div class="opts-grid">${q.opts.map(o => `<button class="opt-btn" onclick="checkChoice('${o.replace(/'/g,"\\'")}','${q.a.replace(/'/g,"\\'")}',this)">${o}</button>`).join('')}</div>`;
-    } else if (q.type === 'write') {
-        bodyHtml = `
-            <input type="text" id="write-answer" class="write-input" placeholder="Escribe tu respuesta aquí..."
-                onkeypress="if(event.key==='Enter')checkWrite()" autocomplete="off">
-            <div class="btn-row">
-                <button class="btn-check" onclick="checkWrite()"><i data-lucide="check"></i> Comprobar</button>
-            </div>`;
-    } else if (q.type === 'order') {
-        window.orderAvail = [...q.words].sort(() => Math.random() - 0.5);
-        window.orderSel = [];
-        window.orderCorrect = q.a;
-        bodyHtml = `<div id="order-ui"></div>`;
-    }
-
-    document.getElementById('phase-content').innerHTML = `
-        <div class="exercise-card animate-pop">
-            <div class="ex-meta"><i data-lucide="${typeIcon}"></i> ${typeLabel} · Ejercicio ${currentExerciseIdx + 1} / ${mod.exercises.length}</div>
-            <div class="ex-progress">${dots}</div>
-            <div class="ex-q">${q.q}</div>
-            ${bodyHtml}
-            <div id="ex-feedback"></div>
-        </div>`;
-    lucide.createIcons();
-    if (q.type === 'order') drawOrderUI();
-    if (q.type === 'write') setTimeout(() => { const inp = document.getElementById('write-answer'); if(inp) inp.focus(); }, 100);
-}
-
-function drawOrderUI() {
-    const c = document.getElementById('order-ui');
-    if (!c) return;
-    const allDone = window.orderAvail.length === 0;
-    c.innerHTML = `
-        <div class="order-zone" id="order-zone">
-            ${window.orderSel.length === 0 ? '<span style="color:#A0AEC0;font-size:13px">Toca las palabras para construir la frase...</span>' : ''}
-            <div class="order-words-pool" style="justify-content:center">
-                ${window.orderSel.map((w,i) => `<div class="order-word in-zone" onclick="moveWord(${i},'back')">${w}</div>`).join('')}
-            </div>
-        </div>
-        <div class="order-words-pool">
-            ${window.orderAvail.map((w,i) => `<div class="order-word" onclick="moveWord(${i},'add')">${w}</div>`).join('')}
-        </div>
-        <div class="btn-row">
-            <button class="btn-check" onclick="checkOrder()" ${!allDone?'disabled style="opacity:0.5;cursor:not-allowed"':''}>
-                <i data-lucide="check"></i> Evaluar frase
-            </button>
-            <button class="btn" style="padding:10px 18px;border:1.5px solid #E2E8F0;border-radius:12px;background:white;cursor:pointer;font-size:13px" onclick="resetOrder()">
-                Reiniciar
-            </button>
-        </div>`;
-    lucide.createIcons();
-}
-
-window.moveWord = function(idx, dir) {
-    if (dir === 'add') { window.orderSel.push(window.orderAvail.splice(idx, 1)[0]); }
-    else { window.orderAvail.push(window.orderSel.splice(idx, 1)[0]); }
-    drawOrderUI();
-};
-
-window.resetOrder = function() {
-    const all = [...window.orderSel, ...window.orderAvail].sort(() => Math.random() - 0.5);
-    window.orderSel = []; window.orderAvail = all;
-    drawOrderUI();
-};
-
-window.checkChoice = function(val, correct, btn) {
-    if (isChecking) return;
-    isChecking = true;
-    state.totalAnswers++;
-    document.querySelectorAll('.opt-btn').forEach(b => { b.disabled = true; });
-    if (val === correct) {
-        btn.classList.add('correct');
-        state.correctAnswers++; currentScore++;
-        showFeedback(true, `¡Correcto! "${correct}" es la respuesta exacta.`);
-        addXP(10, true);
-    } else {
-        btn.classList.add('wrong');
-        document.querySelectorAll('.opt-btn').forEach(b => { if (b.textContent === correct) b.classList.add('correct'); });
-        currentErrors++;
-        showFeedback(false, `Incorrecto. La respuesta correcta es "<strong>${correct}</strong>".`);
-    }
-    saveState();
-    setTimeout(() => advanceExercise(), 1600);
-};
-
-window.checkWrite = function() {
-    if (isChecking) return;
-    const input = document.getElementById('write-answer');
-    if (!input) return;
-    const val = input.value.trim().toLowerCase();
-    if (!val) { window.showToast('Escribe tu respuesta primero', 'warn'); return; }
-    isChecking = true;
-    state.totalAnswers++;
-    const mod = modulesData[currentModuleId];
-    const correct = mod.exercises[currentExerciseIdx].a.toLowerCase();
-    
-    if (val === correct) {
-        input.classList.add('correct');
-        state.correctAnswers++; currentScore++;
-        showFeedback(true, `¡Perfecto! "${mod.exercises[currentExerciseIdx].a}" es correcto.`);
-        addXP(15, true);
-    } else {
-        input.classList.add('wrong');
-        input.value = mod.exercises[currentExerciseIdx].a;
-        currentErrors++;
-        showFeedback(false, `Incorrecto. La respuesta es "<strong>${mod.exercises[currentExerciseIdx].a}</strong>".`);
-    }
-    saveState();
-    setTimeout(() => advanceExercise(), 1800);
-};
-
-window.checkOrder = function() {
-    if (isChecking) return;
-    isChecking = true;
-    state.totalAnswers++;
-    const sentence = window.orderSel.join(' ').trim();
-    const zone = document.getElementById('order-zone');
-    if (sentence === window.orderCorrect.trim()) {
-        if (zone) zone.classList.add('correct');
-        state.correctAnswers++; currentScore++;
-        showFeedback(true, `¡Sintaxis perfecta! "${window.orderCorrect}"`);
-        addXP(20, true);
-    } else {
-        if (zone) zone.classList.add('wrong');
-        currentErrors++;
-        showFeedback(false, `Incorrecto. La frase correcta es: "<strong>${window.orderCorrect}</strong>".`);
-    }
-    saveState();
-    setTimeout(() => advanceExercise(), 2000);
-};
-
-function showFeedback(ok, msg) {
-    const el = document.getElementById('ex-feedback');
-    if (!el) return;
-    el.innerHTML = `<div class="ex-feedback ${ok?'success':'error'}">
-        <i data-lucide="${ok?'check-circle':'x-circle'}"></i><span>${msg}</span></div>`;
-    lucide.createIcons();
-}
-
-function advanceExercise() {
-    isChecking = false;
-    currentExerciseIdx++;
-    const mod = modulesData[currentModuleId];
-    if (currentExerciseIdx < mod.exercises.length) {
-        renderExercise();
-    } else {
-        finishModule();
-    }
-}
-
-function finishModule() {
-    const mod = modulesData[currentModuleId];
-    const total = mod.exercises.length;
-    const pct = Math.round((currentScore / total) * 100);
-    const prev = state.scores[currentModuleId];
-    state.scores[currentModuleId] = prev !== null ? Math.max(prev, pct) : pct;
-    if (prev === null) state.modulesCompleted++;
-
-    const xpBonus = pct >= 80 ? 60 : pct >= 60 ? 40 : 20;
-    addXP(xpBonus, false);
-    logActivity(`Módulo "${mod.title}" completado`, xpBonus, mod.color);
-
-    const stars = pct >= 80 ? 3 : pct >= 60 ? 2 : 1;
-    const starsHtml = [1,2,3].map(i => `<span class="star ${i<=stars?'lit':''}">★</span>`).join('');
-    const msg = pct >= 80 ? '¡Dominio excelente! Eres un pro.' : pct >= 60 ? 'Buen trabajo. Repasa algún punto.' : 'Sigue practicando. ¡Tú puedes!';
-
-    document.getElementById('phase-content').innerHTML = `
-        <div class="results-card animate-pop">
-            <div class="stars-row">${starsHtml}</div>
-            <div class="results-score">${pct}%</div>
-            <p class="results-msg">${msg}</p>
-            <div class="results-detail">
-                <span class="results-pill pill-good">✓ ${currentScore} correctas</span>
-                <span class="results-pill pill-bad">✗ ${currentErrors} errores</span>
-                <span class="results-pill pill-xp">+${xpBonus} XP</span>
-            </div>
-            <div class="btn-row">
-                <button class="btn-check" onclick="setPhase('practice')" style="background:#718096">
-                    <i data-lucide="refresh-cw"></i> Repetir
-                </button>
-                <button class="btn-check" onclick="showScreen('dashboard');setActiveNavById('dashboard')">
-                    <i data-lucide="layout-dashboard"></i> Tablero
-                </button>
-            </div>
-        </div>`;
-    lucide.createIcons();
-    saveState();
-}
-
-// ============================================================
-// READING HUB
-// ============================================================
-window.renderReadingHub = function() {
-    const el = document.getElementById('reading-hub-content');
-    if (!el) return;
-    el.innerHTML = `
-        <div class="reading-grid">
-            ${readingTexts.map(r => {
-                const score = state.readingScores[r.id];
-                const done = score != null;
-                return `<div class="reading-card" onclick="openReading('${r.id}')">
-                    <div class="reading-card-banner" style="background:${r.levelColor}"></div>
-                    <div class="reading-card-body">
-                        <span class="reading-level-badge" style="background:${r.levelColor}20;color:${r.levelColor}">${r.level} · ${r.topic}</span>
-                        <div class="reading-card-title">${r.title}</div>
-                        <div class="reading-card-desc">${r.desc}</div>
-                    </div>
-                    <div class="reading-card-footer">
-                        <span>${r.questions} preguntas</span>
-                        <span style="font-weight:700;color:${done?'#38A169':'#A0AEC0'}">${done ? `✓ ${score}%` : 'Sin completar'}</span>
-                    </div>
-                </div>`;
-            }).join('')}
-        </div>`;
-};
-
-window.openReading = function(id) {
-    currentReadingId = id;
-    currentReadingQIdx = 0;
-    currentReadingScore = 0;
-    isChecking = false;
-    const r = readingTexts.find(x => x.id === id);
-    if (!r) return;
-    const el = document.getElementById('reading-hub-content');
-    el.innerHTML = `
-        <div style="margin-bottom:12px">
-            <button class="back-btn" onclick="renderReadingHub()">
-                <i data-lucide="arrow-left"></i> Volver a textos
-            </button>
-        </div>
-        <div class="reading-lesson-wrap">
-            <div class="reading-text-area">
-                <div class="reading-title">${r.title}</div>
-                <div class="reading-meta">Nivel ${r.level} · ${r.topic} · Toca las palabras <span style="border-bottom:2px solid #63B3ED;color:#2B6CB0;font-weight:600">subrayadas</span> para ver la traducción</div>
-                <div class="reading-body">${r.body}</div>
-            </div>
-            <div class="reading-qs">
-                <h4>Preguntas de comprensión</h4>
-                <div id="reading-q-zone"></div>
-            </div>
-        </div>`;
-    lucide.createIcons();
-    renderReadingQ(r);
-};
-
-function renderReadingQ(r) {
-    if (currentReadingQIdx >= r.qs.length) {
-        finishReading(r);
-        return;
-    }
-    const q = r.qs[currentReadingQIdx];
-    isChecking = false;
-    const zone = document.getElementById('reading-q-zone');
-    zone.innerHTML = `
-        <div style="margin-bottom:10px;font-size:12px;color:#A0AEC0;font-weight:700">
-            Pregunta ${currentReadingQIdx + 1} de ${r.qs.length}
-        </div>
-        <div class="ex-q" style="font-size:16px;text-align:left;margin-bottom:16px">${q.q}</div>
-        <div class="opts-grid">
-            ${q.opts.map((o, i) => `<button class="opt-btn" onclick="checkReadingQ(${i},${q.a},this,'${q.exp.replace(/'/g,"\\'")}',document.getElementById('rq-fb'))">${o}</button>`).join('')}
-        </div>
-        <div id="rq-fb"></div>`;
-    lucide.createIcons();
-}
-
-window.checkReadingQ = function(chosen, correct, btn, exp, fbEl) {
-    if (isChecking) return;
-    isChecking = true;
-    state.totalAnswers++;
-    document.querySelectorAll('.opts-grid .opt-btn').forEach(b => b.disabled = true);
-    if (chosen === correct) {
-        btn.classList.add('correct');
-        state.correctAnswers++; currentReadingScore++;
-        if (fbEl) fbEl.innerHTML = `<div class="ex-feedback success"><i data-lucide="check-circle"></i><span>¡Correcto! ${exp}</span></div>`;
-        addXP(10, true);
-    } else {
-        btn.classList.add('wrong');
-        document.querySelectorAll('.opts-grid .opt-btn')[correct].classList.add('correct');
-        if (fbEl) fbEl.innerHTML = `<div class="ex-feedback error"><i data-lucide="x-circle"></i><span>Incorrecto. ${exp}</span></div>`;
-    }
-    lucide.createIcons();
-    saveState();
-    setTimeout(() => {
-        const r = readingTexts.find(x => x.id === currentReadingId);
-        currentReadingQIdx++;
-        renderReadingQ(r);
-    }, 1800);
-};
-
-function finishReading(r) {
-    const pct = Math.round((currentReadingScore / r.qs.length) * 100);
-    const prev = state.readingScores[r.id];
-    state.readingScores[r.id] = prev != null ? Math.max(prev, pct) : pct;
-    const xpBonus = pct >= 80 ? 50 : pct >= 60 ? 30 : 15;
-    addXP(xpBonus, false);
-    logActivity(`Reading "${r.title}" completado`, xpBonus, r.levelColor);
-    const stars = pct >= 80 ? 3 : pct >= 60 ? 2 : 1;
-    const starsHtml = [1,2,3].map(i => `<span class="star ${i<=stars?'lit':''}">★</span>`).join('');
-    const zone = document.getElementById('reading-q-zone');
-    zone.innerHTML = `
-        <div class="results-card animate-pop" style="border:none;box-shadow:none;padding:20px 0">
-            <div class="stars-row">${starsHtml}</div>
-            <div class="results-score">${pct}%</div>
-            <p class="results-msg">${pct>=80?'¡Lectura dominada!':pct>=60?'Buena comprensión. Relee el texto.':'Vuelve a leer el texto con calma.'}</p>
-            <div class="results-detail">
-                <span class="results-pill pill-good">✓ ${currentReadingScore}/${r.qs.length}</span>
-                <span class="results-pill pill-xp">+${xpBonus} XP</span>
-            </div>
-            <div class="btn-row">
-                <button class="btn-check" onclick="openReading('${r.id}')" style="background:#718096"><i data-lucide="refresh-cw"></i> Repetir</button>
-                <button class="btn-check" onclick="renderReadingHub()"><i data-lucide="book-marked"></i> Más textos</button>
-            </div>
-        </div>`;
-    lucide.createIcons();
-    saveState();
-}
-
-// ============================================================
-// WRITING HUB
-// ============================================================
-window.renderWritingHub = function() {
-    const el = document.getElementById('writing-hub-content');
-    if (!el) return;
-    el.innerHTML = `
-        <div class="writing-grid">
-            ${writingExercises.map(ex => {
-                const done = state.writingDone[ex.id] != null;
-                const score = state.writingDone[ex.id];
-                return `<div class="writing-ex-card" onclick="openWriting('${ex.id}')">
-                    <span class="writing-type-badge" style="background:${ex.typeColor}20;color:${ex.typeColor}">${ex.typeLabel}</span>
-                    <div class="writing-ex-title">${ex.title}</div>
-                    <div class="writing-ex-desc">${ex.desc}</div>
-                    ${done ? `<div style="margin-top:10px;font-size:12px;font-weight:700;color:#38A169">✓ Completado: ${score}%</div>` : '<div style="margin-top:10px;font-size:12px;color:#A0AEC0">Sin completar</div>'}
-                </div>`;
-            }).join('')}
-        </div>`;
-};
-
-window.openWriting = function(id) {
-    const ex = writingExercises.find(x => x.id === id);
-    if (!ex) return;
-    const el = document.getElementById('writing-hub-content');
-
-    if (ex.type === 'order') {
-        window.wOrderTasks = ex.tasks;
-        window.wOrderIdx = 0;
-        window.wOrderScore = 0;
-        el.innerHTML = `
-            <div style="margin-bottom:12px"><button class="back-btn" onclick="renderWritingHub()"><i data-lucide="arrow-left"></i> Volver</button></div>
-            <div class="exercise-card animate-pop">
-                <div class="ex-meta"><i data-lucide="move"></i> ${ex.title}</div>
-                <div id="w-order-ui"></div>
-            </div>`;
-        lucide.createIcons();
-        renderWritingOrder();
-        return;
-    }
-
-    if (ex.type === 'transform') {
-        window.wTransTasks = ex.tasks;
-        window.wTransIdx = 0;
-        window.wTransScore = 0;
-        el.innerHTML = `
-            <div style="margin-bottom:12px"><button class="back-btn" onclick="renderWritingHub()"><i data-lucide="arrow-left"></i> Volver</button></div>
-            <div class="exercise-card animate-pop">
-                <div class="ex-meta"><i data-lucide="pen-line"></i> ${ex.title}</div>
-                <div id="w-trans-ui"></div>
-            </div>`;
-        lucide.createIcons();
-        renderWritingTransform();
-        return;
-    }
-
-    if (ex.type === 'free') {
-        window.wFreeTasks = ex.tasks;
-        window.wFreeIdx = 0;
-        window.wFreeScore = 0;
-        el.innerHTML = `
-            <div style="margin-bottom:12px"><button class="back-btn" onclick="renderWritingHub()"><i data-lucide="arrow-left"></i> Volver</button></div>
-            <div class="exercise-card animate-pop">
-                <div class="ex-meta"><i data-lucide="pen-line"></i> ${ex.title}</div>
-                <div id="w-free-ui"></div>
-            </div>`;
-        lucide.createIcons();
-        renderWritingFree();
-        return;
-    }
-};
-
-function renderWritingOrder() {
-    const ui = document.getElementById('w-order-ui');
-    if (!ui) return;
-    const t = window.wOrderTasks[window.wOrderIdx];
-    if (!t) { finishWriting('word_order_basic', window.wOrderScore, window.wOrderTasks.length); return; }
-    window.woAvail = [...t.words].sort(() => Math.random() - 0.5);
-    window.woSel = [];
-    window.woCurrent = t.answer;
-    ui.innerHTML = `
-        <div class="ex-q">${t.prompt}</div>
-        <div class="tip-callout" style="margin-bottom:16px"><i data-lucide="lightbulb"></i> ${t.tip}</div>
-        <div class="order-zone" id="wo-zone">
-            <div class="order-words-pool" id="wo-sel"></div>
-        </div>
-        <div class="order-words-pool" id="wo-avail"></div>
-        <div id="wo-fb"></div>
-        <div class="btn-row">
-            <button class="btn-check" id="wo-check-btn" onclick="checkWritingOrder()" disabled style="opacity:0.5;cursor:not-allowed">
-                <i data-lucide="check"></i> Comprobar
-            </button>
-        </div>`;
-    lucide.createIcons();
-    refreshWritingOrder();
-}
-
-function refreshWritingOrder() {
-    const selEl = document.getElementById('wo-sel');
-    const availEl = document.getElementById('wo-avail');
-    if (selEl) selEl.innerHTML = window.woSel.map((w,i)=>`<div class="order-word in-zone" onclick="woMove(${i},'back')">${w}</div>`).join('') || '<span style="color:#A0AEC0;font-size:13px">Selecciona palabras...</span>';
-    if (availEl) availEl.innerHTML = window.woAvail.map((w,i)=>`<div class="order-word" onclick="woMove(${i},'add')">${w}</div>`).join('');
-    const btn = document.getElementById('wo-check-btn');
-    if (btn) { const ok = window.woAvail.length === 0; btn.disabled = !ok; btn.style.opacity = ok ? '1' : '0.5'; btn.style.cursor = ok ? 'pointer' : 'not-allowed'; }
-}
-
-window.woMove = function(i, dir) {
-    if (dir === 'add') { window.woSel.push(window.woAvail.splice(i,1)[0]); }
-    else { window.woAvail.push(window.woSel.splice(i,1)[0]); }
-    refreshWritingOrder();
-};
-
-window.checkWritingOrder = function() {
-    const sentence = window.woSel.join(' ').trim();
-    const fb = document.getElementById('wo-fb');
-    state.totalAnswers++;
-    if (sentence === window.woCurrent.trim()) {
-        state.correctAnswers++; window.wOrderScore++;
-        if (fb) fb.innerHTML = `<div class="ex-feedback success"><i data-lucide="check-circle"></i> ¡Correcto! "${window.woCurrent}"</div>`;
-        addXP(15, true);
-    } else {
-        if (fb) fb.innerHTML = `<div class="ex-feedback error"><i data-lucide="x-circle"></i> La frase correcta es: "<strong>${window.woCurrent}</strong>"</div>`;
-    }
-    lucide.createIcons();
-    saveState();
-    setTimeout(() => { window.wOrderIdx++; renderWritingOrder(); }, 1800);
-};
-
-function renderWritingTransform() {
-    const ui = document.getElementById('w-trans-ui');
-    if (!ui) return;
-    const t = window.wTransTasks[window.wTransIdx];
-    if (!t) { finishWriting('sentence_transform', window.wTransScore, window.wTransTasks.length); return; }
-    ui.innerHTML = `
-        <div class="ex-q" style="text-align:left">${t.prompt}</div>
-        <div class="tip-callout" style="margin-bottom:14px"><i data-lucide="lightbulb"></i> ${t.tip}</div>
-        <input type="text" id="wt-input" class="write-input" placeholder="Escribe la frase transformada..." autocomplete="off">
-        <div id="wt-fb"></div>
-        <div class="btn-row">
-            <button class="btn-check" onclick="checkWritingTransform('${t.answer.replace(/'/g,"\\'")}')">
-                <i data-lucide="check"></i> Comprobar
-            </button>
-        </div>`;
-    lucide.createIcons();
-    setTimeout(() => { const i = document.getElementById('wt-input'); if(i) i.focus(); }, 100);
-}
-
-window.checkWritingTransform = function(correct) {
-    const inp = document.getElementById('wt-input');
-    if (!inp) return;
-    const val = inp.value.trim().toLowerCase();
-    const fb = document.getElementById('wt-fb');
-    state.totalAnswers++;
-    if (val === correct.toLowerCase()) {
-        state.correctAnswers++; window.wTransScore++;
-        inp.classList.add('correct');
-        if (fb) fb.innerHTML = `<div class="ex-feedback success"><i data-lucide="check-circle"></i> ¡Perfecto!</div>`;
-        addXP(15, true);
-    } else {
-        inp.classList.add('wrong');
-        if (fb) fb.innerHTML = `<div class="ex-feedback error"><i data-lucide="x-circle"></i> La respuesta correcta es: "<strong>${correct}</strong>"</div>`;
-    }
-    lucide.createIcons();
-    saveState();
-    setTimeout(() => { window.wTransIdx++; renderWritingTransform(); }, 1800);
-};
-
-function renderWritingFree() {
-    const ui = document.getElementById('w-free-ui');
-    if (!ui) return;
-    const t = window.wFreeTasks[window.wFreeIdx];
-    if (!t) { finishWriting('free_writing', window.wFreeScore, window.wFreeTasks.length); return; }
-    ui.innerHTML = `
-        <div class="ex-q" style="text-align:left;margin-bottom:16px">${t.prompt}</div>
-        <div class="tip-callout" style="margin-bottom:12px"><i data-lucide="lightbulb"></i> <strong>Guía:</strong> ${t.hint}</div>
-        <div style="background:#F7FAFC;border:1px dashed #CBD5E0;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;color:#718096">
-            <strong>Ejemplo:</strong> ${t.example}
-        </div>
-        <textarea id="wf-area" class="writing-textarea" placeholder="Escribe aquí tu respuesta en inglés..."></textarea>
-        <div id="wf-fb"></div>
-        <div class="btn-row">
-            <button class="btn-check" onclick="checkFreeWriting(${t.minWords})">
-                <i data-lucide="send"></i> Enviar
-            </button>
-        </div>`;
-    lucide.createIcons();
-}
-
-window.checkFreeWriting = function(minWords) {
-    const area = document.getElementById('wf-area');
-    const fb = document.getElementById('wf-fb');
-    if (!area) return;
-    const val = area.value.trim();
-    const words = val.split(/\s+/).filter(w => w.length > 0).length;
-    if (words < 5) { window.showToast('Escribe al menos algunas oraciones.', 'warn'); return; }
-    state.totalAnswers++;
-    if (words >= minWords) {
-        state.correctAnswers++; window.wFreeScore++;
-        if (fb) fb.innerHTML = `<div class="ex-feedback success"><i data-lucide="check-circle"></i> ¡Muy bien! Escribiste ${words} palabras. Tu producción escrita está mejorando.</div>`;
-        addXP(20, true);
-    } else {
-        if (fb) fb.innerHTML = `<div class="ex-feedback error"><i data-lucide="alert-circle"></i> Escribiste ${words} palabras. Intenta añadir más detalles (mínimo ${minWords} palabras).</div>`;
-    }
-    lucide.createIcons();
-    saveState();
-    setTimeout(() => { window.wFreeIdx++; renderWritingFree(); }, 2200);
-};
-
-function finishWriting(id, score, total) {
-    const pct = Math.round((score / total) * 100);
-    const prev = state.writingDone[id];
-    state.writingDone[id] = prev != null ? Math.max(prev, pct) : pct;
-    const xpBonus = pct >= 80 ? 40 : pct >= 60 ? 25 : 15;
-    addXP(xpBonus, false);
-    logActivity('Ejercicio de Writing completado', xpBonus, '#D85A30');
-    const ex = writingExercises.find(x => x.id === id);
-    const ui = document.getElementById('w-order-ui') || document.getElementById('w-trans-ui') || document.getElementById('w-free-ui');
-    if (!ui) return;
-    ui.innerHTML = `
-        <div class="results-card animate-pop" style="border:none;box-shadow:none;padding:20px 0">
-            <div class="results-score">${pct}%</div>
-            <p class="results-msg">${pct>=80?'¡Escritura excelente!':pct>=60?'Buen esfuerzo. Sigue practicando.':'La escritura mejora con la práctica.'}</p>
-            <div class="results-detail">
-                <span class="results-pill pill-good">✓ ${score}/${total}</span>
-                <span class="results-pill pill-xp">+${xpBonus} XP</span>
-            </div>
-            <div class="btn-row">
-                <button class="btn-check" onclick="renderWritingHub()"><i data-lucide="pen-line"></i> Más ejercicios</button>
-            </div>
-        </div>`;
-    lucide.createIcons();
-    saveState();
-}
-
-// ============================================================
-// VOCABULARY HUB CON WEB SPEECH API
-// ============================================================
-window.renderVocabHub = function() {
-    const el = document.getElementById('vocab-hub-content');
-    if (!el) return;
-    el.innerHTML = `
-        <div class="vocab-topics-grid" id="vocab-topics-grid">
-            ${vocabTopics.map(t => {
-                const score = state.vocabScores[t.id];
-                return `<div class="vocab-topic-card" onclick="openVocabTopic('${t.id}')">
-                    <div class="vocab-topic-icon">${t.icon}</div>
-                    <div class="vocab-topic-title">${t.title}</div>
-                    <div class="vocab-topic-count">${t.count} palabras</div>
-                    ${score != null ? `<div style="margin-top:6px;font-size:12px;font-weight:700;color:#38A169">✓ ${score}%</div>` : ''}
-                </div>`;
-            }).join('')}
-        </div>`;
-};
-
-window.openVocabTopic = function(id) {
-    vocabCurrentTopic = vocabTopics.find(t => t.id === id);
-    if (!vocabCurrentTopic) return;
-    vocabMode = 'flash';
-    const el = document.getElementById('vocab-hub-content');
-    el.innerHTML = `
-        <div style="margin-bottom:12px">
-            <button class="back-btn" onclick="renderVocabHub()"><i data-lucide="arrow-left"></i> Volver a temas</button>
-        </div>
-        <div class="lesson-title" style="margin-bottom:16px">${vocabCurrentTopic.icon} ${vocabCurrentTopic.title}</div>
-        <div class="vocab-tabs">
-            <button class="vocab-tab active" id="vtab-flash" onclick="setVocabMode('flash',this)">Tarjetas</button>
-            <button class="vocab-tab" id="vtab-match" onclick="setVocabMode('match',this)">Conectar</button>
-            <button class="vocab-tab" id="vtab-quiz" onclick="setVocabMode('quiz',this)">Quiz</button>
-        </div>
-        <div id="vocab-mode-content"></div>`;
-    lucide.createIcons();
-    renderVocabFlash();
-};
-
-window.setVocabMode = function(mode, btn) {
-    vocabMode = mode;
-    document.querySelectorAll('.vocab-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    if (mode === 'flash') renderVocabFlash();
-    else if (mode === 'match') renderVocabMatch();
-    else renderVocabQuiz();
-};
-
-function renderVocabFlash() {
-    const c = document.getElementById('vocab-mode-content');
-    const words = vocabCurrentTopic.words;
-    c.innerHTML = `
-        <p style="font-size:13px;color:#718096;margin-bottom:14px">Toca el ícono para escuchar, o toca la tarjeta para ver la traducción.</p>
-        <div class="flashcard-grid">
-            ${words.map((w,i) => `
-                <div class="flashcard" id="fc${i}" onclick="this.classList.toggle('flipped')">
-                    <div class="flashcard-inner">
-                        <div class="flashcard-front">
-                            <button class="btn-audio" onclick="playAudio('${w.en.replace(/'/g,"\\'")}', 'en-US', event)" title="Escuchar">
-                                <i data-lucide="volume-2"></i>
-                            </button>
-                            <div class="card-word">${w.en}</div>
-                            <div class="card-hint">Toca para ver</div>
-                        </div>
-                        <div class="flashcard-back">
-                            <div class="card-word">${w.es}</div>
-                            <div class="card-hint">${w.example}</div>
-                        </div>
-                    </div>
-                </div>`).join('')}
-        </div>`;
-    lucide.createIcons();
-}
-
-function renderVocabMatch() {
-    const c = document.getElementById('vocab-mode-content');
-    const words = vocabCurrentTopic.words.slice(0, 8);
-    const lefts = words.map((w, i) => ({ id: 'L' + i, text: w.en, pair: i }));
-    const rights = [...words.map((w, i) => ({ id: 'R' + i, text: w.es, pair: i }))].sort(() => Math.random() - 0.5);
-    window.matchState = { lefts, rights, matched: [], firstSel: null, errors: 0, correct: 0 };
-
-    c.innerHTML = `
-        <p style="font-size:13px;color:#718096;margin-bottom:14px">Conecta cada palabra con su traducción.</p>
-        <div class="match-game-grid">
-            <div class="match-col" id="match-left">${lefts.map(l=>`<button class="match-btn" id="${l.id}" onclick="selectMatch('${l.id}',${l.pair},'L')">${l.text}</button>`).join('')}</div>
-            <div class="match-col" id="match-right">${rights.map(r=>`<button class="match-btn" id="${r.id}" onclick="selectMatch('${r.id}',${r.pair},'R')">${r.text}</button>`).join('')}</div>
-        </div>
-        <div id="match-result" style="margin-top:16px"></div>`;
-}
-
-window.selectMatch = function(id, pair, side) {
-    const ms = window.matchState;
-    const el = document.getElementById(id);
-    if (!el || el.classList.contains('matched')) return;
-
-    if (side === 'L') {
-        const wordData = ms.lefts.find(l => l.id === id);
-        if (wordData) window.playAudio(wordData.text, 'en-US');
-    }
-
-    if (!ms.firstSel) {
-        if (ms.firstSel && ms.firstSel.id !== id) document.getElementById(ms.firstSel.id).classList.remove('selected');
-        ms.firstSel = { id, pair, side };
-        el.classList.add('selected');
-    } else {
-        if (ms.firstSel.id === id) { el.classList.remove('selected'); ms.firstSel = null; return; }
-        if (ms.firstSel.side === side) {
-            document.getElementById(ms.firstSel.id).classList.remove('selected');
-            ms.firstSel = { id, pair, side }; el.classList.add('selected'); return;
+        if (e.deudaId && accMap[e.deudaId]) {
+          const account = accMap[e.deudaId]; account.totalPagado += Number(e.monto);
+          if (account.type === 'loan') {
+            let capital = Number(e.monto);
+            if (account.lastPaymentDate) {
+              const diffDays = Math.round(Math.abs(new Date(e.fecha) - new Date(account.lastPaymentDate)) / 86400000);
+              const tasaDiaria = Math.pow(1 + account.tasaEA / 100, 1 / 360) - 1;
+              capital = Number(e.monto) - account.currentDebt * tasaDiaria * diffDays;
+            } else { capital = Number(e.monto) - account.currentDebt * getTasaMensual(account.tasaEA); }
+            account.lastPaymentDate = e.fecha; account.currentDebt = Math.max(0, account.currentDebt - capital);
+          } else { account.currentDebt = Math.max(0, account.currentDebt - Number(e.monto)); }
         }
-        if (ms.firstSel.pair === pair) {
-            document.getElementById(ms.firstSel.id).classList.remove('selected');
-            document.getElementById(ms.firstSel.id).classList.add('matched');
-            el.classList.remove('selected'); el.classList.add('matched');
-            ms.matched.push(pair); ms.correct++;
-            addXP(5, true);
-            if (ms.matched.length === ms.lefts.length) {
-                const xp = 20; addXP(xp, false);
-                state.vocabScores[vocabCurrentTopic.id] = 100;
-                logActivity(`Vocabulario "${vocabCurrentTopic.title}" — Matching`, xp, '#1D9E75');
-                document.getElementById('match-result').innerHTML = `<div class="ex-feedback success"><i data-lucide="check-circle"></i> ¡Completaste todas las parejas! +${xp} XP extra</div>`;
-                lucide.createIcons(); saveState();
-            }
+      });
+      transferencias.forEach(t => {
+        if (accMap[t.fromId]) { if (['credit', 'loan'].includes(accMap[t.fromId].type)) accMap[t.fromId].currentDebt += Number(t.monto); else accMap[t.fromId].currentBalance -= Number(t.monto); }
+        if (accMap[t.toId]) { if (['credit', 'loan'].includes(accMap[t.toId].type)) accMap[t.toId].currentDebt = Math.max(0, accMap[t.toId].currentDebt - Number(t.monto)); else accMap[t.toId].currentBalance += Number(t.monto); }
+      });
+      return Object.values(accMap);
+    }, [cuentas, ingresos, egresos, transferencias]);
+
+    const getOwnerFallback = (text) => {
+      if (!text) return 'Shared'; const t = text.toUpperCase();
+      const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L '); const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
+      if (hasL && !hasA) return 'Leo'; if (hasA && !hasL) return 'Andre'; return 'Shared';
+    };
+    const belongsToFilter = (owner) => filtroPersona === 'Total' || owner === 'Shared' || owner === filtroPersona;
+
+    const activeCalculatedAccounts = useMemo(() => calculatedAccounts.filter(c => belongsToFilter(c.ownerId || getOwnerFallback(c.name))), [calculatedAccounts, filtroPersona]);
+    const activeIngresos = useMemo(() => ingresos.filter(i => { const ownerAcc = cuentas.find(c => c.id === i.cuentaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (i.ownerId || getOwnerFallback(i.persona + ' ' + i.descripcion))); }), [ingresos, cuentas, filtroPersona]);
+    const activeEgresos = useMemo(() => egresos.filter(e => { const ownerAcc = cuentas.find(c => c.id === e.cuentaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (e.ownerId || getOwnerFallback(e.descripcion + ' ' + e.categoria))); }), [egresos, cuentas, filtroPersona]);
+    const activePagosFijos = useMemo(() => pagosFijos.filter(pf => belongsToFilter(pf.ownerId || getOwnerFallback(pf.descripcion + ' ' + pf.categoria))), [pagosFijos, filtroPersona]);
+
+    const activeIngresosFijos = useMemo(() => {
+      const currentMonthNum = selectedMonth.split('-')[1];
+      return ingresosFijos.filter(inf => {
+        const passFilter = belongsToFilter(inf.ownerId || getOwnerFallback(inf.descripcion + ' ' + inf.persona));
+        let passMonth = true;
+        if (inf.mesEspecifico) {
+          passMonth = inf.mesEspecifico === currentMonthNum;
         } else {
-            document.getElementById(ms.firstSel.id).classList.remove('selected');
-            el.classList.add('wrong-pair');
-            document.getElementById(ms.firstSel.id).classList.add('wrong-pair');
-            ms.errors++;
-            setTimeout(() => {
-                el.classList.remove('wrong-pair');
-                if (document.getElementById(ms.firstSel?.id)) document.getElementById(ms.firstSel.id).classList.remove('wrong-pair');
-            }, 600);
+          const descLower = (inf.descripcion || '').toLowerCase();
+          if (descLower.includes('prima 1')) passMonth = currentMonthNum === '07';
+          else if (descLower.includes('prima 2')) passMonth = currentMonthNum === '12';
         }
-        ms.firstSel = null;
-    }
-};
+        return passFilter && passMonth;
+      });
+    }, [ingresosFijos, filtroPersona, selectedMonth]);
 
-function renderVocabQuiz() {
-    const words = vocabCurrentTopic.words;
-    const shuffled = [...words].sort(() => Math.random() - 0.5);
-    window.vqTasks = shuffled.map(w => {
-        const wrong = words.filter(x => x.en !== w.en).sort(() => Math.random() - 0.5).slice(0, 3).map(x => x.es);
-        const opts = [w.es, ...wrong].sort(() => Math.random() - 0.5);
-        return { q: `¿Cómo se dice en español: "${w.en}"?`, opts, answer: w.es };
-    });
-    window.vqIdx = 0; window.vqScore = 0;
-    renderVocabQ();
-}
+    const activePresupuestos = useMemo(() => presupuestos.filter(p => belongsToFilter(p.ownerId || getOwnerFallback(p.categoria))), [presupuestos, filtroPersona]);
+    const activeComprasCuotas = useMemo(() => comprasCuotas.filter(c => { const ownerAcc = cuentas.find(acc => acc.id === c.tarjetaId); const accOwner = ownerAcc ? (ownerAcc.ownerId || getOwnerFallback(ownerAcc.name)) : 'Shared'; return belongsToFilter(accOwner !== 'Shared' ? accOwner : (c.ownerId || getOwnerFallback(c.descripcion))); }), [comprasCuotas, cuentas, filtroPersona]);
+    const activeTransferencias = useMemo(() => transferencias.filter(t => { const ownerFrom = cuentas.find(c => c.id === t.fromId); const ownerTo = cuentas.find(c => c.id === t.toId); return belongsToFilter(ownerFrom ? (ownerFrom.ownerId || getOwnerFallback(ownerFrom.name)) : 'Shared') || belongsToFilter(ownerTo ? (ownerTo.ownerId || getOwnerFallback(ownerTo.name)) : 'Shared'); }), [transferencias, cuentas, filtroPersona]);
 
-function renderVocabQ() {
-    const c = document.getElementById('vocab-mode-content');
-    if (!c) return;
-    if (window.vqIdx >= window.vqTasks.length) {
-        const pct = Math.round((window.vqScore / window.vqTasks.length) * 100);
-        const prev = state.vocabScores[vocabCurrentTopic.id];
-        state.vocabScores[vocabCurrentTopic.id] = prev != null ? Math.max(prev, pct) : pct;
-        const xpB = pct >= 80 ? 40 : 20;
-        addXP(xpB, false);
-        logActivity(`Vocab Quiz "${vocabCurrentTopic.title}"`, xpB, '#1D9E75');
-        saveState();
-        c.innerHTML = `
-            <div class="results-card animate-pop" style="border:none;box-shadow:none;padding:20px 0">
-                <div class="results-score">${pct}%</div>
-                <p class="results-msg">${pct>=80?'¡Vocabulario dominado!':pct>=60?'Buen trabajo. Repasa las tarjetas.':'Vuelve a las tarjetas y repite el quiz.'}</p>
-                <div class="results-detail">
-                    <span class="results-pill pill-good">✓ ${window.vqScore}/${window.vqTasks.length}</span>
-                    <span class="results-pill pill-xp">+${xpB} XP</span>
-                </div>
-                <div class="btn-row">
-                    <button class="btn-check" onclick="setVocabMode('flash',document.getElementById('vtab-flash'))"><i data-lucide="layers"></i> Ver tarjetas</button>
-                    <button class="btn-check" onclick="setVocabMode('quiz',document.getElementById('vtab-quiz'))" style="background:#718096"><i data-lucide="refresh-cw"></i> Repetir Quiz</button>
-                </div>
-            </div>`;
-        lucide.createIcons(); return;
-    }
-    const q = window.vqTasks[window.vqIdx];
-    isChecking = false;
-    c.innerHTML = `
-        <div style="margin-bottom:10px;font-size:12px;color:#A0AEC0;font-weight:700">Pregunta ${window.vqIdx+1} / ${window.vqTasks.length}</div>
-        <div class="ex-q" style="text-align:left">${q.q}</div>
-        <div class="opts-grid">
-            ${q.opts.map(o=>`<button class="opt-btn" onclick="checkVocabQ('${o.replace(/'/g,"\\'")}','${q.answer.replace(/'/g,"\\'")}',this)">${o}</button>`).join('')}
-        </div>
-        <div id="vq-fb"></div>`;
-    lucide.createIcons();
-}
+    const isThisMonth = (f) => f && f.startsWith(selectedMonth);
+    const ingresosMesTotal = useMemo(() => activeIngresos.filter(i => isThisMonth(i.fecha)).reduce((s, i) => s + Number(i.monto), 0), [activeIngresos, selectedMonth]);
+    const egresosMesTotal = useMemo(() => activeEgresos.filter(e => isThisMonth(e.fecha)).reduce((s, e) => s + Number(e.monto), 0), [activeEgresos, selectedMonth]);
+    const egresosMes = useMemo(() => activeEgresos.filter(e => e.fecha.startsWith(selectedMonth)), [activeEgresos, selectedMonth]);
+    const cuotasMesTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type) && c.currentDebt > 0).reduce((s, c) => s + Number(c.cuotaMinima), 0), [activeCalculatedAccounts]);
+    const pagosDeCuotasEsteMes = useMemo(() => egresosMes.filter(e => e.tipo === 'Fijo' && (e.categoria.toLowerCase().includes('tarjeta') || e.categoria.toLowerCase().includes('crédito') || e.categoria.toLowerCase().includes('vehículo') || e.categoria.toLowerCase().includes('davibank'))).reduce((sum, e) => sum + e.monto, 0), [egresosMes]);
+    const cuotasMesRestantes = Math.max(0, cuotasMesTotal - pagosDeCuotasEsteMes);
+    const flujoNetoMes = ingresosMesTotal - egresosMesTotal - cuotasMesRestantes;
+    const liquidezTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['bank', 'cash', 'pocket'].includes(c.type)).reduce((s, c) => s + c.currentBalance, 0), [activeCalculatedAccounts]);
+    const deudaTotal = useMemo(() => activeCalculatedAccounts.filter(c => ['credit', 'loan'].includes(c.type)).reduce((s, c) => s + c.currentDebt, 0), [activeCalculatedAccounts]);
 
-window.checkVocabQ = function(val, correct, btn) {
-    if (isChecking) return;
-    isChecking = true;
-    state.totalAnswers++;
-    document.querySelectorAll('#vocab-mode-content .opt-btn').forEach(b => b.disabled = true);
-    if (val === correct) {
-        btn.classList.add('correct');
-        state.correctAnswers++; window.vqScore++;
-        document.getElementById('vq-fb').innerHTML = `<div class="ex-feedback success"><i data-lucide="check-circle"></i> ¡Correcto!</div>`;
-        addXP(8, true);
-    } else {
-        btn.classList.add('wrong');
-        document.querySelectorAll('#vocab-mode-content .opt-btn').forEach(b => { if(b.textContent === correct) b.classList.add('correct'); });
-        document.getElementById('vq-fb').innerHTML = `<div class="ex-feedback error"><i data-lucide="x-circle"></i> Era: "<strong>${correct}</strong>"</div>`;
-    }
-    lucide.createIcons();
-    saveState();
-    setTimeout(() => { window.vqIdx++; renderVocabQ(); }, 1600);
-};
+    const proyeccionLiquidez = useMemo(() => {
+      const isPagoFijoRealizadoMes = (pf) => egresosMes.some(e => {
+        if (e.tipo !== 'Fijo') return false;
+        if (e.pagoFijoId) return e.pagoFijoId === pf.id;
+        return e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
+      });
+      const pendientesEste = activePagosFijos.filter(pf => !isPagoFijoRealizadoMes(pf)).reduce((s, pf) => s + pf.monto, 0);
+      const ingresosFijosTotal = activeIngresosFijos.reduce((s, inf) => s + Number(inf.monto), 0);
+      const totalFijosProx = activePagosFijos.reduce((s, pf) => s + pf.monto, 0);
+      const liq30 = liquidezTotal + ingresosFijosTotal - pendientesEste - cuotasMesRestantes;
+      const liq60 = liq30 + ingresosFijosTotal - totalFijosProx - cuotasMesTotal;
+      const liq90 = liq60 + ingresosFijosTotal - totalFijosProx - cuotasMesTotal;
+      return { liq30, liq60, liq90 };
+    }, [liquidezTotal, activeIngresosFijos, activePagosFijos, egresosMes, cuotasMesRestantes, cuotasMesTotal]);
 
-// ============================================================
-// SETTINGS
-// ============================================================
-window.renderSettings = function() {
-    const inp = document.getElementById('setting-name');
-    if (inp) inp.value = state.userName;
-    document.querySelectorAll('.goal-btn').forEach(b => {
-        b.classList.toggle('active', parseInt(b.dataset.goal) === state.dailyGoal);
-    });
-};
+    const scoreData = useMemo(() => {
+      if (ingresosMesTotal === 0 && egresosMesTotal === 0 && cuotasMesTotal === 0 && liquidezTotal === 0) return { score: 0, desglose: [{ text: 'Aún no hay datos.', pts: 0, type: 'neutral' }], recs: [{ico: '📝', title: 'Empieza tu registro', txt: 'Añade datos para evaluar tu salud.'}] };
+      let scr = 100; const desgloseArr = [{ text: 'Puntaje Base Ideal', pts: 100, type: 'success' }]; const rr = [];
+      if (flujoNetoMes < 0) { scr -= 40; desgloseArr.push({ text: 'Flujo negativo', pts: -40, type: 'danger' }); rr.push({ico: '⚠️', title: 'Flujo Crítico', txt: 'Gastas más de lo que ganas.'}); }
+      if (cuotasMesTotal > ingresosMesTotal * 0.4 && ingresosMesTotal > 0) { scr -= 25; desgloseArr.push({ text: 'Deudas > 40%', pts: -25, type: 'danger' }); }
+      if (scr === 100) desgloseArr.push({ text: '¡Sin penalizaciones!', pts: 0, type: 'success' });
+      return { score: Math.max(0, scr), desglose: desgloseArr, recs: rr };
+    }, [flujoNetoMes, cuotasMesTotal, ingresosMesTotal, liquidezTotal]);
 
-window.setGoal = function(btn) {
-    document.querySelectorAll('.goal-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.dailyGoal = parseInt(btn.dataset.goal);
-    saveState();
-};
+    useEffect(() => {
+      const cM = new Date().toISOString().slice(0, 7);
+      if (selectedMonth === cM && !appCargando) {
+        setScoreHistory(prev => {
+          if (prev[selectedMonth] !== scoreData.score) {
+            const next = { ...prev, [selectedMonth]: scoreData.score };
+            db.collection('sistema').doc('scoreHistory').set(next, {merge: true});
+            return next;
+          }
+          return prev;
+        });
+      }
+    }, [scoreData.score, selectedMonth, appCargando]);
 
-window.saveSettings = function() {
-    const inp = document.getElementById('setting-name');
-    if (inp && inp.value.trim()) {
-        state.userName = inp.value.trim();
-        const nameEl = document.getElementById('user-name-display');
-        if (nameEl) nameEl.textContent = state.userName;
-        const init = document.getElementById('avatar-initials');
-        if (init) init.textContent = state.userName.charAt(0).toUpperCase();
-        saveState();
-        window.showToast('Cambios guardados', 'success');
-    }
-};
+    const handleOpenWizard = () => {
+      setQeStep(1); setQeType(''); setQeMonto(''); setQeDescripcion('');
+      setQeCategoria(''); setQeMethod(''); setQeCuenta('');
+      setQuickEntryOpen(true);
+    };
+    
+    const handleQuickSave = () => {
+      if (!qeMonto || !qeCategoria || !qeCuenta) return;
+      const today = getLocalToday();
+      const montoNum = Number(qeMonto);
+      const descFinal = qeDescripcion.trim() !== '' ? qeDescripcion : (qeType === 'egreso' ? `Gasto rápido (${qeCategoria})` : `Ingreso rápido (${qeCategoria})`);
+      if (qeType === 'egreso') {
+        addEgreso({ id: generateId(), fecha: today, descripcion: descFinal, categoria: qeCategoria, monto: montoNum, interesesOtros: 0, cuentaId: qeCuenta, tipo: 'Variable', deudaId: null });
+        showToast("Gasto registrado al instante.");
+      } else {
+        addIngreso({ id: generateId(), fecha: today, descripcion: descFinal, categoria: qeCategoria, monto: montoNum, cuentaId: qeCuenta, persona: 'Total', tipo: 'Variable' });
+        showToast("Ingreso registrado al instante.");
+      }
+      setQuickEntryOpen(false);
+    };
 
-window.confirmReset = function() {
-    window.openModal(`
-        <div style="text-align:center">
-            <div style="font-size:40px;margin-bottom:16px">⚠️</div>
-            <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">¿Reiniciar progreso?</h3>
-            <p style="color:#718096;font-size:14px;margin-bottom:24px">Se eliminarán todos tus XP, puntuaciones y actividad. No se puede deshacer.</p>
-            <div style="display:flex;gap:10px;justify-content:center">
-                <button onclick="closeModal()" style="padding:10px 24px;border:1.5px solid #E2E8F0;border-radius:10px;background:white;cursor:pointer;font-weight:600">Cancelar</button>
-                <button onclick="doReset()" style="padding:10px 24px;background:#E53E3E;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:700">Sí, reiniciar</button>
+    // ============================================================================
+    // ✨ MOTOR DE BÚSQUEDA GLOBAL Y FORMATO DE PRIVACIDAD
+    // ============================================================================
+    const formatCOPPrivacy = (val) => {
+      if (privacyMode) return '****';
+      return formatCOP(val);
+    };
+
+    const searchResults = useMemo(() => {
+      if (!searchQuery.trim()) return [];
+      const query = searchQuery.toLowerCase();
+      
+      const formatResult = (item, type, icon, color) => ({
+        id: item.id,
+        fecha: item.fecha || 'Sin fecha',
+        descripcion: item.descripcion || item.name || item.categoria || 'Sin descripción',
+        monto: item.monto || item.currentBalance || item.limite || 0,
+        tipo: type,
+        icon,
+        color
+      });
+
+      const results = [
+        ...activeEgresos.filter(e => (e.descripcion||'').toLowerCase().includes(query) || (e.categoria||'').toLowerCase().includes(query)).map(e => formatResult(e, 'Egreso', '📉', 'text-neonmagenta')),
+        ...activeIngresos.filter(i => (i.descripcion||'').toLowerCase().includes(query) || (i.categoria||'').toLowerCase().includes(query)).map(i => formatResult(i, 'Ingreso', '📈', 'text-emerald-400')),
+        ...activeTransferencias.filter(t => (t.descripcion||'').toLowerCase().includes(query)).map(t => formatResult(t, 'Transferencia', '🔄', 'text-amber-400')),
+        ...activeCalculatedAccounts.filter(c => (c.name||'').toLowerCase().includes(query)).map(c => formatResult(c, 'Cuenta', '🏦', 'text-neoncyan'))
+      ];
+
+      return results.sort((a, b) => new Date(b.fecha === 'Sin fecha' ? 0 : b.fecha) - new Date(a.fecha === 'Sin fecha' ? 0 : a.fecha));
+    }, [searchQuery, activeEgresos, activeIngresos, activeTransferencias, activeCalculatedAccounts]);
+
+    if (authChecking) return (
+      <div className="flex flex-col items-center justify-center h-screen bg-appbg">
+        <div className="w-12 h-12 border-4 border-appcard border-t-neoncyan rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(0,229,255,0.4)]"></div>
+        <p className="text-neoncyan font-bold tracking-widest text-sm uppercase">Validando Acceso...</p>
+      </div>
+    );
+    if (!authUser) return <Login />;
+    if (appCargando) return (
+      <div className="flex flex-col items-center justify-center h-screen bg-appbg">
+        <div className="w-12 h-12 border-4 border-appcard border-t-neonmagenta rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(255,0,122,0.4)]"></div>
+        <p className="text-neonmagenta font-bold tracking-widest text-sm uppercase">Sincronizando Nube...</p>
+      </div>
+    );
+
+    const navItems = [
+      { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
+      { id: 'ingresos', label: 'Ingresos', icon: Wallet },
+      { id: 'egresos', label: 'Egresos', icon: Receipt },
+      { id: 'cuentas', label: 'Cuentas', icon: Landmark },
+      { id: 'deudas', label: 'Créditos', icon: ShieldAlert },
+      { id: 'presupuestos', label: 'Presupuestos', icon: PieChart },
+      { id: 'inversiones', label: 'Inversión y ahorro', icon: PiggyBank },
+      { id: 'analitica', label: 'Analítica y Estrategia', icon: BarChart },
+      { id: 'simulador', label: 'Simuladores', icon: Calculator },
+      { id: 'settings', label: 'Ajustes', icon: Settings2 },
+    ];
+
+    return (
+      <div className="min-h-screen bg-appbg text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
+
+        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+
+        {/* BARRA LATERAL (PC) */}
+        <aside className="hidden md:flex w-64 bg-appcard flex-shrink-0 flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.3)]">
+          <div className="p-6 border-b border-white/[0.02]">
+            <h1 className="text-xl font-bold text-white flex items-center gap-3 tracking-wide">
+              <img 
+                src="logo.png" 
+                alt="Logo Finanzas" 
+                className="w-8 h-8 object-contain drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]"
+              />
+              FinanzasFamilia
+            </h1>
+          </div>
+          
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-800">
+            <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mb-3 tracking-widest mt-2">Diario</div>
+            {navItems.slice(0, 7).map(i => (
+              <button key={i.id} onClick={() => setActiveTab(i.id)} 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                  activeTab === i.id 
+                  ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                  : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+                }`}>
+                <i.icon size={18}/> {i.label}
+              </button>
+            ))}
+            
+            <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Estrategia</div>
+            {navItems.slice(7, 9).map(i => (
+              <button key={i.id} onClick={() => setActiveTab(i.id)} 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                  activeTab === i.id 
+                  ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                  : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+                }`}>
+                <i.icon size={18}/> {i.label}
+              </button>
+            ))}
+            
+            <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Sistema</div>
+            {navItems.slice(9).map(i => (
+              <button key={i.id} onClick={() => setActiveTab(i.id)} 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                  activeTab === i.id 
+                  ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                  : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+                }`}>
+                <i.icon size={18}/> {i.label}
+              </button>
+            ))}
+            
+            <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neonmagenta hover:shadow-glow-magenta hover:-translate-y-0.5 transition-all mt-6 border border-neonmagenta/30 font-bold text-sm bg-[#111222]">
+              Cerrar Sesión
+            </button>
+          </nav>
+        </aside>
+
+        {/* CONTENIDO PRINCIPAL */}
+        <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
+          
+          {/* TOP BAR */}
+          <div className="bg-appcard border-b border-white/[0.02] p-3 md:p-4 flex justify-between items-center gap-4 z-10">
+            <button onClick={() => auth.signOut()} className="md:hidden text-neonmagenta p-2 hover:shadow-glow-magenta rounded-full transition-all">
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+            
+            {['ingresos', 'deudas'].includes(activeTab) && (
+              <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto border border-transparent">
+                <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Total' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-slate-500 hover:text-slate-300'}`}>TOTAL</button>
+                <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Andre' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-slate-500 hover:text-slate-300'}`}>ANDRE</button>
+                <button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Leo' ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}>LEO</button>
+              </div>
+            )}
+            
+            <div className="flex-1 flex justify-end w-full md:w-auto gap-3">
+              
+              {/* ✨ BOTONES NUEVOS: PRIVACIDAD Y BUSCADOR */}
+              <button onClick={() => setPrivacyMode(!privacyMode)} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title={privacyMode ? "Mostrar saldos" : "Ocultar saldos"}>
+                <EyeIcon size={20} off={privacyMode} />
+              </button>
+              
+              <button onClick={() => { setIsSearchOpen(true); setTimeout(() => document.getElementById('global-search-input')?.focus(), 100); }} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title="Buscar en todo el sistema">
+                <SearchIcon size={20} />
+              </button>
+
+              <div className="flex items-center bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:max-w-[240px] justify-between">
+                <button onClick={() => changeMonth(-1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronLeft size={18}/></button>
+                <span className="font-bold text-white capitalize text-sm tracking-wide">{getMonthName(selectedMonth)}</span>
+                <button onClick={() => changeMonth(1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronRight size={18}/></button>
+              </div>
             </div>
-        </div>`);
-};
+          </div>
 
-window.doReset = async function() {
-    window.closeModal();
-    state = { role: state.role, adminView: false, xp: 0, level: 1, streak: 1, dailyXP: 0, dailyGoal: 50, totalAnswers: 0, correctAnswers: 0, modulesCompleted: 0, activityLog: [], scores: {}, readingScores: {}, writingDone: {}, vocabScores: {}, userName: state.userName };
-    await saveState();
-    location.reload();
-};
+          {isHistoricalMonth && (
+            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 text-amber-400 text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+              <AlertCircle size={14}/>
+              Estás viendo un mes histórico — nuevos registros van a la fecha de hoy
+              <button onClick={() => setSelectedMonth(currentRealMonth)} className="ml-auto bg-[#111222] border border-amber-500/30 hover:shadow-glow-amber px-3 py-1 rounded-lg text-amber-300 transition-all font-bold">
+                Ir al actual →
+              </button>
+            </div>
+          )}
 
-window.openModal = function(html) {
-    document.getElementById('modal-content').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('open');
-    lucide.createIcons();
-};
+          <div className="p-4 md:p-8 overflow-y-auto flex-1 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
+            <div className="max-w-6xl mx-auto">
+              <ErrorBoundary>
+                {/* ✨ PESTAÑAS DINÁMICAS ✨ */}
+                {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
+                {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
+                {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} privacyMode={privacyMode} />}
+                {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} privacyMode={privacyMode} />}
+                {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} updateCuenta={updateCuenta} removeCuenta={removeCuenta} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} privacyMode={privacyMode} />}
+                {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} privacyMode={privacyMode} />}
+                {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={activeEgresos} selectedMonth={selectedMonth} privacyMode={privacyMode} />}
+                {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} privacyMode={privacyMode} />}
+                {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} privacyMode={privacyMode} />}
+                {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+              </ErrorBoundary>
+            </div>
+          </div>
+        </main>
 
-window.closeModal = function() {
-    document.getElementById('modal-overlay').classList.remove('open');
-};
+        {/* BARRA INFERIOR (CELULAR) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-appcard/90 backdrop-blur-xl border-t border-white/[0.02] z-30 flex overflow-x-auto h-[72px] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+          <div className="flex px-2 min-w-max w-full">
+            {navItems.map(item => (
+              <button key={item.id} onClick={() => setActiveTab(item.id)} className="w-[76px] flex flex-col items-center justify-center p-2 relative group">
+                {activeTab === item.id && <div className="absolute top-0 w-8 h-1 bg-neoncyan rounded-b-full shadow-glow-cyan"></div>}
+                <item.icon size={22} className={`transition-all duration-300 ${activeTab === item.id ? 'mb-1 text-neoncyan' : 'mb-1 text-slate-500 group-hover:text-slate-300'}`}/>
+                <span className={`text-[9px] font-bold tracking-wide truncate w-full text-center transition-colors ${activeTab === item.id ? 'text-white' : 'text-slate-500'}`}>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
 
-// ============================================================
-// XP, NIVELES Y ACTIVIDAD
-// ============================================================
-function addXP(baseVal, showMsg) {
-    const streakBonus = Math.min(state.streak * 0.05, 0.50); 
-    const totalXP = Math.round(baseVal * (1 + streakBonus));
+        {/* FAB REGISTRO RÁPIDO */}
+        <button onClick={handleOpenWizard} className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-neoncyan text-[#0b0c16] rounded-full shadow-glow-cyan flex items-center justify-center z-40 transition-all hover:scale-110 active:scale-95">
+          <Plus size={28} strokeWidth="3" />
+        </button>
 
-    state.xp += totalXP;
-    state.dailyXP += totalXP;
+        {/* MODAL WIZARD */}
+        {quickEntryOpen && (
+          <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center animate-in fade-in duration-300">
+            <div className="bg-appcard w-full md:w-[420px] md:rounded-[30px] rounded-t-[30px] p-6 border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-10 min-h-[420px] flex flex-col relative overflow-hidden">
+              <div className="absolute -top-32 -left-32 w-64 h-64 bg-neoncyan/10 rounded-full blur-[100px] pointer-events-none"></div>
+              
+              <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
+                <div className="flex items-center gap-4">
+                  {qeStep > 1 && <button onClick={() => setQeStep(qeStep - 1)} className="text-slate-400 hover:text-neoncyan transition-colors"><ArrowLeftIcon size={20}/></button>}
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-wide">Acción Rápida</h3>
+                    <div className="flex gap-1.5 mt-2">
+                      {[1,2,3,4,5].map(s => <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${s === qeStep ? 'bg-neoncyan w-6 shadow-glow-cyan' : s < qeStep ? 'bg-neoncyan/40 w-3' : 'bg-[#111222] w-3'}`}></div>)}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-rose-400 bg-[#111222] p-2.5 rounded-full transition-all hover:shadow-glow-magenta"><XIconGlobal size={18}/></button>
+              </div>
 
-    let xpForNext = Math.floor(100 * Math.pow(state.level, 1.5));
+              <div className="flex-1 flex flex-col justify-center relative z-10 animate-in fade-in slide-in-from-right-4 duration-300">
+                {qeStep === 1 && (
+                  <div className="space-y-4">
+                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">Selecciona el tipo de movimiento</h4>
+                    <button onClick={() => { setQeType('egreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-rose-500/20 hover:border-rose-500 hover:shadow-glow-magenta rounded-2xl text-rose-400 font-black text-lg transition-all hover:-translate-y-1">📉 Registrar Gasto</button>
+                    <button onClick={() => { setQeType('ingreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-emerald-500/20 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] rounded-2xl text-emerald-400 font-black text-lg transition-all hover:-translate-y-1">📈 Registrar Ingreso</button>
+                  </div>
+                )}
+                {qeStep === 2 && (
+                  <div className="space-y-6">
+                    <div>
+                      <label className={`text-[10px] font-black uppercase tracking-widest block mb-2 ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>Monto exacto</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-600">$</span>
+                        <input type="number" value={qeMonto} onChange={e=>setQeMonto(e.target.value)} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent ${qeType === 'egreso' ? 'focus:border-rose-500 focus:shadow-glow-magenta text-rose-400' : 'focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(16,185,129,0.4)] text-emerald-400'} rounded-2xl pl-10 pr-4 py-5 text-3xl font-black outline-none transition-all placeholder:text-slate-700`} placeholder="0" autoFocus />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest block mb-2">Descripción (Opcional)</label>
+                      <input type="text" value={qeDescripcion} onChange={e=>setQeDescripcion(e.target.value)} className="w-full bg-[#111222] shadow-neumorph-inset border border-transparent focus:border-neoncyan text-white rounded-xl px-4 py-3.5 text-sm font-medium outline-none transition-all placeholder:text-slate-600" placeholder="¿En qué fue?" />
+                    </div>
+                    <button disabled={!qeMonto} onClick={() => setQeStep(3)} className="w-full py-4 rounded-xl font-black text-[#0b0c16] text-lg bg-neoncyan shadow-glow-cyan disabled:opacity-20 disabled:shadow-none transition-all">Siguiente Paso</button>
+                  </div>
+                )}
+                {qeStep === 3 && (
+                  <div className="h-full flex flex-col">
+                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">Selecciona la categoría</h4>
+                    <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {(qeType === 'egreso' ? categoriasMaestras : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
+                          <button key={cat} onClick={() => { setQeCategoria(cat); setQeStep(4); }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">{cat}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {qeStep === 4 && (
+                  <div className="space-y-4">
+                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">{qeType === 'egreso' ? '¿Cómo lo pagaste?' : '¿A dónde entró el dinero?'}</h4>
+                    <button onClick={() => { setQeMethod('cash'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💵</span> Efectivo</button>
+                    <button onClick={() => { setQeMethod('bank'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">🏦</span> Cuenta Débito / Ahorros</button>
+                    {qeType === 'egreso' && <button onClick={() => { setQeMethod('credit'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💳</span> Tarjeta de Crédito</button>}
+                  </div>
+                )}
+                {qeStep === 5 && (
+                  <div className="space-y-6">
+                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-2">{qeType === 'egreso' ? '¿De cuál cuenta exactamente?' : '¿A qué cuenta exactamente?'}</h4>
+                    <div className="grid grid-cols-1 gap-2.5 overflow-y-auto max-h-[250px] pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                      {activeCalculatedAccounts.filter(c => c.type === qeMethod).map(acc => (
+                        <button key={acc.id} onClick={() => setQeCuenta(acc.id)} className={`p-4 rounded-xl text-sm font-bold text-left transition-all border flex justify-between items-center ${qeCuenta === acc.id ? 'bg-neoncyan/10 border-neoncyan text-neoncyan shadow-glow-cyan' : 'bg-[#111222] border-white/[0.02] text-slate-300 hover:border-slate-600'}`}>
+                          <span>{acc.name}</span>
+                          {qeCuenta === acc.id && <div className="w-2.5 h-2.5 bg-neoncyan rounded-full shadow-[0_0_8px_#00E5FF]"></div>}
+                        </button>
+                      ))}
+                      {activeCalculatedAccounts.filter(c => c.type === qeMethod).length === 0 && <div className="text-center p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl"><p className="text-rose-400 text-xs font-bold">No tienes cuentas de este tipo registradas.</p></div>}
+                    </div>
+                    {qeCuenta && <button onClick={handleQuickSave} className={`w-full py-4 rounded-xl font-black text-lg transition-all hover:scale-[1.02] active:scale-95 ${qeType === 'egreso' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-emerald-500 text-[#0b0c16] shadow-[0_0_20px_rgba(16,185,129,0.4)]'}`}>¡Confirmar y Guardar!</button>}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
-    while (state.xp >= xpForNext) {
-        state.level++;
-        xpForNext = Math.floor(100 * Math.pow(state.level, 1.5));
-        window.showToast('¡NIVEL SUBIDO! 🎉 Nivel ' + state.level, 'success');
-    }
+        {/* ✨ MODAL DEL BUSCADOR GLOBAL */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 bg-[#0b0c16]/90 backdrop-blur-md z-[60] flex flex-col items-center pt-10 md:pt-20 px-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-2xl flex flex-col relative animate-in slide-in-from-top-4">
+              
+              <div className="relative z-10">
+                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-neoncyan"><SearchIcon size={24}/></span>
+                <input 
+                  id="global-search-input"
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Busca el nombre del colegio, un supermercado, una cuenta..."
+                  className="w-full bg-appcard shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-neoncyan/30 rounded-2xl pl-16 pr-12 py-5 text-lg font-black text-white outline-none focus:border-neoncyan focus:shadow-glow-cyan transition-all placeholder:text-slate-600 placeholder:font-medium"
+                />
+                <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-rose-400 p-2 transition-colors">
+                  <XIconGlobal size={20}/>
+                </button>
+              </div>
 
-    updateHeaderUI();
-    saveState();
-    
-    if (showMsg && totalXP > 0) {
-        window.showToast(`+${totalXP} XP ${streakBonus > 0 ? '🔥' : ''}`, 'success');
-    }
-}
+              {searchQuery.trim() !== '' && (
+                <div className="mt-4 bg-appcard border border-white/[0.05] rounded-2xl p-2 max-h-[60vh] overflow-y-auto shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                  {searchResults.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {searchResults.map((res, i) => (
+                        <div key={i} className="flex justify-between items-center p-4 hover:bg-white/[0.02] rounded-xl transition-colors cursor-default border border-transparent hover:border-white/[0.05]">
+                          <div className="flex items-center gap-4 overflow-hidden">
+                            <span className="text-2xl shrink-0">{res.icon}</span>
+                            <div className="truncate pr-2">
+                              <p className="text-sm font-bold text-white tracking-wide truncate">{res.descripcion}</p>
+                              <p className="text-[10px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5">{res.fecha} • {res.tipo}</p>
+                            </div>
+                          </div>
+                          <span className={`text-sm font-black tabular-nums shrink-0 drop-shadow-md ${res.color}`}>
+                            {formatCOPPrivacy(res.monto)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-10 text-center">
+                      <p className="text-[#8A92A6] text-sm font-bold tracking-wide">No se encontraron resultados para "<span className="text-white">{searchQuery}</span>"</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
-function updateHeaderUI() {
-    const xpCurrentLevelBase = state.level === 1 ? 0 : Math.floor(100 * Math.pow(state.level - 1, 1.5));
-    const xpNextLevelBase = Math.floor(100 * Math.pow(state.level, 1.5));
-    
-    const xpInLevel = state.xp - xpCurrentLevelBase;
-    const xpRequiredForNext = xpNextLevelBase - xpCurrentLevelBase;
-    
-    const pct = Math.min(100, Math.max(0, Math.round((xpInLevel / xpRequiredForNext) * 100)));
-    
-    const fill = document.getElementById('xp-fill');
-    if (fill) fill.style.width = pct + '%';
-    
-    safeSet('xp-display', `${xpInLevel} / ${xpRequiredForNext} XP`);
-    
-    const rankInfo = getrank(0); 
-    safeSet('level-display', `Nivel ${state.level} · ${rankInfo.cefr}`);
-    
-    safeSet('xp-pill', `${state.xp} XP`);
-    safeSet('streak-display', `${state.streak} Día${state.streak !== 1 ? 's' : ''}`);
-    
-    const init = document.getElementById('avatar-initials');
-    if (init) init.textContent = state.userName.charAt(0).toUpperCase();
-    const nameEl = document.getElementById('user-name-display');
-    if (nameEl) nameEl.textContent = state.userName;
-}
+  return AppComponent;
+})();
 
-function logActivity(text, xp, color) {
-    const now = new Date();
-    const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-    state.activityLog.unshift({ text, xp, color: color || '#534AB7', time });
-    if (state.activityLog.length > 20) state.activityLog.pop();
-}
-
-// ============================================================
-// MOTOR DE AUDIO (Web Speech API)
-// ============================================================
-window.playAudio = function(text, lang = 'en-US', event = null) {
-    if (event) {
-        event.stopPropagation();
-    }
-
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang;
-        utterance.rate = 0.85; 
-        utterance.pitch = 1;
-        window.speechSynthesis.speak(utterance);
-    } else {
-        window.showToast('Tu navegador no soporta reproducción de audio', 'warn');
-    }
-};
-
-// ============================================================
-// TOAST & UTILITY
-// ============================================================
-let toastTimer = null;
-window.showToast = function(msg, type) {
-    const t = document.getElementById('toast');
-    if(!t) return;
-    t.textContent = msg;
-    t.className = 'toast ' + (type ? 'toast-' + type : 'toast-success') + ' show';
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
-};
-
-function safeSet(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-}
-
-// ============================================================
-// MODO VISTA PREVIA (ADMINISTRADOR)
-// ============================================================
-window.toggleAdminView = function() {
-    state.adminView = !state.adminView;
-    window.showToast(state.adminView ? 'Modo Vista Previa: Candados desactivados' : 'Candados activados nuevamente', 'success');
-    window.renderDashboard();
-};
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
