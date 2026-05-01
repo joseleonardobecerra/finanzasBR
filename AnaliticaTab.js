@@ -1,8 +1,12 @@
 const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, scoreHistory, proyeccionLiquidez, privacyMode }) => {
-  const { useMemo } = React;
+  const { useMemo, useState } = React;
 
   // ✨ IMPORTAMOS COMPONENTES DE GRÁFICAS
-  const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, ResponsiveContainer, Legend } = window.Recharts;
+  const { PieChart, Pie, Cell, ResponsiveContainer, Tooltip: RechartsTooltip } = window.Recharts;
+
+  // Estado para controlar qué tarjeta muestra su explicación
+  const [expandedInfo, setExpandedInfo] = useState(null);
+  const toggleInfo = (id) => setExpandedInfo(prev => prev === id ? null : id);
 
   // --- ÍCONOS NATIVOS ---
   const Zap = ({ size = 24, className = "" }) => (
@@ -28,6 +32,18 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   const Activity = ({ size = 24, className = "" }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+    </svg>
+  );
+
+  const InfoIcon = ({ size = 14, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>
+    </svg>
+  );
+
+  const BarChartIcon = ({ size = 18, className = "" }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>
     </svg>
   );
 
@@ -93,24 +109,8 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   };
 
   // ============================================================================
-  // LÓGICA DE DATOS MEJORADA (Sin saltos de tiempo y con identidad correcta)
+  // LÓGICA DE DATOS MEJORADA
   // ============================================================================
-  
-  const identifyOwner = (cuentaId, itemPersona, textDesc) => {
-    if (itemPersona === 'L' || itemPersona === 'Leo') return 'Leo';
-    if (itemPersona === 'A' || itemPersona === 'Andre') return 'Andre';
-    let targetName = textDesc || '';
-    if (cuentaId) {
-        const c = cuentas.find(acc => acc.id === cuentaId);
-        if (c) targetName = c.name;
-    }
-    const t = targetName.toUpperCase();
-    const hasL = t.includes('LEO') || t.endsWith(' L') || t.includes(' L ');
-    const hasA = t.includes('ANDRE') || t.includes('ANDRÉ') || t.endsWith(' A') || t.includes(' A ');
-    if (hasL && !hasA) return 'Leo';
-    if (hasA && !hasL) return 'Andre';
-    return 'Shared';
-  };
 
   const {
     historialMensual, totalIngresosAnual, totalEgresosAnual, totalFijosAnual, totalVariablesAnual, mesesConSuperavit
@@ -119,11 +119,11 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     const meses = [];
     let sumIng = 0, sumEgr = 0, sumFijos = 0, sumVar = 0, superavitCount = 0;
 
-    // ✨ CORRECCIÓN: Fechas locales sin toISOString
+    // ✨ CORRECCIÓN: Fechas locales 
     const [selYear, selMonth] = selectedMonth.split('-');
 
     for (let i = 11; i >= 0; i--) {
-      // Calculamos usando el día 15 para evitar saltos de mes por horas nocturnas
+      // Usamos el día 15 para evitar desfases de horario UTC
       const d = new Date(Number(selYear), Number(selMonth) - 1 - i, 15);
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -151,18 +151,20 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
     return { historialMensual: meses, totalIngresosAnual: sumIng, totalEgresosAnual: sumEgr, totalFijosAnual: sumFijos, totalVariablesAnual: sumVar, mesesConSuperavit: superavitCount };
   }, [ingresos, egresos, selectedMonth]);
 
+  const maxTrendVal = Math.max(...historialMensual.map(d => Math.max(d.ingresos, d.egresos)), 1);
+
   const deudasOrdenadas = useMemo(() => {
     return cuentas.filter(c => (c.type === 'credit' || c.type === 'loan') && c.currentDebt > 0).sort((a, b) => b.tasaEA - a.tasaEA); 
   }, [cuentas]);
 
   const ingMesActual = historialMensual[historialMensual.length - 1]?.ingresos || 0;
   
-  // ✨ CORRECCIÓN: Carga de Deuda Dinámica (Evita el 0% falso en Tarjetas)
+  // ✨ CORRECCIÓN: Carga de Deuda Dinámica
   const cuotasMesActual = cuentas.reduce((sum, c) => {
     if (c.currentDebt <= 0) return sum;
     if (c.type === 'credit') {
         const cuotaTC = Number(c.cuotaMinima) || 0;
-        // Si el usuario configuró $0, estimamos un 5% de la deuda como pago mínimo para medir el impacto financiero.
+        // Si no hay cuota configurada, asumimos el 5% de la deuda como obligación mensual
         return sum + (cuotaTC > 0 ? cuotaTC : c.currentDebt * 0.05);
     }
     return sum + (Number(c.cuotaMinima) || 0);
@@ -213,62 +215,6 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
   const pctVariables = totalEgresosAnual > 0 ? (totalVariablesAnual / totalEgresosAnual) * 100 : 0;
 
   // ============================================================================
-  // ✨ CORRECCIÓN: DATOS PARA GRÁFICO RECHARTS LEO VS ANDRE (Identidad)
-  // ============================================================================
-  const datosComparativos = useMemo(() => {
-    const egresosMesFiltrados = egresos.filter(e => e.fecha.startsWith(selectedMonth));
-    const categoriasObj = {};
-
-    egresosMesFiltrados.forEach(e => {
-      const cat = e.categoria || 'Otros';
-      if (!categoriasObj[cat]) categoriasObj[cat] = { name: cat, Leo: 0, Andre: 0, Shared: 0 };
-      
-      const owner = identifyOwner(e.cuentaId, e.persona, e.descripcion);
-
-      if (owner === 'Leo') categoriasObj[cat].Leo += e.monto;
-      else if (owner === 'Andre') categoriasObj[cat].Andre += e.monto;
-      else categoriasObj[cat].Shared += e.monto;
-    });
-
-    return Object.values(categoriasObj)
-      .sort((a, b) => (b.Leo + b.Andre + b.Shared) - (a.Leo + a.Andre + a.Shared))
-      .slice(0, 6); 
-  }, [egresos, selectedMonth, cuentas]);
-
-  const CustomTooltipBar = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-appcard/95 backdrop-blur-md border border-white/[0.05] p-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] min-w-[150px]">
-          <p className="text-[11px] font-black uppercase tracking-widest text-white mb-3 border-b border-white/[0.1] pb-2">{label}</p>
-          {payload.map((entry, index) => (
-             entry.value > 0 && (
-              <div key={index} className="flex justify-between items-center text-xs font-bold mb-1.5 gap-4">
-                <span style={{ color: entry.fill }} className="uppercase tracking-wider">{entry.name}</span>
-                <span className="text-white tabular-nums">{formatCOP(entry.value)}</span>
-              </div>
-             )
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const EmptyStateAnalitica = () => (
-    <div className="flex flex-col items-center justify-center p-10 h-full text-center animate-in zoom-in-95 duration-500">
-      <div className="relative w-20 h-20 mb-4">
-        <div className="absolute inset-0 bg-neonmagenta/20 blur-xl rounded-full animate-pulse"></div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full text-neonmagenta drop-shadow-[0_0_10px_rgba(255,0,122,0.8)]">
-          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-        </svg>
-      </div>
-      <h3 className="text-white font-black uppercase tracking-widest text-xs mb-1">Sin datos para analizar</h3>
-      <p className="text-[#8A92A6] text-[10px] font-bold w-3/4 mx-auto">Comienza a registrar movimientos.</p>
-    </div>
-  );
-
-
-  // ============================================================================
   // INTERFAZ DE USUARIO (UI)
   // ============================================================================
   return (
@@ -287,68 +233,115 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       </header>
 
       {/* ---------------------------------------------------- */}
-      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA             */}
+      {/* SECCIÓN 1: TARJETAS DE SALUD FINANCIERA (Interactiva) */}
       {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Gráfica Circular de Score */}
-        <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] flex flex-col items-center justify-center p-6 !border-t-0 shadow-neumorph-inset bg-[#111222]">
-          <p className="text-[10px] md:text-xs text-[#8A92A6] uppercase font-black tracking-widest mb-4">Salud Financiera</p>
+        <div onClick={() => toggleInfo('score')} className="bg-[#111222] shadow-neumorph-inset p-6 rounded-[30px] border border-transparent flex flex-col items-center justify-center cursor-pointer group hover:bg-[#1c1e32] transition-colors relative">
+          <div className="flex items-center gap-1.5 mb-4">
+            <p className="text-[10px] md:text-xs text-[#8A92A6] uppercase font-black tracking-widest group-hover:text-white transition-colors">Salud Financiera</p>
+            <InfoIcon size={12} className="text-slate-500 group-hover:text-neoncyan" />
+          </div>
           <ScoreGauge score={scoreData.score} />
+          {expandedInfo === 'score' && (
+            <div className="mt-4 pt-3 border-t border-white/[0.05] text-[10px] text-slate-400 font-medium text-center animate-in slide-in-from-top-2">
+              Puntaje global del motor basado en tus hábitos. Premia el ahorro consistente, un bajo uso de deudas y la liquidez positiva a fin de mes.
+            </div>
+          )}
         </div>
 
         {/* Tarjetas de KPI */}
         <div className="flex flex-col gap-4 lg:col-span-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-            <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-magenta transition-all">
-              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1 group-hover:text-neonmagenta transition-colors">Carga de Deuda</p>
+            
+            <div onClick={() => toggleInfo('deuda')} className="bg-[#111222] shadow-neumorph-inset p-5 rounded-[30px] border border-transparent flex flex-col justify-center cursor-pointer group hover:shadow-glow-magenta transition-all">
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest group-hover:text-neonmagenta transition-colors">Carga de Deuda</p>
+                <InfoIcon size={12} className="text-slate-500 group-hover:text-neonmagenta" />
+              </div>
               <p className={`text-3xl font-black tabular-nums drop-shadow-md ${cargaDeuda > 40 ? 'text-neonmagenta drop-shadow-[0_0_10px_rgba(255,0,122,0.5)]' : 'text-white'}`}>
                 {cargaDeuda.toFixed(1)}%
               </p>
+              {expandedInfo === 'deuda' && (
+                <div className="mt-3 pt-3 border-t border-white/[0.05] text-[10px] text-slate-400 font-medium animate-in slide-in-from-top-2">
+                  Es el porcentaje de tus ingresos mensuales que destinas obligatoriamente al pago de cuotas y tarjetas de crédito. Tu salud corre riesgo si superas el 30%.
+                </div>
+              )}
             </div>
 
-            <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222] group hover:shadow-glow-cyan transition-all">
-              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1 group-hover:text-neoncyan transition-colors">Tasa de Ahorro</p>
+            <div onClick={() => toggleInfo('ahorro')} className="bg-[#111222] shadow-neumorph-inset p-5 rounded-[30px] border border-transparent flex flex-col justify-center cursor-pointer group hover:shadow-glow-cyan transition-all">
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest group-hover:text-neoncyan transition-colors">Tasa de Ahorro</p>
+                <InfoIcon size={12} className="text-slate-500 group-hover:text-neoncyan" />
+              </div>
               <p className="text-3xl font-black text-neoncyan tabular-nums drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]">{tasaAhorroAnual.toFixed(1)}%</p>
+              {expandedInfo === 'ahorro' && (
+                <div className="mt-3 pt-3 border-t border-white/[0.05] text-[10px] text-slate-400 font-medium animate-in slide-in-from-top-2">
+                  Es la proporción histórica de tus ingresos totales que lograste retener en el sistema. Los expertos recomiendan apuntar al 20%.
+                </div>
+              )}
             </div>
 
-            <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 flex flex-col justify-center !border-t-0 shadow-neumorph-inset bg-[#111222]">
-              <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest mb-1">Flujo Promedio</p>
+            <div onClick={() => toggleInfo('flujo')} className="bg-[#111222] shadow-neumorph-inset p-5 rounded-[30px] border border-transparent flex flex-col justify-center cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] text-[#8A92A6] uppercase font-black tracking-widest group-hover:text-white transition-colors">Flujo Promedio</p>
+                <InfoIcon size={12} className="text-slate-500 group-hover:text-white" />
+              </div>
               <p className={`text-2xl font-black tabular-nums ${flujoPromedioMes >= 0 ? 'text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]'}`}>
                 {formatCOP(flujoPromedioMes)}
               </p>
+              {expandedInfo === 'flujo' && (
+                <div className="mt-3 pt-3 border-t border-white/[0.05] text-[10px] text-slate-400 font-medium animate-in slide-in-from-top-2">
+                  Es la diferencia promedio mensual (Ingresos menos Egresos) considerando toda la línea de tiempo de tu base de datos.
+                </div>
+              )}
             </div>
+
           </div>
         </div>
       </div>
 
       {/* ---------------------------------------------------- */}
-      {/* SECCIÓN NUEVA: GRÁFICO RECHARTS LEO VS ANDRE         */}
+      {/* ✨ SECCIÓN NUEVA: TENDENCIA HISTÓRICA (Viene del Dash) */}
       {/* ---------------------------------------------------- */}
-      <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 flex flex-col h-[400px]">
-        <h2 className="text-xs font-black text-white uppercase tracking-widest mb-2 flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-neoncyan"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-          Top Gastos: Leo vs Andre
+      <div className="bg-appcard shadow-neumorph p-5 md:p-8 rounded-[30px] border border-white/[0.02] flex flex-col">
+        <h2 className="text-sm font-black text-white mb-8 flex items-center gap-2 uppercase tracking-widest">
+          <BarChartIcon size={18} className="text-neoncyan" /> Tendencia Histórica
         </h2>
-        <p className="text-[10px] text-[#8A92A6] font-bold uppercase tracking-widest mb-6">Comparativa por Categorías (Mes Actual)</p>
-        
-        <div className="flex-1 w-full">
-          {datosComparativos.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={datosComparativos} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1c1e32" vertical={false} />
-                <XAxis dataKey="name" stroke="#8A92A6" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(val) => val.substring(0,6)+'...'} />
-                <YAxis stroke="#8A92A6" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
-                <RechartsTooltip content={<CustomTooltipBar />} cursor={{fill: '#1c1e32', opacity: 0.4}} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
-                <Bar dataKey="Leo" fill="#00E5FF" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Andre" fill="#FF007A" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Shared" name="Compartido" fill="#FBBF24" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyStateAnalitica />
+        <div className="flex-1 flex items-end justify-between gap-3 h-[250px] pb-4 border-b border-white/[0.05]">
+          {historialMensual.map((d, i) => {
+            const hInc = (d.ingresos / maxTrendVal) * 100;
+            const hExp = (d.egresos / maxTrendVal) * 100;
+            const flujoAnterior = d.neto;
+            return (
+              <div key={i} className="flex flex-col items-center w-full h-full justify-end group relative">
+                <div className="flex gap-2 w-full justify-center items-end h-full">
+                  <div style={{ height: `${Math.max(hInc, 2)}%` }} className="w-1/3 max-w-[24px] bg-gradient-to-t from-[#111222] to-neoncyan rounded-t-md shadow-[0_0_10px_rgba(0,229,255,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(0,229,255,0.6)]"></div>
+                  <div style={{ height: `${Math.max(hExp, 2)}%` }} className="w-1/3 max-w-[24px] bg-gradient-to-t from-[#111222] to-neonmagenta rounded-t-md shadow-[0_0_10px_rgba(255,0,122,0.2)] transition-all group-hover:shadow-[0_0_15px_rgba(255,0,122,0.6)]"></div>
+                </div>
+                
+                {/* Tooltip Hover */}
+                <div className="opacity-0 group-hover:opacity-100 absolute -top-24 bg-appcard shadow-neumorph border border-white/[0.05] p-3 rounded-xl whitespace-nowrap z-10 pointer-events-none transition-all duration-300">
+                  <p className="text-white font-black text-xs mb-2 border-b border-white/[0.1] pb-1 uppercase tracking-widest">{d.label}</p>
+                  <p className="text-neoncyan font-black text-xs mb-1">Ingresos: {formatCOP(d.ingresos)}</p>
+                  <p className="text-neonmagenta font-black text-xs mb-2">Egresos: {formatCOP(d.egresos)}</p>
+                  <div className="border-t border-white/[0.05] my-1 pt-1"></div>
+                  <p className={`font-black text-xs ${flujoAnterior >= 0 ? 'text-white' : 'text-amber-500'}`}>Neto: {formatCOP(flujoAnterior)}</p>
+                </div>
+              </div>
+            )
+          })}
+          {historialMensual.length === 0 && (
+             <div className="w-full text-center text-slate-500 font-bold text-xs pb-10">Esperando datos históricos...</div>
           )}
+        </div>
+        <div className="flex justify-between mt-4 px-2">
+          {historialMensual.map((d, i) => <span key={i} className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">{d.label}</span>)}
+        </div>
+        <div className="flex justify-center gap-6 mt-8 text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">
+          <span className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-neoncyan shadow-glow-cyan"></div> Ingresos</span>
+          <span className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-neonmagenta shadow-glow-magenta"></div> Egresos</span>
         </div>
       </div>
 
@@ -358,18 +351,28 @@ const AnaliticaTab = ({ ingresos, egresos, selectedMonth, cuentas, scoreData, sc
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
         {proyeccionLiquidez ? (
-          <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 xl:col-span-2 flex flex-col justify-center">
-            <h2 className="text-lg font-black text-white mb-6 tracking-wide flex items-center gap-2">
-              <TrendingUp size={20} className="text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"/> 
-              Proyección de Liquidez (90 Días)
-            </h2>
+          <div onClick={() => toggleInfo('liquidez')} className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8 xl:col-span-2 flex flex-col justify-center cursor-pointer group hover:bg-[#1c1e32] transition-colors relative">
+            <div className="flex justify-between items-start mb-6">
+               <h2 className="text-lg font-black text-white tracking-wide flex items-center gap-2">
+                 <TrendingUp size={20} className="text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]"/> 
+                 Proyección de Liquidez (90 Días)
+               </h2>
+               <InfoIcon size={16} className="text-slate-500 group-hover:text-white" />
+            </div>
+
+            {expandedInfo === 'liquidez' && (
+              <div className="mb-6 pb-4 border-b border-white/[0.05] text-[11px] text-slate-400 font-medium animate-in slide-in-from-top-2">
+                Estimación de tu efectivo disponible futuro. El motor asume que tus ingresos seguirán siendo promedio, y le resta tus deudas, pagos fijos y el histórico de tus gastos variables. Si ves números negativos, ¡es una alerta temprana!
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {[
                 { label: '30 días', val: proyeccionLiquidez.liq30 },
                 { label: '60 días', val: proyeccionLiquidez.liq60 },
                 { label: '90 días', val: proyeccionLiquidez.liq90 },
               ].map(({ label, val }) => (
-                <div key={label} className="bg-[#111222] shadow-neumorph-inset border border-transparent rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 hover:border-white/[0.05] transition-colors">
+                <div key={label} className="bg-[#111222] shadow-neumorph-inset border border-transparent rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 transition-colors">
                   <p className="text-[11px] text-[#8A92A6] uppercase font-black tracking-widest">{label}</p>
                   <p className={`text-3xl font-black tabular-nums ${val >= 0 ? 'text-neoncyan drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]' : 'text-neonmagenta drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]'}`}>
                     {formatCOP(val)}
