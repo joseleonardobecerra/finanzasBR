@@ -1,6 +1,6 @@
 (() => {
 // ============================================================================
-// COMPONENTES UI EXTERNOS (Privados para CuentasTab)
+// COMPONENTES UI EXTERNOS
 // ============================================================================
 const Edit3 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
 const Trash2 = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
@@ -39,27 +39,31 @@ const BankLogo = ({ name, type, className = "w-6 h-6 rounded-full shrink-0" }) =
   const { useState } = React;
   const [attempt, setAttempt] = useState(0);
   
+  // Convertimos a minúsculas para buscar fragmentos (ej: "Bancolombia Leo" -> "bancolombia leo")
   const lowerName = (name || '').toLowerCase();
 
+  // Si es efectivo, siempre mostramos el emoji (no hay logo para el efectivo físico)
   if (type === 'cash') return <span className="text-lg shrink-0">💵</span>;
 
+  // Diccionario inteligente para detectar el banco según si el nombre INCLUYE esa palabra
   let domain = null;
   if (lowerName.includes('bancolombia')) domain = 'grupobancolombia.com';
   else if (lowerName.includes('nequi')) domain = 'nequi.com.co';
-  else if (lowerName.includes('daviplata') || lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com'; 
-  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes('nu ')) domain = 'nu.com.co'; 
+  else if (lowerName.includes('daviplata') || lowerName.includes('davivienda') || lowerName.includes('davibank')) domain = 'davivienda.com'; // Redirige a la casita roja
+  else if (lowerName.includes('nu bank') || lowerName.includes('nubank') || lowerName.includes('nu ')) domain = 'nu.com.co'; // Dominio global de Nu
   else if (lowerName.includes('bogot')) domain = 'bancodebogota.com';
   else if (lowerName.includes('lulo')) domain = 'lulobank.com';
-  else if (lowerName.includes('rappi')) domain = 'rappi.com.co';
-  else if (lowerName.includes('falabella')) domain = 'bancofalabella.com.co';
-  else if (lowerName.includes('bbva')) domain = 'bbva.com.co';
-  else if (lowerName.includes('colpatria') || lowerName.includes('scotia')) domain = 'scotiabankcolpatria.com';
+  else if (lowerName.includes('rappi')) domain = 'rappi.com';
+  else if (lowerName.includes('falabella')) domain = 'falabella.com';
+  else if (lowerName.includes('bbva')) domain = 'bbva.com';
+  else if (lowerName.includes('colpatria') || lowerName.includes('scotia')) domain = 'scotiabank.com';
   else if (lowerName.includes('caja social')) domain = 'bancocajasocial.com';
   else if (lowerName.includes('av villas')) domain = 'bancoavvillas.com.co';
   else if (lowerName.includes('popular')) domain = 'bancopopular.com.co';
   else if (lowerName.includes('itau') || lowerName.includes('itaú')) domain = 'itau.co';
   else if (lowerName.includes('occidente')) domain = 'bancodeoccidente.com.co';
 
+  // Si encontramos un dominio y no ha superado los 2 intentos
   if (domain && attempt < 2) {
     const src = attempt === 0 
       ? `https://logo.clearbit.com/${domain}` 
@@ -76,6 +80,7 @@ const BankLogo = ({ name, type, className = "w-6 h-6 rounded-full shrink-0" }) =
     );
   }
 
+  // Fallbacks: Si no reconoce el nombre o fallaron los 2 intentos, vuelve a los emojis seguros
   if (type === 'pocket') return <span className="text-lg shrink-0">📈</span>;
   if (type === 'credit') return <span className="text-lg shrink-0">💳</span>;
   return <span className="text-lg shrink-0">🏦</span>;
@@ -84,7 +89,7 @@ const BankLogo = ({ name, type, className = "w-6 h-6 rounded-full shrink-0" }) =
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
-const CuentasTabComponent = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
+const CuentasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta,
                       transferencias, addTransferencia, removeTransferencia,
                       addEgreso, showToast, privacyMode }) => {
   const { useState, useRef } = React;
