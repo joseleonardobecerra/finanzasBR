@@ -80,9 +80,12 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
   const totalDeudaTC = todasLasTC.reduce((sum, d) => sum + (Number(d.currentDebt) || 0), 0);
   const totalDispTC = todasLasTC.reduce((sum, d) => sum + Math.max(0, (Number(d.limit) || 0) - (Number(d.currentDebt) || 0)), 0);
   
-  // ✨ Uso total del mes (Suma TODO lo que haya salido de alguna tarjeta de crédito)
+  // ✨ CORRECCIÓN DE BUG "STRING VS NUMBER": 
+  // Convertimos cuentaId y tc.id a String para que las comparaciones funcionen perfecto.
   const totalUsoTCMes = todasLasTC.reduce((sum, tc) => {
-      const usoMesTC = egresosMes.filter(e => e.cuentaId === tc.id).reduce((s, e) => s + Number(e.monto), 0);
+      const usoMesTC = egresosMes
+        .filter(e => String(e.cuentaId) === String(tc.id))
+        .reduce((s, e) => s + Number(e.monto), 0);
       return sum + usoMesTC;
   }, 0);
 
@@ -396,9 +399,9 @@ const DeudasTab = ({ cuentas, addCuenta, updateCuenta, removeCuenta, showToast, 
                   const isEditing = editId === d.id;
                   const tasaMV = getTasaMensual(d.tasaEA) * 100;
                   
-                  // ✨ Uso de la tarjeta en el mes (Cualquier egreso que haya "salido" de ella)
+                  // ✨ SOLUCIÓN DEL BUG: Usamos String() para igualar el ID que viene del HTML Select con el ID nativo de Firebase/Javascript
                   const usoMesActual = egresosMes
-                    .filter(e => e.cuentaId === d.id)
+                    .filter(e => String(e.cuentaId) === String(d.id))
                     .reduce((s, e) => s + Number(e.monto), 0);
                   
                   if (isEditing) {
