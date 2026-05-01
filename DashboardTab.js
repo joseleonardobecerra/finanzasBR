@@ -11,6 +11,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
     setExpandedCard(prev => prev === cardId ? null : cardId);
   };
 
+  // ✨ MODO PRIVACIDAD APLICADO
   const formatCOP = (val) => {
     if (privacyMode) return '****';
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
@@ -45,7 +46,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
   const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
   const idsTarjetas = tarjetasCredito.map(c => c.id);
 
-  // ✨ LÓGICA CORREGIDA: Suma TC + Fijos + Variables
+  // Sumas de presupuestos configurados
   const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
   const totalPresupuestadoTC = tarjetasCredito.reduce((sum, tc) => sum + (Number(tc.cuotaMinima) || 0), 0);
   const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
@@ -72,27 +73,50 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
 
   const dineroDisponible = ingresosMesTotal - egresosMesTotal;
 
-  // ✨ LÓGICA CORREGIDA: Pagos pendientes detectando Fijos Regulares + TC separadas
+  // ============================================================================
+  // ✨ DETECCIÓN A PRUEBA DE BALAS DE PAGOS PENDIENTES
+  // ============================================================================
   const isPagoFijoRealizado = (pf) => egresosMes.some(e => {
-    if (e.pagoFijoId) return e.pagoFijoId === pf.id;
-    return e.tipo === 'Fijo' && e.descripcion.toLowerCase() === (pf.descripcion || '').toLowerCase();
+    if (e.tipo !== 'Fijo') return false;
+    if (e.pagoFijoId === pf.id) return true;
+    
+    // Fallback inteligente para nombres viejos o variaciones
+    const descE = e.descripcion.toLowerCase();
+    const descP = (pf.descripcion || '').toLowerCase();
+    return descE === descP || descE.includes(descP);
   });
 
-  const isTCPagada = (tc) => egresosMes.some(e => e.pagoTarjetaId === tc.id);
+  const isTCPagada = (tc) => egresosMes.some(e => {
+    if (e.pagoTarjetaId === tc.id) return true;
+    if (e.deudaId === tc.id && e.tipo === 'Fijo') return true;
+    
+    // Fallback inteligente para tarjetas
+    const descE = e.descripcion.toLowerCase();
+    const tcName = tc.name.toLowerCase();
+    return (descE.includes(tcName) && e.tipo === 'Fijo');
+  });
 
-  const pagosFijosPtes = pagosFijos ? pagosFijos.filter(pf => !isPagoFijoRealizado(pf)).reduce((sum, pf) => sum + pf.monto, 0) : 0;
+  // Filtramos para evitar que TCs viejas en la tabla de Fijos sumen doble
+  const pagosFijosReales = pagosFijos ? pagosFijos.filter(pf => 
+    !tarjetasCredito.some(tc => tc.name.toLowerCase() === (pf.descripcion || '').toLowerCase())
+  ) : [];
+
+  const pagosFijosPtes = pagosFijosReales.filter(pf => !isPagoFijoRealizado(pf)).reduce((sum, pf) => sum + pf.monto, 0);
   const tcPtes = tarjetasCredito.filter(tc => !isTCPagada(tc)).reduce((sum, tc) => sum + (Number(tc.cuotaMinima) || 0), 0);
   
   const pagosFijosPendientesTotal = pagosFijosPtes + tcPtes;
 
   const hoy = new Date();
   const diaHoy = hoy.getDate();
-  const pagosPorVencer = pagosFijos ? pagosFijos.filter(pf => {
+  const pagosPorVencer = pagosFijosReales.filter(pf => {
     if (isPagoFijoRealizado(pf)) return false;
     const dia = pf.diaPago || 1;
     return dia >= diaHoy && dia <= diaHoy + 7;
-  }).sort((a, b) => (a.diaPago || 1) - (b.diaPago || 1)) : [];
+  }).sort((a, b) => (a.diaPago || 1) - (b.diaPago || 1));
 
+  // ============================================================================
+  // LIQUIDEZ Y CATEGORÍAS
+  // ============================================================================
   const liquidezAccounts = cuentas.filter(c => ['bank', 'cash'].includes(c.type) && !c.name.toLowerCase().includes('rappi'));
   let liquidezLeoCuentas = 0; let liquidezLeoEfectivo = 0;
   let liquidezAndreCuentas = 0; let liquidezAndreEfectivo = 0;
@@ -210,10 +234,9 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
         <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">Resumen de flujos, analítica de egresos y proyecciones.</p>
       </header>
 
-      {/* 1. TARJETAS DE RESUMEN SUPERIORES (Restauradas a 6 tarjetas) */}
+      {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         
-        {/* Tarjeta 1 */}
         <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
           <p className="text-xl md:text-3xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)] truncate">
@@ -221,7 +244,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* Tarjeta 2 */}
         <div onClick={() => toggleCard('egresos')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
@@ -247,7 +269,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </div>
 
-        {/* Tarjeta 3 */}
         <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-neoncyan/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest relative z-10">Flujo del mes</h3>
@@ -256,7 +277,7 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* Tarjeta 4 (CORREGIDA) */}
+        {/* ✨ TARJETA RECALCULADA A $0 AUTOMÁTICAMENTE */}
         <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
           <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Pagos Fijos Ptes.</h3>
           <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] truncate">
@@ -264,7 +285,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           </p>
         </div>
         
-        {/* Tarjeta 5 (CORREGIDA CON DESGLOSE TC) */}
         <div onClick={() => toggleCard('presupuesto')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
@@ -293,7 +313,6 @@ const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingres
           )}
         </div>
         
-        {/* Tarjeta 6 */}
         <div onClick={() => toggleCard('cuentas')} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
           <div className="flex justify-between items-start">
             <div>
