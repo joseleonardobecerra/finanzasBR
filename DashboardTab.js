@@ -6,6 +6,7 @@
   // 2. Protección contra arrays undefined/null
   // 3. Protección contra fechas, descripciones, montos y cuentas vacías
   // 4. Evita crashes si Recharts no carga
+  // 5. Separa compras con tarjeta vs pagos a tarjeta
   // ============================================================================
 
   // Íconos SVG privados para Dashboard
@@ -154,24 +155,86 @@
       .filter((e) => identifyOwner(e && e.cuentaId, null, e && e.descripcion) === "Andre")
       .reduce((s, e) => s + num(e && e.monto), 0);
 
-    // Gastos que NO fueron hechos usando tarjeta de crédito.
-    const gastadoFijoSinTC = egresosMesSafe
+    // ============================================================================
+    // CLASIFICACIÓN CORRECTA DE TARJETAS
+    // ============================================================================
+
+    // 1. Compras hechas USANDO una tarjeta.
+    // Ejemplo: restaurante pagado con Rappicard.
+    // En ese caso, cuentaId ES la tarjeta.
+    const comprasConTarjeta = egresosMesSafe.filter((e) => {
+      if (!e) return false;
+
+      const usaTarjetaComoMedioPago = idsTarjetas.includes(e.cuentaId);
+      const esPagoATarjeta = Boolean(e.pagoTarjetaId) || idsTarjetas.includes(e.deudaId);
+
+      return usaTarjetaComoMedioPago && !esPagoATarjeta;
+    });
+
+    // 2. Pagos hechos A una tarjeta.
+    // Ejemplo: desde Bancolombia pagaste Rappicard.
+    // En ese caso, cuentaId ES el banco y deudaId/pagoTarjetaId ES la tarjeta.
+    const pagosATarjeta = egresosMesSafe.filter((e) => {
+      if (!e) return false;
+
+      return Boolean(e.pagoTarjetaId) || idsTarjetas.includes(e.deudaId);
+    });
+
+    // 3. Gastos que salieron de liquidez real: bancos, efectivo o bolsillos.
+    // Incluye pagos a tarjeta porque sí salen del banco,
+    // pero se muestran separados para no confundirlos con consumo.
+    const salidasDesdeLiquidez = egresosMesSafe.filter((e) => {
+      if (!e) return false;
+      return !idsTarjetas.includes(e.cuentaId);
+    });
+
+    // 4. Consumo real sin pagos de deuda.
+    // Esto sirve para saber cuánto se gastó realmente en vida diaria,
+    // sin mezclarlo con abonos a tarjetas.
+    const consumoSinPagosDeTarjeta = egresosMesSafe.filter((e) => {
+      if (!e) return false;
+
+      const esPagoATarjeta = Boolean(e.pagoTarjetaId) || idsTarjetas.includes(e.deudaId);
+      return !esPagoATarjeta;
+    });
+
+    const gastadoFijoSinTC = consumoSinPagosDeTarjeta
       .filter((e) => e && e.tipo === "Fijo" && !idsTarjetas.includes(e.cuentaId))
       .reduce((s, e) => s + num(e && e.monto), 0);
 
-    const gastadoVarSinTC = egresosMesSafe
+    const gastadoVarSinTC = consumoSinPagosDeTarjeta
       .filter((e) => e && e.tipo !== "Fijo" && !idsTarjetas.includes(e.cuentaId))
       .reduce((s, e) => s + num(e && e.monto), 0);
 
-    // Gastos realizados usando una tarjeta de crédito como cuenta de pago.
-    const gastosConTarjeta = egresosMesSafe.filter((e) => e && idsTarjetas.includes(e.cuentaId));
+    const totalComprasConTarjeta = comprasConTarjeta
+      .reduce((s, e) => s + num(e && e.monto), 0);
 
-    const gastosTCLeo = gastosConTarjeta
+    const totalPagosATarjeta = pagosATarjeta
+      .reduce((s, e) => s + num(e && e.monto), 0);
+
+    const totalSalidasDesdeLiquidez = salidasDesdeLiquidez
+      .reduce((s, e) => s + num(e && e.monto), 0);
+
+    const comprasTCLeo = comprasConTarjeta
       .filter((e) => identifyOwner(e && e.cuentaId, null, e && e.descripcion) === "Leo")
       .reduce((s, e) => s + num(e && e.monto), 0);
 
-    const gastosTCAndre = gastosConTarjeta
+    const comprasTCAndre = comprasConTarjeta
       .filter((e) => identifyOwner(e && e.cuentaId, null, e && e.descripcion) === "Andre")
+      .reduce((s, e) => s + num(e && e.monto), 0);
+
+    const pagosTCLeo = pagosATarjeta
+      .filter((e) => {
+        const tc = tarjetasCredito.find((t) => t.id === e.deudaId || t.id === e.pagoTarjetaId);
+        return identifyOwner(tc && tc.id, null, (tc && tc.name) || e.descripcion) === "Leo";
+      })
+      .reduce((s, e) => s + num(e && e.monto), 0);
+
+    const pagosTCAndre = pagosATarjeta
+      .filter((e) => {
+        const tc = tarjetasCredito.find((t) => t.id === e.deudaId || t.id === e.pagoTarjetaId);
+        return identifyOwner(tc && tc.id, null, (tc && tc.name) || e.descripcion) === "Andre";
+      })
       .reduce((s, e) => s + num(e && e.monto), 0);
 
     const dineroDisponible = num(ingresosMesTotal) - num(egresosMesTotal);
@@ -496,6 +559,16 @@
                 <span className="font-black text-neonmagenta">{formatCOP(egrLeo)}</span>
               </div>
 
+              <div className="flex justify-between text-[11px] items-center">
+                <span className="text-[#8A92A6] font-bold">Compras con TC</span>
+                <span className="font-black text-neonmagenta">{formatCOP(comprasTCLeo)}</span>
+              </div>
+
+              <div className="flex justify-between text-[11px] items-center">
+                <span className="text-[#8A92A6] font-bold">Pagos a TC</span>
+                <span className="font-black text-indigo-400">{formatCOP(pagosTCLeo)}</span>
+              </div>
+
               <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
                 <span className="text-white">Flujo Leo</span>
                 <span className={ingLeo - egrLeo >= 0 ? "text-neoncyan" : "text-neonmagenta"}>{formatCOP(ingLeo - egrLeo)}</span>
@@ -522,6 +595,16 @@
                 <span className="font-black text-neonmagenta">{formatCOP(egrAndre)}</span>
               </div>
 
+              <div className="flex justify-between text-[11px] items-center">
+                <span className="text-[#8A92A6] font-bold">Compras con TC</span>
+                <span className="font-black text-neonmagenta">{formatCOP(comprasTCAndre)}</span>
+              </div>
+
+              <div className="flex justify-between text-[11px] items-center">
+                <span className="text-[#8A92A6] font-bold">Pagos a TC</span>
+                <span className="font-black text-indigo-400">{formatCOP(pagosTCAndre)}</span>
+              </div>
+
               <div className="flex justify-between text-base font-black pt-4 border-t border-white/[0.05] items-center">
                 <span className="text-white">Flujo Andre</span>
                 <span className={ingAndre - egrAndre >= 0 ? "text-neoncyan" : "text-neonmagenta"}>{formatCOP(ingAndre - egrAndre)}</span>
@@ -545,7 +628,7 @@
 
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[#8A92A6]">Fijos (Sin TC)</span>
+                  <span className="text-xs font-bold text-[#8A92A6]">Fijos sin pagos TC</span>
                   <span className="text-[10px] font-black text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded mt-1 w-max border border-indigo-500/20">Proy: {formatCOP(totalPresupuestadoFijo)}</span>
                 </div>
 
@@ -554,16 +637,28 @@
 
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[#8A92A6]">Var. (Sin TC)</span>
+                  <span className="text-xs font-bold text-[#8A92A6]">Variables sin pagos TC</span>
                   <span className="text-[10px] font-black text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded mt-1 w-max border border-indigo-500/20">Proy: {formatCOP(totalPresupuestadoVar)}</span>
                 </div>
 
                 <span className="font-black text-neoncyan mt-1">{formatCOP(gastadoVarSinTC)}</span>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-[#8A92A6]">Tarjetas Crédito</span>
-                <span className="font-black text-neonmagenta">{formatCOP(gastosTCLeo + gastosTCAndre)}</span>
+              <div className="space-y-2 bg-[#0b0c16]/40 rounded-xl p-3 border border-white/[0.03]">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-[#8A92A6]">Compras con TC</span>
+                  <span className="font-black text-neonmagenta">{formatCOP(totalComprasConTarjeta)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-[#8A92A6]">Pagos a TC</span>
+                  <span className="font-black text-indigo-400">{formatCOP(totalPagosATarjeta)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">Salidas desde liquidez</span>
+                  <span className="font-black text-slate-300">{formatCOP(totalSalidasDesdeLiquidez)}</span>
+                </div>
               </div>
 
               <div className="flex justify-between text-sm items-center border-t border-white/[0.05] pt-4 mt-2">
@@ -644,8 +739,5 @@
     );
   };
 
-  // 🚨 ESTA ERA LA LÍNEA QUE TE ESTABA ROMPIENDO LA APP.
-  // Antes estaba: window.DashboardTab = DashboardTabComponent;
-  // DashboardTabComponent no existe, por eso React quedaba en pantalla negra.
   window.DashboardTab = DashboardTab;
 })();
