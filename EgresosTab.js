@@ -10,11 +10,9 @@ const ListIcon = ({ size = 18, className = "" }) => <svg width={size} height={si
 const Edit3Icon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
 const Trash2Icon = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
 const Plus = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-const EyeOff = ({ size = 16, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>;
-const CreditCardIcon = ({ size = 18, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>;
 
 // ============================================================================
-// ✨ NUEVO DICCIONARIO MAESTRO DE CATEGORÍAS AUTOMATIZADO
+// ✨ DICCIONARIO MAESTRO DE CATEGORÍAS AUTOMATIZADO
 // ============================================================================
 const CATEGORIAS_CONFIG = {
   "🏠 Vivienda y Servicios": [
@@ -135,7 +133,7 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // 1. ESTADOS DEL FORMULARIO PRINCIPAL (Modificado para cascada)
+  // 1. ESTADOS DEL FORMULARIO PRINCIPAL
   // ============================================================================
   const [fecha, setFecha] = useState(getLocalToday());
   const [monto, setMonto] = useState('');
@@ -145,7 +143,7 @@ const EgresosTab = ({
   const [interesesOtros, setInteresesOtros] = useState('');
   const [tipo, setTipo] = useState('Variable');
   
-  // ✨ NUEVOS ESTADOS DE CASCADA
+  // ✨ ESTADOS PARA CATEGORÍA DINÁMICA
   const [catSeleccionada, setCatSeleccionada] = useState('');
   const [gastoEspecifico, setGastoEspecifico] = useState('');
 
@@ -180,7 +178,7 @@ const EgresosTab = ({
   const [tcEditData, setTcEditData] = useState({});
   
   // Estado para añadir nuevo Pago Fijo rápido
-  const [nuevoPf, setNuevoPf] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '1' });
+  const [nuevoPf, setNuevoPf] = useState({ descripcion: '', monto: '', categoria: Object.keys(CATEGORIAS_CONFIG)[0], diaPago: '1' });
 
   // Listas de Cuentas Filtradas Globales
   const cuentasActivas = cuentas.filter(c => ['bank', 'cash', 'pocket'].includes(c.type));
@@ -225,8 +223,6 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES DE REGISTRO INDIVIDUAL (FORMULARIO PRINCIPAL)
   // ============================================================================
-  
-  // ✨ Lógica para las opciones del selector de Gasto Específico
   const opcionesEspecificas = useMemo(() => {
     return catSeleccionada ? CATEGORIAS_CONFIG[catSeleccionada] : [];
   }, [catSeleccionada]);
@@ -238,15 +234,14 @@ const EgresosTab = ({
       return;
     }
     
-    // Obtenemos la subcategoría mapeada
     const config = CATEGORIAS_CONFIG[catSeleccionada].find(i => i.específico === gastoEspecifico);
     
     addEgreso({
       id: generateId(),
       fecha,
-      descripcion: gastoEspecifico, // El detalle específico se guarda como descripción para el historial
-      categoria: catSeleccionada,   // Categoría macro
-      subcategoria: config.sub,     // Subcategoría automática
+      descripcion: gastoEspecifico,
+      categoria: catSeleccionada,
+      subcategoria: config ? config.sub : 'Otros',
       monto: Number(monto),
       interesesOtros: Number(interesesOtros) || 0,
       cuentaId,
@@ -258,11 +253,22 @@ const EgresosTab = ({
     showToast('Gasto registrado correctamente.');
   };
 
-  const startEditing = (egreso) => { setEditingId(egreso.id); setEditData({ ...egreso }); };
+  const startEditing = (egreso) => { 
+    setEditingId(egreso.id); 
+    setEditData({ ...egreso }); 
+  };
   
   const saveEdit = async () => {
     if (!editData.descripcion || !editData.monto || !editData.cuentaId || !editData.categoria) return showToast('Faltan datos en la edición', 'error');
-    await updateEgreso(editingId, { ...editData, monto: Number(editData.monto) });
+    
+    // ✨ Lógica para recalcular la subcategoría si cambiaron los datos en la edición
+    let subcat = editData.subcategoria || '';
+    if (CATEGORIAS_CONFIG[editData.categoria]) {
+      const match = CATEGORIAS_CONFIG[editData.categoria].find(i => i.específico === editData.descripcion);
+      if (match) subcat = match.sub;
+    }
+
+    await updateEgreso(editingId, { ...editData, subcategoria: subcat, monto: Number(editData.monto) });
     setEditingId(null); showToast('Gasto actualizado.');
   };
   
@@ -304,9 +310,10 @@ const EgresosTab = ({
 
     addEgreso({
       id: generateId(),
-      fecha: getLocalToday(), // ✨ Guarda la fecha del día de hoy
+      fecha: getLocalToday(), 
       descripcion: `Pago Tarjeta: ${tc.name}`,
-      categoria: 'Tarjetas y Créditos',
+      categoria: '💳 Obligaciones (Deudas)', // Ajustado al nuevo diccionario
+      subcategoria: 'Tarjeta de Crédito',
       monto: montoPago,
       cuentaId: cuentaSale,
       tipo: 'Fijo',
@@ -362,7 +369,6 @@ const EgresosTab = ({
     ? pfState[pf.id].monto 
     : Number(pf.monto || 0);
 
-  // ✨ Ahora no tiene cuenta predeterminada, obliga a seleccionar
   const getPfCuenta = (pf) => pfState[pf.id]?.cuentaId !== undefined 
     ? pfState[pf.id].cuentaId 
     : '';
@@ -378,11 +384,19 @@ const EgresosTab = ({
     if (!cuentaFinal) return showToast('Por favor selecciona desde qué cuenta vas a pagar.', 'error');
     if (montoFinal <= 0) return showToast('El monto del pago debe ser mayor a 0.', 'error');
 
+    // Auto-detectamos la subcategoría si coincide
+    let autoSub = 'Otros';
+    if (CATEGORIAS_CONFIG[pf.categoria]) {
+      const match = CATEGORIAS_CONFIG[pf.categoria].find(i => i.específico === pf.descripcion);
+      if (match) autoSub = match.sub;
+    }
+
     addEgreso({
       id: generateId(),
-      fecha: getLocalToday(), // ✨ Guarda la fecha del día de hoy
+      fecha: getLocalToday(),
       descripcion: pf.descripcion,
       categoria: pf.categoria || 'Otros',
+      subcategoria: autoSub,
       monto: montoFinal,
       cuentaId: cuentaFinal,
       tipo: 'Fijo',
@@ -443,7 +457,7 @@ const EgresosTab = ({
       diaPago: Number(nuevoPf.diaPago),
       mesEspecifico: isRecurrente ? null : selectedMonth
     });
-    setNuevoPf({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '1' });
+    setNuevoPf({ descripcion: '', monto: '', categoria: Object.keys(CATEGORIAS_CONFIG)[0], diaPago: '1' });
     showToast(isRecurrente ? "Nuevo Pago Fijo agregado exitosamente." : "Pago programado solo para este mes.");
   };
 
@@ -544,7 +558,7 @@ const EgresosTab = ({
       </div>
 
       {/* ============================================================================ */}
-      {/* 1. FORMULARIO REGISTRO NORMAL (ACORDEÓN - ACTUALIZADO CON CASCADA) */}
+      {/* 1. FORMULARIO REGISTRO NORMAL (ACORDEÓN - ACTUALIZADO A CASCADA) */}
       {/* ============================================================================ */}
       <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8">
         <div 
@@ -597,7 +611,7 @@ const EgresosTab = ({
               </div>
             </div>
 
-            {/* FILA 2: DATOS FINANCIEROS Y METODOS */}
+            {/* Fila 2: Metodos y Cuentas */}
             <div>
               <label className={labelBaseClass}>Método de Pago</label>
               <select required value={metodoPago} onChange={(e) => { setMetodoPago(e.target.value); setCuentaId(''); }} className={`${inputBaseClass} appearance-none cursor-pointer`}>
@@ -607,7 +621,6 @@ const EgresosTab = ({
                 <option value="credit" className="bg-[#111222]">💳 Tarjeta de Crédito</option>
               </select>
             </div>
-            
             <div>
               <label className={labelBaseClass}>De dónde sale la plata</label>
               <select required disabled={!metodoPago} value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} className={`${inputBaseClass} appearance-none cursor-pointer disabled:opacity-30`}>
@@ -619,13 +632,12 @@ const EgresosTab = ({
                 ))}
               </select>
             </div>
-
             <div>
               <label className={labelBaseClass}>Fecha</label>
               <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`} />
             </div>
-            
-            {/* FILA 3: MONTOS Y EXTRAS */}
+
+            {/* Fila 3: Montos y Extras */}
             <div className="md:col-span-2 relative">
               <label className={labelBaseClass}>Monto Total Pagado</label>
               <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
@@ -640,11 +652,6 @@ const EgresosTab = ({
                 <option value="" className="bg-[#111222]">No es pago a deuda</option>
                 {todasLasDeudas.map(d => <option key={d.id} value={d.id} className="bg-[#111222]">Pagar: {d.name}</option>)}
               </select>
-            </div>
-
-            <div className="md:col-span-1">
-              <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest pl-1 mb-1.5 flex items-center gap-1">Pago de Intereses (Opcional)</label>
-              <input type="number" value={interesesOtros} onChange={(e) => setInteresesOtros(e.target.value)} placeholder="$ 0 (Extra/Interés)" className={`${inputBaseClass} !border-amber-500/30 focus:!border-amber-500 focus:!shadow-[0_0_15px_rgba(251,191,36,0.4)] font-bold text-amber-400`} />
             </div>
 
             {/* Fila 4: Controles */}
@@ -875,7 +882,6 @@ const EgresosTab = ({
                       <th className="px-5 py-4 w-[20%]">Nombre</th>
                       <th className="px-5 py-4 w-[15%]">Categoría</th>
                       <th className="px-5 py-4 w-[8%] text-center">Día</th>
-                      {/* ✨ AQUI ESTÁ LA COLUMNA DE CUENTA DE ORIGEN */}
                       <th className="px-5 py-4 w-[20%]">Pagar desde...</th>
                       <th className="px-5 py-4 w-[15%] text-right">Monto</th>
                       <th className="px-5 py-4 w-[14%] text-center">Acciones</th>
@@ -960,7 +966,6 @@ const EgresosTab = ({
                             {pf.diaPago || 1}
                           </td>
 
-                          {/* ✨ NUEVO: Selector de cuenta para Pagos Fijos */}
                           <td className="px-5 py-3">
                             {!isPaid ? (
                               <select 
@@ -1026,7 +1031,7 @@ const EgresosTab = ({
       </div>
 
       {/* ============================================================================ */}
-      {/* 4. TABLA HISTORIAL COMPLETA (Actualizada para Subcategorías) */}
+      {/* 4. TABLA HISTORIAL COMPLETA (Actualizada para la Edición Inteligente) */}
       {/* ============================================================================ */}
       <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8">
         <div 
@@ -1054,9 +1059,9 @@ const EgresosTab = ({
               <thead>
                 <tr className="border-b border-white/[0.05] text-[10px] uppercase tracking-widest text-[#8A92A6] bg-[#0b0c16]/50">
                   <th className="p-4 font-black w-[10%]">Fecha</th>
-                  <th className="p-4 font-black w-[25%]">Descripción</th>
+                  <th className="p-4 font-black w-[25%]">Descripción / Detalle</th>
                   <th className="p-4 font-black w-[12%] text-center">Fijo/Var</th>
-                  <th className="p-4 font-black w-[15%]">Categoría</th>
+                  <th className="p-4 font-black w-[15%]">Categoría / Sub</th>
                   <th className="p-4 font-black w-[15%]">Cuenta</th>
                   <th className="p-4 font-black w-[15%] text-right">Monto</th>
                   <th className="p-4 font-black text-center w-[8%]">Acciones</th>
@@ -1109,6 +1114,9 @@ const EgresosTab = ({
                     const cuentaObj = cuentas.find(c => c.id === egreso.cuentaId);
                     const cuentaName = cuentaObj?.name || 'Cuenta eliminada';
                     
+                    // ✨ Si estamos editando, traemos las opciones de descripción basadas en la categoría actual de editData
+                    const opcionesEdicionDetalle = isEditing && CATEGORIAS_CONFIG[editData.categoria] ? CATEGORIAS_CONFIG[editData.categoria] : [];
+                    
                     return (
                       <tr key={egreso.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
                         
@@ -1120,8 +1128,14 @@ const EgresosTab = ({
 
                         <td className="p-4 text-white font-bold text-[13px]">
                           {isEditing ? (
-                            <input type="text" value={editData.descripcion} onChange={e => setEditData({...editData, descripcion: e.target.value})} className="w-full bg-[#111222] rounded px-2 py-1 text-xs outline-none text-white" />
-                          ) : egreso.descripcion}
+                            // ✨ Selector dinámico para la descripción
+                            <select value={editData.descripcion} onChange={e => setEditData({...editData, descripcion: e.target.value})} className="w-full bg-[#111222] rounded px-2 py-1 text-xs outline-none text-white appearance-none cursor-pointer">
+                              <option value="">Seleccione Detalle...</option>
+                              {opcionesEdicionDetalle.map(opt => <option key={opt.específico} value={opt.específico}>{opt.específico}</option>)}
+                            </select>
+                          ) : (
+                            <span className="truncate block max-w-[200px]">{egreso.descripcion}</span>
+                          )}
                         </td>
 
                         <td className="p-4 text-center">
@@ -1139,13 +1153,15 @@ const EgresosTab = ({
 
                         <td className="p-4">
                           {isEditing ? (
-                            <select value={editData.categoria} onChange={e => setEditData({...editData, categoria: e.target.value})} className="w-full bg-[#111222] rounded px-2 py-1 text-xs outline-none text-white appearance-none cursor-pointer">
+                            // ✨ Selector dinámico para la Categoría
+                            <select value={editData.categoria} onChange={e => setEditData({...editData, categoria: e.target.value, descripcion: ''})} className="w-full bg-[#111222] rounded px-2 py-1 text-xs outline-none text-white appearance-none cursor-pointer">
+                              <option value="">Categoría...</option>
                               {Object.keys(CATEGORIAS_CONFIG).map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                           ) : (
                             <div>
                               <span className="px-3 py-1 bg-appcard border border-white/[0.05] text-[#8A92A6] text-[10px] font-bold uppercase tracking-wider rounded-lg block w-max">
-                                {egreso.categoria}
+                                {egreso.categoria || 'Sin Categoría'}
                               </span>
                               {egreso.subcategoria && (
                                 <span className="text-[9px] font-black text-slate-500 mt-1 block pl-1 uppercase tracking-widest">
@@ -1203,5 +1219,5 @@ const EgresosTab = ({
     </div>
   );
 };
-  window.EgresosTab = EgresosTab;
+window.EgresosTab = EgresosTab;
 })();
