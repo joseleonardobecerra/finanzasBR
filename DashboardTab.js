@@ -119,37 +119,14 @@ const DashboardTab = (() => {
 
     const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-    const getMacroCategoria = (catName) => {
-        if (!catName) return 'Otros Gastos';
-        const lower = catName.toLowerCase();
-        
-        if (lower.includes('tarjeta') || lower.includes('crédito') || lower.includes('credito') || lower.includes('interes') || lower.includes('davibank') || lower.includes('lulo')) return 'Tarjetas y Créditos';
-        if (lower.includes('vehículo') || lower.includes('vehiculo') || lower.includes('gasolina') || lower.includes('peaje') || lower.includes('parqueadero')) return 'Vehículo y Gasolina';
-        if (lower.includes('hogar') || lower.includes('aseo') || lower.includes('agua') || lower.includes('públicos') || lower.includes('publicos') || lower.includes('internet') || lower.includes('administración') || lower.includes('gas') || lower.includes('arriendo')) return 'Hogar y Servicios';
-        if (lower.includes('mercado') || lower.includes('alimentación') || lower.includes('alimentacion') || lower.includes('comida') || lower.includes('panadería') || lower.includes('restaurante')) return 'Mercado y Alimentación';
-        if (lower.includes('seguro') || lower.includes('salud') || lower.includes('médico') || lower.includes('medico') || lower.includes('farmacia')) return 'Seguros y Salud';
-        if (lower.includes('tobías') || lower.includes('tobias') || lower.includes('salomé') || lower.includes('salome') || lower.includes('niños') || lower.includes('colegio') || lower.includes('educación') || lower.includes('natación')) return 'Tobías y Salomé';
-        if (lower === 'andre' || lower === 'andrea' || lower.includes('ropa andre')) return 'Andre';
-        if (lower === 'leo' || lower.includes('ropa leo')) return 'Leo';
-        if (lower.includes('inversión') || lower.includes('inversion') || lower.includes('ahorro')) return 'Inversión y Ahorro';
-        
-        return catName; 
-    };
-
+    // ✨ GRÁFICA OPTIMIZADA: Ahora lee directamente tu nueva arquitectura de categorías (Sin deducciones)
     const chartData = useMemo(() => {
       const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
       const gastosPorCategoria = {};
       
       gastosFiltrados.forEach(g => {
-        const catOriginal = g.categoria || 'Otros';
-        const interesOriginal = g.interesesOtros || 0;
-        const capitalGasto = g.monto - interesOriginal;
-        
-        const macroCat = getMacroCategoria(catOriginal);
-        const macroInteres = getMacroCategoria('Intereses y Cargos');
-        
-        if (capitalGasto > 0) gastosPorCategoria[macroCat] = (gastosPorCategoria[macroCat] || 0) + capitalGasto;
-        if (interesOriginal > 0) gastosPorCategoria[macroInteres] = (gastosPorCategoria[macroInteres] || 0) + interesOriginal;
+        const macroCat = g.categoria || 'Otros Gastos';
+        gastosPorCategoria[macroCat] = (gastosPorCategoria[macroCat] || 0) + Number(g.monto);
       });
       
       return Object.entries(gastosPorCategoria)
