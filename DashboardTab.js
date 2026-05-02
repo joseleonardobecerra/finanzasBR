@@ -7,6 +7,7 @@
   // 3. Protección contra fechas, descripciones, montos y cuentas vacías
   // 4. Evita crashes si Recharts no carga
   // 5. Separa compras con tarjeta vs pagos a tarjeta
+  // 6. Separa dinero en liquidez, inversión/ahorro y deuda total
   // ============================================================================
 
   // Íconos SVG privados para Dashboard
@@ -45,6 +46,7 @@
     egresosMesTotal = 0,
     deudaTotal = 0,
     liquidezTotal = 0,
+    inversionTotal = 0,
     selectedMonth = "",
     egresosMes = [],
     ingresos = [],
@@ -82,6 +84,7 @@
 
     const formatCOP = (val) => {
       if (privacyMode) return "****";
+
       return new Intl.NumberFormat("es-CO", {
         style: "currency",
         currency: "COP",
@@ -116,22 +119,29 @@
 
       if (hasL && !hasA) return "Leo";
       if (hasA && !hasL) return "Andre";
+
       return "Shared";
     };
 
     const tarjetasCredito = cuentasSafe.filter((c) => c && c.type === "credit");
     const idsTarjetas = tarjetasCredito.map((c) => c.id);
 
+    const cuentasLiquidez = cuentasSafe.filter((c) => c && ["bank", "cash"].includes(c.type));
+    const idsCuentasLiquidez = cuentasLiquidez.map((c) => c.id);
+
+    const cuentasInversion = cuentasSafe.filter((c) => c && ["investment", "pocket"].includes(c.type));
+    const cuentasDeuda = cuentasSafe.filter((c) => c && ["credit", "loan"].includes(c.type));
+
     const totalPresupuestadoFijo = pagosFijosSafe.reduce((sum, item) => sum + num(item && item.monto), 0);
     const totalPresupuestadoVar = presupuestosSafe.reduce((sum, item) => sum + num(item && item.limite), 0);
     const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoVar;
 
     const proyIngLeo = ingresosFijosSafe
-      .filter((i) => identifyOwner(null, i && i.persona, i && i.descripcion) === "Leo")
+      .filter((i) => identifyOwner(i && i.cuentaId, i && i.persona, i && i.descripcion) === "Leo")
       .reduce((s, i) => s + num(i && i.monto), 0);
 
     const proyIngAndre = ingresosFijosSafe
-      .filter((i) => identifyOwner(null, i && i.persona, i && i.descripcion) === "Andre")
+      .filter((i) => identifyOwner(i && i.cuentaId, i && i.persona, i && i.descripcion) === "Andre")
       .reduce((s, i) => s + num(i && i.monto), 0);
 
     const proyeccionIngresosMes = ingresosFijosSafe.reduce((sum, item) => sum + num(item && item.monto), 0);
@@ -159,9 +169,6 @@
     // CLASIFICACIÓN CORRECTA DE TARJETAS
     // ============================================================================
 
-    // 1. Compras hechas USANDO una tarjeta.
-    // Ejemplo: restaurante pagado con Rappicard.
-    // En ese caso, cuentaId ES la tarjeta.
     const comprasConTarjeta = egresosMesSafe.filter((e) => {
       if (!e) return false;
 
@@ -171,26 +178,16 @@
       return usaTarjetaComoMedioPago && !esPagoATarjeta;
     });
 
-    // 2. Pagos hechos A una tarjeta.
-    // Ejemplo: desde Bancolombia pagaste Rappicard.
-    // En ese caso, cuentaId ES el banco y deudaId/pagoTarjetaId ES la tarjeta.
     const pagosATarjeta = egresosMesSafe.filter((e) => {
       if (!e) return false;
-
       return Boolean(e.pagoTarjetaId) || idsTarjetas.includes(e.deudaId);
     });
 
-    // 3. Gastos que salieron de liquidez real: bancos, efectivo o bolsillos.
-    // Incluye pagos a tarjeta porque sí salen del banco,
-    // pero se muestran separados para no confundirlos con consumo.
     const salidasDesdeLiquidez = egresosMesSafe.filter((e) => {
       if (!e) return false;
-      return !idsTarjetas.includes(e.cuentaId);
+      return idsCuentasLiquidez.includes(e.cuentaId);
     });
 
-    // 4. Consumo real sin pagos de deuda.
-    // Esto sirve para saber cuánto se gastó realmente en vida diaria,
-    // sin mezclarlo con abonos a tarjetas.
     const consumoSinPagosDeTarjeta = egresosMesSafe.filter((e) => {
       if (!e) return false;
 
@@ -248,6 +245,7 @@
 
         const descE = text(e.descripcion).toLowerCase();
         const descP = text(pf.descripcion).toLowerCase();
+
         if (!descE || !descP) return false;
 
         return descE === descP || descE.includes(descP);
@@ -264,6 +262,7 @@
 
         const descE = text(e.descripcion).toLowerCase();
         const tcName = text(tc.name).toLowerCase();
+
         if (!descE || !tcName) return false;
 
         return descE.includes(tcName) && e.tipo === "Fijo";
@@ -280,25 +279,19 @@
     const tcPendientesLista = tarjetasCredito.filter((tc) => !isTCPagada(tc));
 
     const montoFijosPtes = fijosPendientesLista.reduce((s, pf) => s + num(pf && pf.monto), 0);
-
-    // Las tarjetas aparecen como pendientes, pero no suman un monto porque la cuota/pago real puede variar.
     const montoTCPtes = 0;
     const pagosFijosPendientesTotal = montoFijosPtes + montoTCPtes;
 
     // ============================================================================
-    // LIQUIDEZ Y CATEGORÍAS
+    // LIQUIDEZ, INVERSIÓN Y DEUDA
     // ============================================================================
-    const liquidezAccounts = cuentasSafe.filter((c) => {
-      const name = text(c && c.name).toLowerCase();
-      return c && ["bank", "cash"].includes(c.type) && !name.includes("rappi");
-    });
-
     let liquidezLeoCuentas = 0;
     let liquidezLeoEfectivo = 0;
     let liquidezAndreCuentas = 0;
     let liquidezAndreEfectivo = 0;
+    let liquidezCompartida = 0;
 
-    liquidezAccounts.forEach((c) => {
+    cuentasLiquidez.forEach((c) => {
       const owner = identifyOwner(c.id, null, c.name);
       const balance = num(c.currentBalance);
 
@@ -308,10 +301,33 @@
       } else if (owner === "Andre") {
         if (c.type === "cash") liquidezAndreEfectivo += balance;
         else liquidezAndreCuentas += balance;
+      } else {
+        liquidezCompartida += balance;
       }
     });
 
-    const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
+    let inversionLeo = 0;
+    let inversionAndre = 0;
+    let inversionCompartida = 0;
+
+    cuentasInversion.forEach((c) => {
+      const owner = identifyOwner(c.id, null, c.name);
+      const balance = num(c.currentBalance);
+
+      if (owner === "Leo") inversionLeo += balance;
+      else if (owner === "Andre") inversionAndre += balance;
+      else inversionCompartida += balance;
+    });
+
+    const deudaTarjetas = cuentasDeuda
+      .filter((c) => c.type === "credit")
+      .reduce((s, c) => s + num(c.currentDebt), 0);
+
+    const deudaPrestamos = cuentasDeuda
+      .filter((c) => c.type === "loan")
+      .reduce((s, c) => s + num(c.currentDebt), 0);
+
+    const patrimonioOperativo = num(liquidezTotal) + num(inversionTotal);
 
     const chartData = useMemo(() => {
       const gastosFiltrados = chartFilter === "Todos"
@@ -372,13 +388,15 @@
       <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
         <header>
           <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide">Dashboard Global</h1>
-          <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">Resumen de flujos, analítica de egresos y proyecciones.</p>
+          <p className="text-sm md:text-base text-[#8A92A6] mt-1 font-medium tracking-wide">
+            Resumen de flujos, liquidez, inversión, deuda y analítica de egresos.
+          </p>
         </header>
 
         {/* 1. TARJETAS DE RESUMEN SUPERIORES */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center">
-            <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos (Mes)</h3>
+            <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Ingresos Mes</h3>
             <p className="text-xl md:text-3xl font-black text-neoncyan mt-1 drop-shadow-[0_0_8px_rgba(0,229,255,0.4)] truncate">
               {formatCOP(ingresosMesTotal)}
             </p>
@@ -387,7 +405,7 @@
           <div onClick={() => toggleCard("egresos")} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Egresos Totales</h3>
+                <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Egresos Mes</h3>
                 <p className="text-xl md:text-3xl font-black text-neonmagenta mt-1 drop-shadow-[0_0_8px_rgba(255,0,122,0.4)] truncate">
                   {formatCOP(egresosMesTotal)}
                 </p>
@@ -414,10 +432,124 @@
 
           <div className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-r from-neoncyan/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest relative z-10">Flujo del mes</h3>
+            <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest relative z-10">Flujo Mes</h3>
             <p className={`text-xl md:text-3xl font-black mt-1 truncate relative z-10 ${dineroDisponible >= 0 ? "text-neoncyan drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]" : "text-neonmagenta drop-shadow-[0_0_8px_rgba(255,0,122,0.4)]"}`}>
               {formatCOP(dineroDisponible)}
             </p>
+          </div>
+
+          <div onClick={() => toggleCard("liquidez")} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero Liquidez</h3>
+                <p className="text-xl md:text-3xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] truncate">
+                  {formatCOP(liquidezTotal)}
+                </p>
+              </div>
+
+              <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === "liquidez" ? "rotate-90" : ""}`} />
+            </div>
+
+            {expandedCard === "liquidez" && (
+              <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2 grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-[10px] font-black text-neoncyan uppercase mb-2">Leo</h4>
+                  <div className="flex justify-between items-center text-xs mb-1.5">
+                    <span className="text-[#8A92A6] font-bold">Bancos</span>
+                    <span className="font-black text-white">{formatCOP(liquidezLeoCuentas)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-[#8A92A6] font-bold">Efectivo</span>
+                    <span className="font-black text-white">{formatCOP(liquidezLeoEfectivo)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] font-black text-neonmagenta uppercase mb-2">Andre</h4>
+                  <div className="flex justify-between items-center text-xs mb-1.5">
+                    <span className="text-[#8A92A6] font-bold">Bancos</span>
+                    <span className="font-black text-white">{formatCOP(liquidezAndreCuentas)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-[#8A92A6] font-bold">Efectivo</span>
+                    <span className="font-black text-white">{formatCOP(liquidezAndreEfectivo)}</span>
+                  </div>
+                </div>
+
+                {liquidezCompartida !== 0 && (
+                  <div className="col-span-2 flex justify-between items-center text-xs pt-3 border-t border-white/[0.05]">
+                    <span className="text-[#8A92A6] font-bold">Compartida / sin dueño</span>
+                    <span className="font-black text-white">{formatCOP(liquidezCompartida)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div onClick={() => toggleCard("inversion")} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Inversión / Ahorro</h3>
+                <p className="text-xl md:text-3xl font-black text-amber-400 mt-1 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] truncate">
+                  {formatCOP(inversionTotal)}
+                </p>
+              </div>
+
+              <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === "inversion" ? "rotate-90" : ""}`} />
+            </div>
+
+            {expandedCard === "inversion" && (
+              <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2 space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#8A92A6] font-bold">Leo</span>
+                  <span className="font-black text-white">{formatCOP(inversionLeo)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#8A92A6] font-bold">Andre</span>
+                  <span className="font-black text-white">{formatCOP(inversionAndre)}</span>
+                </div>
+
+                {inversionCompartida !== 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#8A92A6] font-bold">Compartida / sin dueño</span>
+                    <span className="font-black text-white">{formatCOP(inversionCompartida)}</span>
+                  </div>
+                )}
+
+                <div className="pt-3 mt-3 border-t border-white/[0.05] flex justify-between items-center">
+                  <span className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest">Patrimonio operativo</span>
+                  <span className="font-black text-amber-400">{formatCOP(patrimonioOperativo)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div onClick={() => toggleCard("deuda")} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Deuda Total</h3>
+                <p className="text-xl md:text-3xl font-black text-rose-400 mt-1 drop-shadow-[0_0_8px_rgba(251,113,133,0.4)] truncate">
+                  {formatCOP(deudaTotal)}
+                </p>
+              </div>
+
+              <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === "deuda" ? "rotate-90" : ""}`} />
+            </div>
+
+            {expandedCard === "deuda" && (
+              <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2 space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#8A92A6] font-bold">Tarjetas</span>
+                  <span className="font-black text-rose-400">{formatCOP(deudaTarjetas)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#8A92A6] font-bold">Préstamos</span>
+                  <span className="font-black text-rose-400">{formatCOP(deudaPrestamos)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div onClick={() => toggleCard("pendientes")} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
@@ -485,57 +617,12 @@
               </div>
             )}
           </div>
-
-          <div onClick={() => toggleCard("cuentas")} className="bg-[#111222] shadow-neumorph-inset p-4 md:p-5 rounded-2xl border border-transparent flex flex-col justify-center relative cursor-pointer group hover:bg-[#1c1e32] transition-colors">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-[#8A92A6] text-[10px] md:text-xs font-black uppercase tracking-widest">Dinero Cuentas</h3>
-                <p className="text-xl md:text-3xl font-black text-emerald-400 mt-1 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] truncate">
-                  {formatCOP(totalDineroCuentas)}
-                </p>
-              </div>
-
-              <ChevronRight size={18} className={`text-slate-500 transition-transform duration-300 ${expandedCard === "cuentas" ? "rotate-90" : ""}`} />
-            </div>
-
-            {expandedCard === "cuentas" && (
-              <div className="mt-4 pt-4 border-t border-white/[0.05] animate-in slide-in-from-top-2 grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-[10px] font-black text-neoncyan uppercase mb-2">Cuentas Leo</h4>
-
-                  <div className="flex justify-between items-center text-xs mb-1.5">
-                    <span className="text-[#8A92A6] font-bold">Bancos</span>
-                    <span className="font-black text-white">{formatCOP(liquidezLeoCuentas)}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-[#8A92A6] font-bold">Efectivo</span>
-                    <span className="font-black text-white">{formatCOP(liquidezLeoEfectivo)}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-[10px] font-black text-neonmagenta uppercase mb-2">Cuentas Andre</h4>
-
-                  <div className="flex justify-between items-center text-xs mb-1.5">
-                    <span className="text-[#8A92A6] font-bold">Bancos</span>
-                    <span className="font-black text-white">{formatCOP(liquidezAndreCuentas)}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-[#8A92A6] font-bold">Efectivo</span>
-                    <span className="font-black text-white">{formatCOP(liquidezAndreEfectivo)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* 2. RESUMEN EN VIVO */}
         <div className="bg-appcard shadow-neumorph p-5 md:p-8 rounded-2xl border border-white/[0.02] flex flex-col">
           <h2 className="text-sm font-black text-white mb-5 flex items-center gap-2 uppercase tracking-widest">
-            <Calculator size={18} className="text-neoncyan" /> Resumen y Realidad (En Vivo)
+            <Calculator size={18} className="text-neoncyan" /> Resumen y Realidad En Vivo
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-[#111222] shadow-neumorph-inset p-5 md:p-8 rounded-2xl border border-white/[0.02]">
