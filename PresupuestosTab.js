@@ -1,3 +1,4 @@
+(() => {
 // ============================================================================
 // COMPONENTES UI EXTERNOS (Soluciona el bug de pérdida de foco al escribir)
 // ============================================================================
@@ -13,18 +14,18 @@ const Trash2Icon = ({ size = 16, className = "" }) => <svg width={size} height={
 
 const CardComponent = ({ children, className }) => <div className={`bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] ${className}`}>{children}</div>;
 
-const InputComponent = ({ type="text", label, value, onChange, error, className, placeholder, min, max }) => (
+const InputComponent = ({ type="text", label, value, onChange, error, className, placeholder, min, max, disabled }) => (
   <div className={`relative ${className?.includes('col-span') ? className : ''}`}>
     <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
-    <input type={type} min={min} max={max} value={value} onChange={onChange} placeholder={placeholder} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neoncyan transition-all duration-300 placeholder:text-slate-600 ${className}`} />
+    <input disabled={disabled} type={type} min={min} max={max} value={value} onChange={onChange} placeholder={placeholder} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neoncyan transition-all duration-300 placeholder:text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed ${className}`} />
     {error && <p className="text-rose-500 text-[10px] mt-1 pl-1 font-bold absolute -bottom-4 left-0">{error}</p>}
   </div>
 );
 
-const SelectComponent = ({ label, options, value, onChange, error, className }) => (
+const SelectComponent = ({ label, options, value, onChange, error, className, disabled }) => (
   <div className={className}>
     <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest pl-1 mb-1.5 block">{label}</label>
-    <select value={value} onChange={onChange} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta transition-all duration-300 appearance-none cursor-pointer`}>
+    <select disabled={disabled} value={value} onChange={onChange} className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-rose-500' : 'border-transparent'} rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta transition-all duration-300 appearance-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed`}>
       <option value="" className="bg-[#111222]">Seleccione...</option>
       {options.map(o => <option key={o.value} value={o.value} className="bg-[#111222]">{o.label}</option>)}
     </select>
@@ -39,20 +40,107 @@ const SortIconUI = ({ columnKey, currentSort }) => {
     : <span className="ml-1 text-[10px] text-neoncyan">↓</span>;
 };
 
+// ============================================================================
+// ✨ DICCIONARIO MAESTRO DE CATEGORÍAS AUTOMATIZADO
+// ============================================================================
+const CATEGORIAS_CONFIG = {
+  "🏠 Vivienda y Servicios": [
+    { específico: "Arriendo", sub: "Hogar" },
+    { específico: "Administración", sub: "Hogar" },
+    { específico: "CENS (Luz)", sub: "Servicios Públicos" },
+    { específico: "Gases del Oriente (Gas)", sub: "Servicios Públicos" },
+    { específico: "Aqualia (Agua)", sub: "Servicios Públicos" },
+    { específico: "Internet Hogar", sub: "Servicios Públicos" },
+    { específico: "Mantenimiento", sub: "Hogar" }
+  ],
+  "🛒 Mercado y Aseo": [
+    { específico: "Supermercado Único", sub: "Mercado" },
+    { específico: "Supermercado / Tienda", sub: "Mercado" },
+    { específico: "Aseo hogar", sub: "Aseo" },
+    { específico: "Mercado Aseo", sub: "Aseo" },
+    { específico: "Botellón Agua", sub: "Botellón Agua" }
+  ],
+  "🍔 Alimentación y Ocio": [
+    { específico: "Restaurante & Otros", sub: "Alimentación" },
+    { específico: "Panadería", sub: "Alimentación" },
+    { específico: "Salidas", sub: "Ocio" }
+  ],
+  "🚗 Vehículo": [
+    { específico: "Gasolina", sub: "Gasolina" },
+    { específico: "Seguro vehículo", sub: "Seguro vehículo" },
+    { específico: "Impuesto vehículo", sub: "Impuestos" },
+    { específico: "Tecnomecánica / Mantenimiento", sub: "Mantenimiento" },
+    { específico: "Lavado vehículo", sub: "Mantenimiento" },
+    { específico: "Seguro Deudor Vehículo", sub: "Seguro vehículo" },
+    { específico: "Parqueadero", sub: "Operativo" },
+    { específico: "Otros", sub: "Otros" }
+  ],
+  "💳 Obligaciones (Deudas)": [
+    { específico: "Rappicard Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Falabella Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Nu Bank Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Intereses Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Davibank Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Banco de Bogotá Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Nu Bank Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Intereses Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Lulo Bank Andre", sub: "Crédito" },
+    { específico: "Crédito de vehículo Leo", sub: "Crédito" }
+  ],
+  "👥 Familia": [
+    { específico: "Sura Andre", sub: "Seguro de Vida" },
+    { específico: "Sura Leo", sub: "Seguro de Vida" },
+    { específico: "Peluquería Andre", sub: "Cuidado personal" },
+    { específico: "Barbería Leo", sub: "Cuidado personal" },
+    { específico: "Celular Leo", sub: "Celular" },
+    { específico: "Celular Andrea", sub: "Celular" },
+    { específico: "Manicure / Pedicure", sub: "Cuidado personal" },
+    { específico: "Snacks Andre", sub: "Gastos hormiga" },
+    { específico: "Snacks Leo", sub: "Gastos hormiga" }
+  ],
+  "👧👦 Tobías y Salomé": [
+    { específico: "Snacks hijos", sub: "Gastos hormiga" },
+    { específico: "Colegio hijos", sub: "Educación" },
+    { específico: "Deporte hijos", sub: "Extracurricular" },
+    { específico: "Peluquería hijos", sub: "Cuidado personal" },
+    { específico: "Otros", sub: "Otros" }
+  ],
+  "⚕️ Salud": [
+    { específico: "Cita médica", sub: "Citas médicas" },
+    { específico: "Droguería", sub: "Medicamentos y otros" }
+  ],
+  "💻 Digital": [
+    { específico: "HBO Max", sub: "Suscripciones Digitales" },
+    { específico: "Inteligencia Artificial", sub: "Suscripciones Digitales" },
+    { específico: "Otros", sub: "Suscripciones Digitales" }
+  ],
+  "📈 Futuro": [
+    { específico: "Inversión", sub: "Inversión" }
+  ]
+};
 
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
 const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, removePresupuesto,
                         pagosFijos, addPagoFijo, updatePagoFijo, removePagoFijo,
-                        egresos, selectedMonth, showToast, categoriasMaestras,
+                        egresos, selectedMonth, showToast,
                         privacyMode 
                       }) => {
   const { useState, useRef, useMemo } = React;
   
   const [tipoForm, setTipoForm] = useState('variable'); 
-  const [nuevoVar, setNuevoVar] = useState({ nombre: '', categoria: categoriasMaestras[0] || 'Otros', limite: '' });
-  const [nuevoFijo, setNuevoFijo] = useState({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+  
+  // ✨ Estados adaptados a la cascada de Categorías
+  const [catVar, setCatVar] = useState('');
+  const [descVar, setDescVar] = useState('');
+  const [limiteVar, setLimiteVar] = useState('');
+
+  const [catFijo, setCatFijo] = useState('');
+  const [descFijo, setDescFijo] = useState('');
+  const [montoFijo, setMontoFijo] = useState('');
+  const [diaFijo, setDiaFijo] = useState('');
+
   const [editId, setEditId] = useState(null);
   const [editOriginalType, setEditOriginalType] = useState(null); 
   const [errors, setErrors] = useState({});
@@ -73,6 +161,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
   };
 
+  // --- Lógicas de Exportar/Importar ---
   const handleExport = async () => {
     try {
       const xlsx = await loadSheetJS();
@@ -127,54 +216,58 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     e.target.value = '';
   };
 
+  // --- Lógica del Formulario Dinámico ---
+  const opcionesVar = useMemo(() => catVar ? CATEGORIAS_CONFIG[catVar] : [], [catVar]);
+  const opcionesFijo = useMemo(() => catFijo ? CATEGORIAS_CONFIG[catFijo] : [], [catFijo]);
+
   const guardar = (e) => {
     e.preventDefault();
     let errs = {};
     
     if (tipoForm === 'variable') {
-      if(!nuevoVar.nombre) errs.nombre = "Requerido";
-      if(!nuevoVar.categoria) errs.categoria = "Requerido";
-      if(!nuevoVar.limite) errs.limite = "Requerido";
+      if(!catVar) errs.categoria = "Requerido";
+      if(!descVar) errs.nombre = "Requerido";
+      if(!limiteVar) errs.limite = "Requerido";
       if(Object.keys(errs).length > 0) { setErrors(errs); return; }
       
       if (editId) {
         if (editOriginalType === 'variable') {
-            updatePresupuesto(editId, { nombre: nuevoVar.nombre, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
+            updatePresupuesto(editId, { nombre: descVar, categoria: catVar, limite: Number(limiteVar) });
             showToast("Presupuesto Variable actualizado.");
         } else {
             removePagoFijo(editId);
-            addPresupuesto({ id: editId, nombre: nuevoVar.nombre, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
+            addPresupuesto({ id: editId, nombre: descVar, categoria: catVar, limite: Number(limiteVar) });
             showToast("Convertido a Presupuesto Variable.");
         }
         setEditId(null); setEditOriginalType(null);
       } else {
-        addPresupuesto({ id: generateId(), nombre: nuevoVar.nombre, categoria: nuevoVar.categoria, limite: Number(nuevoVar.limite) });
+        addPresupuesto({ id: generateId(), nombre: descVar, categoria: catVar, limite: Number(limiteVar) });
         showToast("Presupuesto agregado.");
       }
-      setNuevoVar({ nombre: '', categoria: categoriasMaestras[0] || 'Otros', limite: '' });
+      setCatVar(''); setDescVar(''); setLimiteVar('');
       
     } else {
-      if(!nuevoFijo.descripcion) errs.descripcion = "Requerido";
-      if(!nuevoFijo.categoria) errs.categoria = "Requerido";
-      if(!nuevoFijo.monto) errs.monto = "Requerido";
-      if(!nuevoFijo.diaPago) errs.diaPago = "Requerido";
+      if(!catFijo) errs.categoria = "Requerido";
+      if(!descFijo) errs.descripcion = "Requerido";
+      if(!montoFijo) errs.monto = "Requerido";
+      if(!diaFijo) errs.diaPago = "Requerido";
       if(Object.keys(errs).length > 0) { setErrors(errs); return; }
 
       if (editId) {
         if (editOriginalType === 'fijo') {
-            updatePagoFijo(editId, { descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
+            updatePagoFijo(editId, { descripcion: descFijo, categoria: catFijo, monto: Number(montoFijo), diaPago: Number(diaFijo) });
             showToast("Gasto Fijo actualizado.");
         } else {
             removePresupuesto(editId);
-            addPagoFijo({ id: editId, descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
+            addPagoFijo({ id: editId, descripcion: descFijo, categoria: catFijo, monto: Number(montoFijo), diaPago: Number(diaFijo) });
             showToast("Convertido a Gasto Fijo.");
         }
         setEditId(null); setEditOriginalType(null);
       } else {
-        addPagoFijo({ id: generateId(), descripcion: nuevoFijo.descripcion, categoria: nuevoFijo.categoria, monto: Number(nuevoFijo.monto), diaPago: Number(nuevoFijo.diaPago) });
+        addPagoFijo({ id: generateId(), descripcion: descFijo, categoria: catFijo, monto: Number(montoFijo), diaPago: Number(diaFijo) });
         showToast("Gasto Fijo agregado.");
       }
-      setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+      setCatFijo(''); setDescFijo(''); setMontoFijo(''); setDiaFijo('');
     }
     setErrors({});
   };
@@ -185,8 +278,20 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     setEditOriginalType(isFijo ? 'fijo' : 'variable');
     setTipoForm(isFijo ? 'fijo' : 'variable');
     
-    setNuevoFijo({ descripcion: isFijo ? p.nombre : (p.nombre || p.categoria), monto: p.limite.toString(), categoria: p.categoria, diaPago: (p.diaPago || 1).toString() });
-    setNuevoVar({ nombre: p.nombre || p.categoria, categoria: p.categoria, limite: p.limite.toString() });
+    // Si la categoría existe en el maestro la cargamos, si no, la dejamos vacía para obligar actualización
+    const catValida = CATEGORIAS_CONFIG[p.categoria] ? p.categoria : '';
+    const desc = isFijo ? p.nombre : (p.nombre || p.categoria);
+
+    if (isFijo) {
+      setCatFijo(catValida);
+      setDescFijo(desc);
+      setMontoFijo(p.limite.toString());
+      setDiaFijo((p.diaPago || 1).toString());
+    } else {
+      setCatVar(catValida);
+      setDescVar(desc);
+      setLimiteVar(p.limite.toString());
+    }
 
     setShowForm(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -194,8 +299,8 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
 
   const cancelarEdicion = () => {
     setEditId(null); setEditOriginalType(null);
-    setNuevoVar({ nombre: '', categoria: categoriasMaestras[0] || 'Otros', limite: '' });
-    setNuevoFijo({ descripcion: '', monto: '', categoria: categoriasMaestras[0] || 'Otros', diaPago: '' });
+    setCatVar(''); setDescVar(''); setLimiteVar('');
+    setCatFijo(''); setDescFijo(''); setMontoFijo(''); setDiaFijo('');
     setErrors({}); setShowForm(false);
   }
 
@@ -225,12 +330,11 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         const matchCat = (e.categoria || '').trim().toLowerCase() === catName.trim().toLowerCase();
         
         if (matchCat) {
-          // ✨ SOLUCIÓN: Si la categoría es de tarjetas/créditos, sumamos TODOS los movimientos 
-          // (tanto pagos fijos a las TC, como compras variables, si es que existen).
-          if (catName.toLowerCase().includes('tarjeta') || catName.toLowerCase().includes('crédito')) {
+          // Si la categoría es de tarjetas/créditos, sumamos TODOS los movimientos
+          if (catName.toLowerCase().includes('tarjeta') || catName.toLowerCase().includes('crédito') || catName.toLowerCase().includes('obligaciones')) {
              return true; 
           }
-          // Para el resto de los presupuestos (Mercado, Gasolina, etc), solo sumamos los Variables para no mezclar.
+          // Para el resto de los presupuestos, solo sumamos los Variables para no mezclar.
           return e.tipo !== 'Fijo';
         }
         return false;
@@ -372,7 +476,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
         </div>
       </div>
 
-      {/* FORMULARIO MEJORADO */}
+      {/* FORMULARIO MEJORADO CON CASCADA */}
       {showForm && (
         <CardComponent className={`animate-in slide-in-from-top-4 p-5 md:p-8 ${editId ? (editOriginalType === 'variable' ? '!border-neoncyan/30 shadow-glow-cyan' : '!border-amber-500/30 shadow-glow-amber') : '!border-transparent'}`}>
           <div className="flex justify-between items-center mb-6 relative" ref={formRef}>
@@ -392,14 +496,14 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
           <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start mt-4">
             {tipoForm === 'variable' ? (
               <React.Fragment>
-                <div className="sm:col-span-4">
-                  <InputComponent label="Descripción del Presupuesto" placeholder="Ej: Tarjetas de crédito casa..." value={nuevoVar.nombre} onChange={e=>setNuevoVar({...nuevoVar, nombre: e.target.value})} error={errors.nombre} />
-                </div>
                 <div className="sm:col-span-3">
-                  <SelectComponent label="Categoría General" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoVar.categoria} onChange={e=>setNuevoVar({...nuevoVar, categoria: e.target.value})} error={errors.categoria} />
+                  <SelectComponent label="1. Área de Gasto" options={Object.keys(CATEGORIAS_CONFIG).map(c=>({value:c, label:c}))} value={catVar} onChange={e=>{setCatVar(e.target.value); setDescVar('');}} error={errors.categoria} />
+                </div>
+                <div className="sm:col-span-4">
+                  <SelectComponent disabled={!catVar} label="2. Presupuesto Específico" options={opcionesVar.map(o=>({value:o.específico, label:o.específico}))} value={descVar} onChange={e=>setDescVar(e.target.value)} error={errors.nombre} />
                 </div>
                 <div className="sm:col-span-3 relative">
-                  <InputComponent type="number" label="Límite Mensual ($)" value={nuevoVar.limite} onChange={e=>setNuevoVar({...nuevoVar, limite: e.target.value})} error={errors.limite} className="pl-8 font-black text-neoncyan" placeholder="0"/>
+                  <InputComponent type="number" label="3. Límite Mensual ($)" value={limiteVar} onChange={e=>setLimiteVar(e.target.value)} error={errors.limite} className="pl-8 font-black text-neoncyan" placeholder="0"/>
                   <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
                 </div>
                 <div className="sm:col-span-2 mt-[22px]">
@@ -410,18 +514,18 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
               </React.Fragment>
             ) : (
               <React.Fragment>
-                <div className="sm:col-span-4">
-                  <InputComponent label="Descripción (Gasto Fijo)" placeholder="Ej: Internet" value={nuevoFijo.descripcion} onChange={e=>setNuevoFijo({...nuevoFijo, descripcion: e.target.value})} error={errors.descripcion} />
+                <div className="sm:col-span-3">
+                  <SelectComponent label="1. Área de Gasto" options={Object.keys(CATEGORIAS_CONFIG).map(c=>({value:c, label:c}))} value={catFijo} onChange={e=>{setCatFijo(e.target.value); setDescFijo('');}} error={errors.categoria} />
                 </div>
                 <div className="sm:col-span-3">
-                  <SelectComponent label="Categoría" options={categoriasMaestras.map(c=>({value:c, label:c}))} value={nuevoFijo.categoria} onChange={e=>setNuevoFijo({...nuevoFijo, categoria: e.target.value})} error={errors.categoria} />
+                  <SelectComponent disabled={!catFijo} label="2. Gasto Fijo Específico" options={opcionesFijo.map(o=>({value:o.específico, label:o.específico}))} value={descFijo} onChange={e=>setDescFijo(e.target.value)} error={errors.descripcion} />
                 </div>
-                <div className="sm:col-span-2 relative">
-                  <InputComponent type="number" label="Monto Estimado" value={nuevoFijo.monto} onChange={e=>setNuevoFijo({...nuevoFijo, monto: e.target.value})} error={errors.monto} className="pl-8 font-black text-amber-400" placeholder="0"/>
+                <div className="sm:col-span-3 relative">
+                  <InputComponent type="number" label="3. Monto Estimado" value={montoFijo} onChange={e=>setMontoFijo(e.target.value)} error={errors.monto} className="pl-8 font-black text-amber-400" placeholder="0"/>
                   <span className="absolute left-4 top-[38px] text-base font-black text-slate-600">$</span>
                 </div>
                 <div className="sm:col-span-1">
-                  <InputComponent type="number" label="Día (1-31)" value={nuevoFijo.diaPago} onChange={e=>setNuevoFijo({...nuevoFijo, diaPago: e.target.value})} min="1" max="31" error={errors.diaPago} placeholder="15" className="text-center font-bold"/>
+                  <InputComponent type="number" label="Día" value={diaFijo} onChange={e=>setDiaFijo(e.target.value)} min="1" max="31" error={errors.diaPago} placeholder="15" className="text-center font-bold"/>
                 </div>
                 <div className="sm:col-span-2 mt-[22px]">
                    <button type="submit" className={`w-full ${editId ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.4)]' : 'bg-amber-400 hover:bg-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]'} text-[#0b0c16] font-black tracking-widest uppercase py-3.5 rounded-xl transition-all active:scale-95`}>
@@ -491,7 +595,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                             <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-amber-900/10 border-amber-500/30' : 'hover:bg-white/[0.02]'}`}>
                               <td className="px-4 py-4 font-bold text-white tracking-wide truncate max-w-[150px]" title={p.nombre}>{p.nombre}</td>
                               <td className="px-4 py-4">
-                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>{p.categoria}</span>
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>{p.categoria || 'Sin Categoría'}</span>
                               </td>
                               <td className="px-4 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
                               <td className="px-4 py-4 text-right font-black text-amber-400 tabular-nums">{formatCOP(p.gastado)}</td>
@@ -574,7 +678,7 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
                             <tr key={p.id} className={`transition-colors ${editId === p.id ? 'bg-cyan-900/10 border-neoncyan/30' : 'hover:bg-white/[0.02]'}`}>
                               <td className="px-4 py-4 font-bold text-white tracking-wide truncate max-w-[150px]" title={p.nombre}>{p.nombre}</td>
                               <td className="px-4 py-4">
-                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>{p.categoria}</span>
+                                <span className="px-2 py-1 bg-white/[0.05] text-[#8A92A6] rounded text-[10px] uppercase font-bold tracking-widest truncate inline-block max-w-full" title={p.categoria}>{p.categoria || 'Sin Categoría'}</span>
                               </td>
                               <td className="px-4 py-4 text-right text-slate-400 tabular-nums">{formatCOP(p.limite)}</td>
                               <td className="px-4 py-4 text-right font-black text-neoncyan tabular-nums">{formatCOP(p.gastado)}</td>
@@ -613,3 +717,5 @@ const PresupuestosTab = ({ presupuestos, addPresupuesto, updatePresupuesto, remo
     </div>
   );
 };
+  window.PresupuestosTab = PresupuestosTab;
+})();
