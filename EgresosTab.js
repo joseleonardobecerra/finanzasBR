@@ -290,6 +290,27 @@
     const [editingTcId, setEditingTcId] = useState(null);
     const [tcEditData, setTcEditData] = useState({});
 
+    // ============================================================================
+    // MODAL DE CONFIRMACIÓN
+    // ============================================================================
+    const [confirmModal, setConfirmModal] = useState(null);
+
+    const closeConfirmModal = () => setConfirmModal(null);
+
+    const openConfirmModal = ({
+      title,
+      message,
+      detail,
+      actions = []
+    }) => {
+      setConfirmModal({
+        title,
+        message,
+        detail,
+        actions
+      });
+    };
+
     const [nuevoPf, setNuevoPf] = useState({
       descripcion: "",
       monto: "",
@@ -366,6 +387,7 @@
       }
 
       const montoNum = toNumber(monto);
+
       if (montoNum <= 0) {
         safeShowToast("El monto debe ser mayor a cero.", "error");
         return;
@@ -426,6 +448,7 @@
       }
 
       const montoNum = toNumber(editData.monto);
+
       if (montoNum <= 0) {
         safeShowToast("El monto editado debe ser mayor a cero.", "error");
         return;
@@ -453,10 +476,22 @@
 
     const handleDelete = (id) => {
       if (!id) return;
-      if (window.confirm("¿Estás seguro de eliminar este gasto?")) {
-        removeEgreso(id);
-        safeShowToast("Gasto eliminado.", "error");
-      }
+
+      openConfirmModal({
+        title: "Eliminar gasto",
+        message: "Esta acción eliminará el movimiento seleccionado.",
+        detail: "Si este gasto afectaba una cuenta, el saldo se recalculará automáticamente con los datos restantes.",
+        actions: [
+          {
+            label: "Eliminar definitivamente",
+            variant: "danger",
+            onClick: () => {
+              removeEgreso(id);
+              safeShowToast("Gasto eliminado.", "error");
+            }
+          }
+        ]
+      });
     };
 
     const limpiarFiltros = () => {
@@ -510,8 +545,13 @@
       const cuentaSale = tcState[tc.id]?.cuentaId || "";
       const montoPago = toNumber(tcState[tc.id]?.monto);
 
-      if (!cuentaSale) return safeShowToast("Selecciona desde qué cuenta pagarás la tarjeta.", "error");
-      if (montoPago <= 0) return safeShowToast("Debes ingresar un monto a pagar mayor a 0.", "error");
+      if (!cuentaSale) {
+        return safeShowToast("Selecciona desde qué cuenta pagarás la tarjeta.", "error");
+      }
+
+      if (montoPago <= 0) {
+        return safeShowToast("Debes ingresar un monto a pagar mayor a 0.", "error");
+      }
 
       addEgreso({
         id: safeGenerateId(),
@@ -529,9 +569,9 @@
       });
 
       setTcState(prev => {
-        const n = { ...prev };
-        if (n[tc.id]) n[tc.id].monto = "";
-        return n;
+        const next = { ...prev };
+        if (next[tc.id]) next[tc.id].monto = "";
+        return next;
       });
 
       safeShowToast(`Pago de tarjeta ${tc.name} registrado por ${formatCOP(montoPago)}.`);
@@ -540,27 +580,59 @@
     const deshacerPagoTC = (tc) => {
       const datosPago = getTCPagada(tc);
 
-      if (datosPago.pagos.length > 0) {
-        if (window.confirm(`Se encontraron ${datosPago.pagos.length} pagos este mes sumando ${formatCOP(datosPago.monto)}.\n¿Deseas revertirlos todos?`)) {
-          datosPago.pagos.forEach(p => removeEgreso(p.id));
-          safeShowToast("Pagos de tarjeta revertidos.", "error");
-        }
-      }
+      if (datosPago.pagos.length === 0) return;
+
+      openConfirmModal({
+        title: `Revertir pago de ${tc.name}`,
+        message: `Se encontraron ${datosPago.pagos.length} pagos este mes por ${formatCOP(datosPago.monto)}.`,
+        detail: "Al revertirlos, se eliminarán los egresos asociados a este pago de tarjeta. La deuda se recalculará automáticamente.",
+        actions: [
+          {
+            label: "Revertir pagos",
+            variant: "warning",
+            onClick: () => {
+              datosPago.pagos.forEach((p) => removeEgreso(p.id));
+              safeShowToast("Pagos de tarjeta revertidos.", "error");
+            }
+          }
+        ]
+      });
     };
 
     const handleDeleteTc = (tc) => {
-      const action = window.prompt(
-        `¿Qué deseas hacer con la tarjeta "${tc.name}" en este checklist?\n\n1. Ocultar SOLO este mes\n2. Ocultar para SIEMPRE\n\nEscribe 1 o 2:`
-      );
+      openConfirmModal({
+        title: `Ocultar ${tc.name}`,
+        message: "Elige si quieres ocultar esta tarjeta solo en el mes actual o permanentemente del checklist.",
+        detail: `Mes activo: ${selectedMonth}`,
+        actions: [
+          {
+            label: "Ocultar este mes",
+            variant: "warning",
+            onClick: () => {
+              const skipped = tc.skippedMonths || [];
 
-      if (action === "1") {
-        const skipped = tc.skippedMonths || [];
-        if (updateCuenta) updateCuenta(tc.id, { skippedMonths: [...skipped, selectedMonth] });
-        safeShowToast(`Tarjeta oculta en ${selectedMonth}.`);
-      } else if (action === "2") {
-        if (updateCuenta) updateCuenta(tc.id, { hideFromChecklist: true });
-        safeShowToast("Tarjeta oculta permanentemente.", "error");
-      }
+              if (updateCuenta) {
+                updateCuenta(tc.id, {
+                  skippedMonths: [...new Set([...skipped, selectedMonth])]
+                });
+              }
+
+              safeShowToast(`Tarjeta oculta en ${selectedMonth}.`);
+            }
+          },
+          {
+            label: "Ocultar para siempre",
+            variant: "danger",
+            onClick: () => {
+              if (updateCuenta) {
+                updateCuenta(tc.id, { hideFromChecklist: true });
+              }
+
+              safeShowToast("Tarjeta oculta permanentemente.", "error");
+            }
+          }
+        ]
+      });
     };
 
     const startEditTc = (tc) => {
@@ -573,7 +645,9 @@
     };
 
     const saveEditTc = () => {
-      if (!tcEditData.name) return safeShowToast("El nombre es requerido.", "error");
+      if (!tcEditData.name) {
+        return safeShowToast("El nombre es requerido.", "error");
+      }
 
       if (updateCuenta) {
         updateCuenta(editingTcId, {
@@ -624,8 +698,13 @@
       const cuentaFinal = getPfCuenta(pf);
       const montoFinal = toNumber(getPfMonto(pf));
 
-      if (!cuentaFinal) return safeShowToast("Selecciona desde qué cuenta vas a pagar.", "error");
-      if (montoFinal <= 0) return safeShowToast("El monto del pago debe ser mayor a cero.", "error");
+      if (!cuentaFinal) {
+        return safeShowToast("Selecciona desde qué cuenta vas a pagar.", "error");
+      }
+
+      if (montoFinal <= 0) {
+        return safeShowToast("El monto del pago debe ser mayor a cero.", "error");
+      }
 
       const gastoBase = pf.gastoEspecifico || pf.descripcion;
       const subcat = getSubcategoria(pf.categoria, gastoBase, pf.subcategoria || "Otros");
@@ -651,26 +730,53 @@
       const egresoAEliminar = getPagoRealizado(pf);
 
       if (egresoAEliminar) {
-        removeEgreso(egresoAEliminar.id);
-        safeShowToast(`Se ha revertido el pago de ${pf.descripcion}.`, "error");
+        openConfirmModal({
+          title: `Revertir ${pf.descripcion}`,
+          message: "Se eliminará el egreso asociado a este pago fijo.",
+          detail: "La configuración del pago fijo no se borra. Solo se revierte el pago registrado este mes.",
+          actions: [
+            {
+              label: "Revertir pago",
+              variant: "warning",
+              onClick: () => {
+                removeEgreso(egresoAEliminar.id);
+                safeShowToast(`Se ha revertido el pago de ${pf.descripcion}.`, "error");
+              }
+            }
+          ]
+        });
       }
     };
 
     const handleDeletePf = (pf) => {
-      const action = window.prompt(
-        `¿Qué deseas hacer con el pago fijo "${pf.descripcion}"?\n\n1. Ocultar SOLO este mes\n2. Eliminar del sistema para SIEMPRE\n\nEscribe 1 o 2:`
-      );
+      openConfirmModal({
+        title: `Gestionar ${pf.descripcion}`,
+        message: "Elige qué quieres hacer con este pago fijo.",
+        detail: "Ocultarlo este mes no borra la configuración. Eliminarlo definitivamente lo quitará del sistema, pero no borra pagos históricos ya registrados.",
+        actions: [
+          {
+            label: "Ocultar este mes",
+            variant: "warning",
+            onClick: () => {
+              const skipped = pf.skippedMonths || [];
 
-      if (action === "1") {
-        const skipped = pf.skippedMonths || [];
-        updatePagoFijo(pf.id, { skippedMonths: [...skipped, selectedMonth] });
-        safeShowToast(`Pago fijo oculto en ${selectedMonth}.`);
-      } else if (action === "2") {
-        if (window.confirm(`¿Seguro que quieres eliminar "${pf.descripcion}" para siempre? Los pagos viejos no se borran.`)) {
-          removePagoFijo(pf.id);
-          safeShowToast("Pago fijo eliminado del sistema.", "error");
-        }
-      }
+              updatePagoFijo(pf.id, {
+                skippedMonths: [...new Set([...skipped, selectedMonth])]
+              });
+
+              safeShowToast(`Pago fijo oculto en ${selectedMonth}.`);
+            }
+          },
+          {
+            label: "Eliminar definitivamente",
+            variant: "danger",
+            onClick: () => {
+              removePagoFijo(pf.id);
+              safeShowToast("Pago fijo eliminado del sistema.", "error");
+            }
+          }
+        ]
+      });
     };
 
     const startEditPf = (pf) => {
@@ -707,15 +813,7 @@
       safeShowToast("Pago fijo base actualizado.");
     };
 
-    const handleCreateNuevoPf = () => {
-      if (!nuevoPf.descripcion || !nuevoPf.monto) {
-        return safeShowToast("Escribe un nombre y un monto.", "error");
-      }
-
-      const isRecurrente = window.confirm(
-        "¿Este pago fijo es RECURRENTE?\n\n[Aceptar] = Sí, todos los meses\n[Cancelar] = No, SOLO este mes"
-      );
-
+    const crearPagoFijoBase = (isRecurrente) => {
       const gastoBase = nuevoPf.gastoEspecifico || nuevoPf.descripcion;
       const subcat = getSubcategoria(nuevoPf.categoria, gastoBase, "Otros");
 
@@ -741,6 +839,30 @@
       });
 
       safeShowToast(isRecurrente ? "Nuevo pago fijo agregado." : "Pago programado solo para este mes.");
+    };
+
+    const handleCreateNuevoPf = () => {
+      if (!nuevoPf.descripcion || !nuevoPf.monto) {
+        return safeShowToast("Escribe un nombre y un monto.", "error");
+      }
+
+      openConfirmModal({
+        title: "Tipo de pago fijo",
+        message: `¿Cómo quieres guardar "${nuevoPf.descripcion}"?`,
+        detail: "Recurrente aparecerá todos los meses. Solo este mes se mostrará únicamente en el mes activo.",
+        actions: [
+          {
+            label: "Recurrente todos los meses",
+            variant: "success",
+            onClick: () => crearPagoFijoBase(true)
+          },
+          {
+            label: "Solo este mes",
+            variant: "warning",
+            onClick: () => crearPagoFijoBase(false)
+          }
+        ]
+      });
     };
 
     // ============================================================================
@@ -832,6 +954,76 @@
     }, 0);
 
     // ============================================================================
+    // MODAL DE CONFIRMACIÓN
+    // ============================================================================
+    const ConfirmModal = () => {
+      if (!confirmModal) return null;
+
+      return (
+        <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-[999] flex items-end md:items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-appcard w-full max-w-md rounded-t-[28px] md:rounded-[28px] border border-white/[0.06] shadow-[0_24px_80px_rgba(0,0,0,0.75)] p-6 animate-in slide-in-from-bottom-6 duration-300">
+            <div className="mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-neonmagenta/10 border border-neonmagenta/30 flex items-center justify-center text-neonmagenta mb-4 shadow-glow-magenta">
+                <Trash2Icon size={22} />
+              </div>
+
+              <h3 className="text-xl font-black text-white tracking-wide">
+                {confirmModal.title}
+              </h3>
+
+              {confirmModal.message && (
+                <p className="text-sm text-[#8A92A6] font-bold mt-2 leading-relaxed">
+                  {confirmModal.message}
+                </p>
+              )}
+
+              {confirmModal.detail && (
+                <div className="mt-4 bg-[#111222] shadow-neumorph-inset rounded-2xl p-4 border border-white/[0.03]">
+                  <p className="text-xs text-slate-300 font-bold leading-relaxed">
+                    {confirmModal.detail}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {confirmModal.actions.map((action, index) => {
+                const variantClass =
+                  action.variant === "danger"
+                    ? "bg-neonmagenta text-[#0b0c16] shadow-glow-magenta hover:bg-[#ff1a8c]"
+                    : action.variant === "warning"
+                      ? "bg-amber-400 text-[#0b0c16] shadow-[0_0_15px_rgba(251,191,36,0.45)] hover:bg-amber-300"
+                      : action.variant === "success"
+                        ? "bg-emerald-400 text-[#0b0c16] shadow-[0_0_15px_rgba(52,211,153,0.45)] hover:bg-emerald-300"
+                        : "bg-[#111222] text-slate-300 border border-white/[0.05] hover:border-neoncyan/40 hover:text-neoncyan";
+
+                return (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      if (typeof action.onClick === "function") action.onClick();
+                      closeConfirmModal();
+                    }}
+                    className={`w-full py-3.5 px-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all active:scale-[0.98] ${variantClass}`}
+                  >
+                    {action.label}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={closeConfirmModal}
+                className="w-full py-3.5 px-4 rounded-xl text-sm font-black uppercase tracking-widest bg-transparent text-[#8A92A6] hover:text-white transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============================================================================
     // CLASES UI
     // ============================================================================
     const inputBaseClass = "w-full bg-[#111222] shadow-neumorph-inset border border-transparent rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-neonmagenta focus:shadow-glow-magenta transition-all duration-300 placeholder:text-slate-600";
@@ -842,6 +1034,8 @@
     // ============================================================================
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
+        <ConfirmModal />
+
         {/* HEADER */}
         <header className="mb-6">
           <h1 className="text-2xl md:text-3xl font-black text-white tracking-wide flex items-center gap-3">
