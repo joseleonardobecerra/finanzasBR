@@ -1,11 +1,10 @@
-const DashboardTab = (() => {
-
+(() => {
   // Íconos SVG Privados para Dashboard
   const ChevronRight = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="9 18 15 12 9 6"></polyline></svg>;
   const Calculator = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14.01"></line><line x1="16" y1="10" x2="16" y2="10.01"></line><line x1="16" y1="18" x2="16" y2="18.01"></line><line x1="8" y1="14" x2="12" y2="14"></line><line x1="8" y1="10" x2="12" y2="10"></line><line x1="8" y1="18" x2="12" y2="18"></line></svg>;
   const BarChart3 = ({ size=18, className="" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18"/><rect width="4" height="7" x="7" y="10" rx="1"/><rect width="4" height="12" x="15" y="5" rx="1"/></svg>;
 
-  const DashboardTabComponent = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas, proyeccionLiquidez, privacyMode }) => {
+  const DashboardTab = ({ flujoNetoMes, cuotasMesTotal, cuotasMesRestantes, ingresosMesTotal, egresosMesTotal, deudaTotal, liquidezTotal, selectedMonth, egresosMes, ingresos, egresos, presupuestos, pagosFijos, ingresosFijos, cuentas, proyeccionLiquidez, privacyMode }) => {
     const { useState, useMemo } = React;
     
     // ✨ Importamos los componentes de Recharts
@@ -45,7 +44,7 @@ const DashboardTab = (() => {
     const tarjetasCredito = cuentas.filter(c => c.type === 'credit');
     const idsTarjetas = tarjetasCredito.map(c => c.id);
 
-    // ✨ CORRECCIÓN: Eliminamos totalPresupuestadoTC para que no duplique el presupuesto
+    // ✨ Presupuesto sin duplicar TC
     const totalPresupuestadoFijo = pagosFijos ? pagosFijos.reduce((sum, item) => sum + item.monto, 0) : 0;
     const totalPresupuestadoVar = presupuestos ? presupuestos.reduce((sum, item) => sum + item.limite, 0) : 0;
     const presupuestoTotal = totalPresupuestadoFijo + totalPresupuestadoVar;
@@ -119,7 +118,7 @@ const DashboardTab = (() => {
 
     const totalDineroCuentas = liquidezLeoCuentas + liquidezLeoEfectivo + liquidezAndreCuentas + liquidezAndreEfectivo;
 
-    // ✨ GRÁFICA OPTIMIZADA: Ahora lee directamente tu nueva arquitectura de categorías (Sin deducciones)
+    // ✨ GRÁFICA OPTIMIZADA: Ahora lee directamente tu nueva arquitectura de categorías (Sin el bloque largo viejo)
     const chartData = useMemo(() => {
       const gastosFiltrados = chartFilter === 'Todos' ? egresosMes : egresosMes.filter(e => e.tipo === chartFilter);
       const gastosPorCategoria = {};
@@ -450,5 +449,6 @@ const DashboardTab = (() => {
       </div>
     );
   };
-  return DashboardTabComponent;
+  
+  window.DashboardTab = DashboardTabComponent;
 })();
