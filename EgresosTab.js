@@ -14,6 +14,85 @@ const EyeOff = ({ size = 16, className = "" }) => <svg width={size} height={size
 const CreditCardIcon = ({ size = 18, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>;
 
 // ============================================================================
+// ✨ NUEVO DICCIONARIO MAESTRO DE CATEGORÍAS AUTOMATIZADO
+// ============================================================================
+const CATEGORIAS_CONFIG = {
+  "🏠 Vivienda y Servicios": [
+    { específico: "Arriendo", sub: "Hogar" },
+    { específico: "Administración", sub: "Hogar" },
+    { específico: "CENS (Luz)", sub: "Servicios Públicos" },
+    { específico: "Gases del Oriente (Gas)", sub: "Servicios Públicos" },
+    { específico: "Aqualia (Agua)", sub: "Servicios Públicos" },
+    { específico: "Internet Hogar", sub: "Servicios Públicos" },
+    { específico: "Mantenimiento", sub: "Hogar" }
+  ],
+  "🛒 Mercado y Aseo": [
+    { específico: "Supermercado Único", sub: "Mercado" },
+    { específico: "Supermercado / Tienda", sub: "Mercado" },
+    { específico: "Aseo hogar", sub: "Aseo" },
+    { específico: "Mercado Aseo", sub: "Aseo" },
+    { específico: "Botellón Agua", sub: "Botellón Agua" }
+  ],
+  "🍔 Alimentación y Ocio": [
+    { específico: "Restaurante & Otros", sub: "Alimentación" },
+    { específico: "Panadería", sub: "Alimentación" },
+    { específico: "Salidas", sub: "Ocio" }
+  ],
+  "🚗 Vehículo": [
+    { específico: "Gasolina", sub: "Gasolina" },
+    { específico: "Seguro vehículo", sub: "Seguro vehículo" },
+    { específico: "Impuesto vehículo", sub: "Impuestos" },
+    { específico: "Tecnomecánica / Mantenimiento", sub: "Mantenimiento" },
+    { específico: "Lavado vehículo", sub: "Mantenimiento" },
+    { específico: "Seguro Deudor Vehículo", sub: "Seguro vehículo" },
+    { específico: "Parqueadero", sub: "Operativo" },
+    { específico: "Otros", sub: "Otros" }
+  ],
+  "💳 Obligaciones (Deudas)": [
+    { específico: "Rappicard Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Falabella Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Nu Bank Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Intereses Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Davibank Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Banco de Bogotá Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Nu Bank Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Intereses Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Lulo Bank Andre", sub: "Crédito" },
+    { específico: "Crédito de vehículo Leo", sub: "Crédito" }
+  ],
+  "👥 Familia": [
+    { específico: "Sura Andre", sub: "Seguro de Vida" },
+    { específico: "Sura Leo", sub: "Seguro de Vida" },
+    { específico: "Peluquería Andre", sub: "Cuidado personal" },
+    { específico: "Barbería Leo", sub: "Cuidado personal" },
+    { específico: "Celular Leo", sub: "Celular" },
+    { específico: "Celular Andrea", sub: "Celular" },
+    { específico: "Manicure / Pedicure", sub: "Cuidado personal" },
+    { específico: "Snacks Andre", sub: "Gastos hormiga" },
+    { específico: "Snacks Leo", sub: "Gastos hormiga" }
+  ],
+  "👧👦 Tobías y Salomé": [
+    { específico: "Snacks hijos", sub: "Gastos hormiga" },
+    { específico: "Colegio hijos", sub: "Educación" },
+    { específico: "Deporte hijos", sub: "Extracurricular" },
+    { específico: "Peluquería hijos", sub: "Cuidado personal" },
+    { específico: "Otros", sub: "Otros" }
+  ],
+  "⚕️ Salud": [
+    { específico: "Cita médica", sub: "Citas médicas" },
+    { específico: "Droguería", sub: "Medicamentos y otros" }
+  ],
+  "💻 Digital": [
+    { específico: "HBO Max", sub: "Suscripciones Digitales" },
+    { específico: "Inteligencia Artificial", sub: "Suscripciones Digitales" },
+    { específico: "Otros", sub: "Suscripciones Digitales" }
+  ],
+  "📈 Futuro": [
+    { específico: "Inversión", sub: "Inversión" }
+  ]
+};
+
+// ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
 const EgresosTab = ({ 
@@ -56,17 +135,19 @@ const EgresosTab = ({
   };
 
   // ============================================================================
-  // 1. ESTADOS DEL FORMULARIO PRINCIPAL
+  // 1. ESTADOS DEL FORMULARIO PRINCIPAL (Modificado para cascada)
   // ============================================================================
   const [fecha, setFecha] = useState(getLocalToday());
-  const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
-  const [categoria, setCategoria] = useState('');
   const [metodoPago, setMetodoPago] = useState('');
   const [cuentaId, setCuentaId] = useState('');
   const [deudaId, setDeudaId] = useState('');
   const [interesesOtros, setInteresesOtros] = useState('');
   const [tipo, setTipo] = useState('Variable');
+  
+  // ✨ NUEVOS ESTADOS DE CASCADA
+  const [catSeleccionada, setCatSeleccionada] = useState('');
+  const [gastoEspecifico, setGastoEspecifico] = useState('');
 
   // ============================================================================
   // 2. ESTADOS DE EDICIÓN EN LÍNEA
@@ -82,7 +163,6 @@ const EgresosTab = ({
   // ============================================================================
   // 4. ESTADOS PARA LOS ACORDEONES Y TABLAS
   // ============================================================================
-  // ✨ Ajuste: Todos los acordeones cerrados por defecto
   const [openSections, setOpenSections] = useState({ form: false, tc: false, fijos: false, historial: false });
 
   const toggleSection = (sec) => {
@@ -145,18 +225,28 @@ const EgresosTab = ({
   // ============================================================================
   // FUNCIONES DE REGISTRO INDIVIDUAL (FORMULARIO PRINCIPAL)
   // ============================================================================
+  
+  // ✨ Lógica para las opciones del selector de Gasto Específico
+  const opcionesEspecificas = useMemo(() => {
+    return catSeleccionada ? CATEGORIAS_CONFIG[catSeleccionada] : [];
+  }, [catSeleccionada]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!descripcion || !monto || !categoria || !cuentaId) {
+    if (!catSeleccionada || !gastoEspecifico || !monto || !cuentaId) {
       showToast('Por favor completa todos los campos requeridos.', 'error');
       return;
     }
     
+    // Obtenemos la subcategoría mapeada
+    const config = CATEGORIAS_CONFIG[catSeleccionada].find(i => i.específico === gastoEspecifico);
+    
     addEgreso({
       id: generateId(),
       fecha,
-      descripcion,
-      categoria,
+      descripcion: gastoEspecifico, // El detalle específico se guarda como descripción para el historial
+      categoria: catSeleccionada,   // Categoría macro
+      subcategoria: config.sub,     // Subcategoría automática
       monto: Number(monto),
       interesesOtros: Number(interesesOtros) || 0,
       cuentaId,
@@ -164,7 +254,7 @@ const EgresosTab = ({
       deudaId: deudaId || null
     });
     
-    setDescripcion(''); setMonto(''); setInteresesOtros(''); setDeudaId('');
+    setGastoEspecifico(''); setMonto(''); setInteresesOtros(''); setDeudaId('');
     showToast('Gasto registrado correctamente.');
   };
 
@@ -454,7 +544,7 @@ const EgresosTab = ({
       </div>
 
       {/* ============================================================================ */}
-      {/* 1. FORMULARIO REGISTRO NORMAL (ACORDEÓN) */}
+      {/* 1. FORMULARIO REGISTRO NORMAL (ACORDEÓN - ACTUALIZADO CON CASCADA) */}
       {/* ============================================================================ */}
       <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8">
         <div 
@@ -472,25 +562,42 @@ const EgresosTab = ({
 
         {openSections.form && (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6 animate-in slide-in-from-top-4 fade-in duration-300">
-            {/* Fila 1 */}
+            {/* ✨ NUEVO: FILA 1 DE CATEGORÍAS */}
             <div>
-              <label className={labelBaseClass}>Fecha</label>
-              <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`} />
-            </div>
-            <div>
-              <label className={labelBaseClass}>Descripción</label>
-              <input type="text" required value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej. Almuerzo, Pago libre..." className={inputBaseClass} />
-            </div>
-            <div>
-              <label className={labelBaseClass}>Categoría</label>
-              <select required value={categoria} onChange={(e) => setCategoria(e.target.value)} className={`${inputBaseClass} appearance-none cursor-pointer`}>
-                <option value="" className="bg-[#111222]">Seleccione...</option>
-                {categoriasMaestras.map(c => <option key={c} value={c} className="bg-[#111222]">{c}</option>)}
-                {!categoriasMaestras.includes('Intereses y otros') && <option value="Intereses y otros" className="bg-[#111222]">Intereses y otros</option>}
+              <label className={labelBaseClass}>1. Área de Gasto</label>
+              <select 
+                required 
+                value={catSeleccionada} 
+                onChange={(e) => { setCatSeleccionada(e.target.value); setGastoEspecifico(''); }}
+                className={`${inputBaseClass} appearance-none cursor-pointer`}
+              >
+                <option value="" className="bg-[#111222]">Seleccione Categoría...</option>
+                {Object.keys(CATEGORIAS_CONFIG).map(cat => <option key={cat} value={cat} className="bg-[#111222]">{cat}</option>)}
               </select>
             </div>
 
-            {/* Fila 2 */}
+            <div>
+              <label className={labelBaseClass}>2. ¿Qué se pagó?</label>
+              <select 
+                required 
+                disabled={!catSeleccionada}
+                value={gastoEspecifico} 
+                onChange={(e) => setGastoEspecifico(e.target.value)}
+                className={`${inputBaseClass} disabled:opacity-30 appearance-none cursor-pointer`}
+              >
+                <option value="" className="bg-[#111222]">Seleccione detalle...</option>
+                {opcionesEspecificas.map(opt => <option key={opt.específico} value={opt.específico} className="bg-[#111222]">{opt.específico}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelBaseClass}>3. Subcategoría (Auto)</label>
+              <div className="w-full bg-[#0b0c16] shadow-neumorph-inset border border-white/5 rounded-xl px-4 py-3.5 text-xs text-neoncyan font-bold uppercase tracking-widest opacity-80 flex items-center">
+                {gastoEspecifico ? opcionesEspecificas.find(i => i.específico === gastoEspecifico)?.sub : '---'}
+              </div>
+            </div>
+
+            {/* FILA 2: DATOS FINANCIEROS Y METODOS */}
             <div>
               <label className={labelBaseClass}>Método de Pago</label>
               <select required value={metodoPago} onChange={(e) => { setMetodoPago(e.target.value); setCuentaId(''); }} className={`${inputBaseClass} appearance-none cursor-pointer`}>
@@ -500,6 +607,7 @@ const EgresosTab = ({
                 <option value="credit" className="bg-[#111222]">💳 Tarjeta de Crédito</option>
               </select>
             </div>
+            
             <div>
               <label className={labelBaseClass}>De dónde sale la plata</label>
               <select required disabled={!metodoPago} value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} className={`${inputBaseClass} appearance-none cursor-pointer disabled:opacity-30`}>
@@ -511,7 +619,20 @@ const EgresosTab = ({
                 ))}
               </select>
             </div>
+
             <div>
+              <label className={labelBaseClass}>Fecha</label>
+              <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} onClick={(e) => e.target.showPicker && e.target.showPicker()} className={`${inputBaseClass} cursor-pointer [&::-webkit-calendar-picker-indicator]:invert-[0.8]`} />
+            </div>
+            
+            {/* FILA 3: MONTOS Y EXTRAS */}
+            <div className="md:col-span-2 relative">
+              <label className={labelBaseClass}>Monto Total Pagado</label>
+              <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
+              <input type="number" required value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" className={`${inputBaseClass} pl-8 font-black text-lg text-neonmagenta`} />
+            </div>
+
+            <div className="md:col-span-1">
               <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-1 mb-1.5 flex items-center gap-1">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Abonar a Deuda (Opcional)
               </label>
@@ -520,13 +641,7 @@ const EgresosTab = ({
                 {todasLasDeudas.map(d => <option key={d.id} value={d.id} className="bg-[#111222]">Pagar: {d.name}</option>)}
               </select>
             </div>
-            
-            {/* Fila 3: Montos */}
-            <div className="md:col-span-2 relative">
-              <label className={labelBaseClass}>Monto Total Pagado</label>
-              <span className="absolute left-4 top-[38px] text-lg font-black text-slate-600">$</span>
-              <input type="number" required value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0" className={`${inputBaseClass} pl-8 font-black text-lg text-neonmagenta`} />
-            </div>
+
             <div className="md:col-span-1">
               <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest pl-1 mb-1.5 flex items-center gap-1">Pago de Intereses (Opcional)</label>
               <input type="number" value={interesesOtros} onChange={(e) => setInteresesOtros(e.target.value)} placeholder="$ 0 (Extra/Interés)" className={`${inputBaseClass} !border-amber-500/30 focus:!border-amber-500 focus:!shadow-[0_0_15px_rgba(251,191,36,0.4)] font-bold text-amber-400`} />
@@ -774,7 +889,7 @@ const EgresosTab = ({
                       <td className="px-3 py-3"><input type="text" value={nuevoPf.descripcion} onChange={e=>setNuevoPf({...nuevoPf, descripcion: e.target.value})} className="w-full bg-[#111222] border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-amber-500" placeholder="Nuevo Pago Fijo..." /></td>
                       <td className="px-3 py-3">
                         <select value={nuevoPf.categoria} onChange={e=>setNuevoPf({...nuevoPf, categoria: e.target.value})} className="w-full bg-[#111222] border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-amber-500 cursor-pointer">
-                          {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                          {Object.keys(CATEGORIAS_CONFIG).map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </td>
                       <td className="px-3 py-3"><input type="number" value={nuevoPf.diaPago} onChange={e=>setNuevoPf({...nuevoPf, diaPago: e.target.value})} className="w-full bg-[#111222] border border-amber-500/30 rounded-lg px-2 py-1.5 text-xs text-white outline-none text-center shadow-neumorph-inset focus:border-amber-500" placeholder="1" /></td>
@@ -800,7 +915,7 @@ const EgresosTab = ({
                             </td>
                             <td className="px-3 py-3">
                               <select value={pfEditData.categoria} onChange={e=>setPfEditData({...pfEditData, categoria: e.target.value})} className="w-full bg-[#111222] border border-amber-500/50 rounded-lg px-2 py-1.5 text-xs text-white outline-none shadow-neumorph-inset focus:border-amber-500 cursor-pointer">
-                                {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                                {Object.keys(CATEGORIAS_CONFIG).map(c => <option key={c} value={c}>{c}</option>)}
                               </select>
                             </td>
                             <td className="px-3 py-3">
@@ -911,7 +1026,7 @@ const EgresosTab = ({
       </div>
 
       {/* ============================================================================ */}
-      {/* 4. TABLA HISTORIAL COMPLETA */}
+      {/* 4. TABLA HISTORIAL COMPLETA (Actualizada para Subcategorías) */}
       {/* ============================================================================ */}
       <div className="bg-appcard shadow-neumorph rounded-[30px] border border-white/[0.02] p-5 md:p-8">
         <div 
@@ -963,7 +1078,7 @@ const EgresosTab = ({
                   <th className="p-2">
                     <select className="w-full bg-[#111222] border border-transparent rounded-lg p-2 text-[11px] text-white focus:border-neoncyan outline-none appearance-none cursor-pointer" value={filters.categoria} onChange={e => setFilters({...filters, categoria: e.target.value})}>
                       <option value="">Categorías (Todas)</option>
-                      {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                      {Object.keys(CATEGORIAS_CONFIG).map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </th>
                   <th className="p-2">
@@ -1025,12 +1140,19 @@ const EgresosTab = ({
                         <td className="p-4">
                           {isEditing ? (
                             <select value={editData.categoria} onChange={e => setEditData({...editData, categoria: e.target.value})} className="w-full bg-[#111222] rounded px-2 py-1 text-xs outline-none text-white appearance-none cursor-pointer">
-                              {categoriasMaestras.map(c => <option key={c} value={c}>{c}</option>)}
+                              {Object.keys(CATEGORIAS_CONFIG).map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                           ) : (
-                            <span className="px-3 py-1.5 bg-appcard border border-white/[0.05] text-[#8A92A6] text-[11px] font-bold uppercase tracking-wider rounded-lg">
-                              {egreso.categoria}
-                            </span>
+                            <div>
+                              <span className="px-3 py-1 bg-appcard border border-white/[0.05] text-[#8A92A6] text-[10px] font-bold uppercase tracking-wider rounded-lg block w-max">
+                                {egreso.categoria}
+                              </span>
+                              {egreso.subcategoria && (
+                                <span className="text-[9px] font-black text-slate-500 mt-1 block pl-1 uppercase tracking-widest">
+                                  ↳ {egreso.subcategoria}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
 
