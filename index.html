@@ -2,27 +2,38 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
+
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  
+
   <link rel="manifest" href="manifest.json">
+
   <meta name="theme-color" content="#0b0c16">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  
+
   <link rel="icon" href="logo.png" type="image/png">
   <link rel="apple-touch-icon" href="logo.png">
 
   <title>Finanzas Familia - Master Excel & Cloud</title>
 
+  <!-- FUENTE -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  >
 
+  <!-- TAILWIND -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
   <script>
     tailwind.config = {
       theme: {
@@ -31,17 +42,14 @@
             sans: ['Outfit', 'sans-serif'],
           },
           colors: {
-            appbg: '#0b0c16',      /* Fondo principal azul oscuro ultra profundo */
-            appcard: '#111222',    /* Fondo de las tarjetas, levemente más claro para contraste */
-            neoncyan: '#00E5FF',   /* Acento principal: Cyan brillante */
-            neonmagenta: '#FF007A',/* Acento secundario: Magenta/Rosa brillante */
+            appbg: '#0b0c16',
+            appcard: '#111222',
+            neoncyan: '#00E5FF',
+            neonmagenta: '#FF007A',
           },
           boxShadow: {
-            /* Sombra hacia afuera para dar relieve (Neumorfismo) */
-            'neumorph': '8px 8px 16px #05060b, -8px -8px 16px #111221',
-            /* Sombra hacia adentro para inputs hundidos */
+            neumorph: '8px 8px 16px #05060b, -8px -8px 16px #111221',
             'neumorph-inset': 'inset 4px 4px 8px #05060b, inset -4px -4px 8px #111221',
-            /* Brillos de luz neón */
             'glow-cyan': '0 0 15px rgba(0, 229, 255, 0.4)',
             'glow-magenta': '0 0 15px rgba(255, 0, 122, 0.4)',
             'glow-amber': '0 0 15px rgba(251, 191, 36, 0.4)',
@@ -51,46 +59,77 @@
     }
   </script>
 
+  <!-- REACT -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- BABEL -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
+
+  <!-- FIREBASE -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <!-- EXCEL -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
+  <!-- RECHARTS -->
   <script crossorigin src="https://unpkg.com/prop-types@15.7.2/prop-types.min.js"></script>
   <script crossorigin src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
-
 </head>
-<body class="bg-appbg text-slate-200 font-sans antialiased selection:bg-neoncyan selection:text-appbg" style="background-color: #0b0c16;">
-  
+
+<body
+  class="bg-appbg text-slate-200 font-sans antialiased selection:bg-neoncyan selection:text-appbg"
+  style="background-color: #0b0c16;"
+>
+
   <div id="root">
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:'Outfit', sans-serif;">
-      
-      <img src="logo.png" alt="Logo" style="width:80px;height:80px;margin-bottom:16px;animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;filter: drop-shadow(0 0 15px rgba(0,229,255,0.4));">
-      
-      <p style="color:#00E5FF;font-size:16px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Iniciando Sistema...</p>
-      
+
+      <img
+        src="logo.png"
+        alt="Logo"
+        style="width:80px;height:80px;margin-bottom:16px;animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;filter: drop-shadow(0 0 15px rgba(0,229,255,0.4));"
+      >
+
+      <p style="color:#00E5FF;font-size:16px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">
+        Iniciando Sistema...
+      </p>
+
       <style>
         @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(0.95); }
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+
+          50% {
+            opacity: 0.6;
+            transform: scale(0.95);
+          }
         }
       </style>
-      
+
     </div>
   </div>
 
+  <!-- SERVICE WORKER -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error: ', err));
+        navigator.serviceWorker
+          .register('sw.js')
+          .catch(err => console.log('SW error: ', err));
       });
     }
   </script>
 
+  <!-- COMPARTIDOS LIMPIOS -->
+  <!-- Este archivo NO debe inicializar Firebase. Solo utilidades, UI e íconos. -->
+  <script type="text/babel" src="globals.js"></script>
+
+  <!-- COMPONENTES PRINCIPALES -->
   <script type="text/babel" src="Login.js"></script>
   <script type="text/babel" src="DashboardTab.js"></script>
   <script type="text/babel" src="AnaliticaTab.js"></script>
@@ -102,6 +141,8 @@
   <script type="text/babel" src="PresupuestosTab.js"></script>
   <script type="text/babel" src="SimuladorTab.js"></script>
   <script type="text/babel" src="SettingsTab.js"></script>
+
+  <!-- APP SIEMPRE AL FINAL -->
   <script type="text/babel" src="App.js"></script>
 </body>
 </html>
