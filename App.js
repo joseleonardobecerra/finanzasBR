@@ -52,9 +52,88 @@ const loadSheetJS = async () => {
   });
 };
 
+// ============================================================================
+// ✨ DICCIONARIO MAESTRO DE CATEGORÍAS AUTOMATIZADO (NUEVO)
+// ============================================================================
+const CATEGORIAS_CONFIG = {
+  "🏠 Vivienda y Servicios": [
+    { específico: "Arriendo", sub: "Hogar" },
+    { específico: "Administración", sub: "Hogar" },
+    { específico: "CENS (Luz)", sub: "Servicios Públicos" },
+    { específico: "Gases del Oriente (Gas)", sub: "Servicios Públicos" },
+    { específico: "Aqualia (Agua)", sub: "Servicios Públicos" },
+    { específico: "Internet Hogar", sub: "Servicios Públicos" },
+    { específico: "Mantenimiento", sub: "Hogar" }
+  ],
+  "🛒 Mercado y Aseo": [
+    { específico: "Supermercado Único", sub: "Mercado" },
+    { específico: "Supermercado / Tienda", sub: "Mercado" },
+    { específico: "Aseo hogar", sub: "Aseo" },
+    { específico: "Mercado Aseo", sub: "Aseo" },
+    { específico: "Botellón Agua", sub: "Botellón Agua" }
+  ],
+  "🍔 Alimentación y Ocio": [
+    { específico: "Restaurante & Otros", sub: "Alimentación" },
+    { específico: "Panadería", sub: "Alimentación" },
+    { específico: "Salidas", sub: "Ocio" }
+  ],
+  "🚗 Vehículo": [
+    { específico: "Gasolina", sub: "Gasolina" },
+    { específico: "Seguro vehículo", sub: "Seguro vehículo" },
+    { específico: "Impuesto vehículo", sub: "Impuestos" },
+    { específico: "Tecnomecánica / Mantenimiento", sub: "Mantenimiento" },
+    { específico: "Lavado vehículo", sub: "Mantenimiento" },
+    { específico: "Seguro Deudor Vehículo", sub: "Seguro vehículo" },
+    { específico: "Parqueadero", sub: "Operativo" },
+    { específico: "Otros", sub: "Otros" }
+  ],
+  "💳 Obligaciones (Deudas)": [
+    { específico: "Rappicard Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Falabella Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Nu Bank Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Intereses Leo", sub: "Tarjeta de Crédito L" },
+    { específico: "Davibank Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Banco de Bogotá Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Nu Bank Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Intereses Andre", sub: "Tarjeta de Crédito A" },
+    { específico: "Lulo Bank Andre", sub: "Crédito" },
+    { específico: "Crédito de vehículo Leo", sub: "Crédito" }
+  ],
+  "👥 Familia": [
+    { específico: "Sura Andre", sub: "Seguro de Vida" },
+    { específico: "Sura Leo", sub: "Seguro de Vida" },
+    { específico: "Peluquería Andre", sub: "Cuidado personal" },
+    { específico: "Barbería Leo", sub: "Cuidado personal" },
+    { específico: "Celular Leo", sub: "Celular" },
+    { específico: "Celular Andrea", sub: "Celular" },
+    { específico: "Manicure / Pedicure", sub: "Cuidado personal" },
+    { específico: "Snacks Andre", sub: "Gastos hormiga" },
+    { específico: "Snacks Leo", sub: "Gastos hormiga" }
+  ],
+  "👧👦 Tobías y Salomé": [
+    { específico: "Snacks hijos", sub: "Gastos hormiga" },
+    { específico: "Colegio hijos", sub: "Educación" },
+    { específico: "Deporte hijos", sub: "Extracurricular" },
+    { específico: "Peluquería hijos", sub: "Cuidado personal" },
+    { específico: "Otros", sub: "Otros" }
+  ],
+  "⚕️ Salud": [
+    { específico: "Cita médica", sub: "Citas médicas" },
+    { específico: "Droguería", sub: "Medicamentos y otros" }
+  ],
+  "💻 Digital": [
+    { específico: "HBO Max", sub: "Suscripciones Digitales" },
+    { específico: "Inteligencia Artificial", sub: "Suscripciones Digitales" },
+    { específico: "Otros", sub: "Suscripciones Digitales" }
+  ],
+  "📈 Futuro": [
+    { específico: "Inversión", sub: "Inversión" }
+  ]
+};
+
 
 // ============================================================================
-// 🛡️ CÁPSULA PRINCIPAL DE LA APLICACIÓN (Aísla componentes para evitar Bugs)
+// 🛡️ CÁPSULA PRINCIPAL DE LA APLICACIÓN
 // ============================================================================
 const App = (() => {
 
@@ -132,56 +211,6 @@ const App = (() => {
     }
   }
 
-  // 💎 COMPONENTES UI BASE (NUEVO DISEÑO DARK NEUMORPHISM & NEON)
-  const Card = ({ children, className = "", onClick }) => {
-    const baseClass = "bg-appcard rounded-[20px] shadow-neumorph border border-white/[0.02] p-4 md:p-6 transition-all duration-300";
-    const interactiveClass = onClick ? "cursor-pointer hover:shadow-glow-cyan hover:-translate-y-1 active:translate-y-0 active:shadow-neumorph-inset" : "";
-    return (
-      <div onClick={onClick} className={`${baseClass} ${interactiveClass} ${className}`}>
-        {children}
-      </div>
-    );
-  };
-
-  const Input = ({ label, type = "text", value, onChange, placeholder, className="", min, max, step, disabled, error, title, required, autoFocus }) => (
-    <div className={`flex flex-col gap-1.5 w-full ${className}`}>
-      {label && (
-        <label className={`text-[10px] font-black uppercase tracking-widest pl-1 ${error ? 'text-neonmagenta' : 'text-[#8A92A6]'}`}>
-          {label}
-        </label>
-      )}
-      <input 
-        type={type} value={value} onChange={onChange} placeholder={placeholder} 
-        min={min} max={max} step={step} disabled={disabled} title={title} required={required} autoFocus={autoFocus}
-        className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-neonmagenta focus:shadow-glow-magenta' : 'border-transparent focus:border-neoncyan focus:shadow-glow-cyan'} rounded-xl px-4 py-3 text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-600 disabled:opacity-50`}
-      />
-      {error && <span className="text-[10px] text-neonmagenta pl-1 font-bold tracking-wide">{error}</span>}
-    </div>
-  );
-
-  const Select = ({ label, value, onChange, options, className="", required, error, disabled, title }) => (
-    <div className={`flex flex-col gap-1.5 w-full ${className}`}>
-      {label && <label className={`text-[10px] font-black uppercase tracking-widest pl-1 ${error ? 'text-neonmagenta' : 'text-[#8A92A6]'}`}>{label}</label>}
-      <div className="relative">
-        <select 
-          value={value} onChange={onChange} required={required} disabled={disabled} title={title}
-          className={`w-full bg-[#111222] shadow-neumorph-inset border ${error ? 'border-neonmagenta focus:shadow-glow-magenta' : 'border-transparent focus:border-neoncyan focus:shadow-glow-cyan'} rounded-xl px-4 py-3 text-sm text-white outline-none transition-all duration-300 appearance-none cursor-pointer disabled:opacity-50`}
-        >
-          <option value="" className="bg-[#111222] text-slate-500">Seleccione...</option>
-          {options.map((opt, i) => {
-            const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
-            const lbl = typeof opt === 'object' && opt !== null ? opt.label : opt;
-            return <option key={i} value={val} className="bg-[#111222] text-white">{lbl}</option>;
-          })}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-          <ChevronDownIcon size={16} />
-        </div>
-      </div>
-      {error && <span className="text-[10px] text-neonmagenta pl-1 font-bold tracking-wide">{error}</span>}
-    </div>
-  );
-
   const Toast = ({ toast, onClose }) => {
     if (!toast) return null;
     return (
@@ -216,13 +245,14 @@ const App = (() => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Wizard Registro Rápido
+    // ✨ Wizard Registro Rápido (Actualizado con Cascada)
     const [quickEntryOpen, setQuickEntryOpen] = useState(false);
     const [qeStep, setQeStep] = useState(1);
     const [qeType, setQeType] = useState('');
     const [qeMonto, setQeMonto] = useState('');
-    const [qeDescripcion, setQeDescripcion] = useState('');
-    const [qeCategoria, setQeCategoria] = useState('');
+    const [qeCategoria, setQeCategoria] = useState(''); // Categoría Madre
+    const [qeDescripcion, setQeDescripcion] = useState(''); // Gasto Específico
+    const [qeSubcategoria, setQeSubcategoria] = useState(''); // Subcategoría Auto
     const [qeMethod, setQeMethod] = useState('');
     const [qeCuenta, setQeCuenta] = useState('');
 
@@ -259,7 +289,6 @@ const App = (() => {
       return new Date(y, parseInt(m) - 1, 1).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
     };
 
-    // ✨ Detectar mes histórico
     const currentRealMonth = new Date().toISOString().slice(0, 7);
     const isHistoricalMonth = selectedMonth !== currentRealMonth;
 
@@ -349,13 +378,10 @@ const App = (() => {
 
     const addPagoFijoToState = (pf) => addPagoFijo({ ...pf, id: generateId(), diaPago: pf.diaPago || 1, categoria: pf.categoria || 'Otros' });
 
+    // ✨ Esto mantiene la compatibilidad por si otra tabla usa la lista simple vieja, pero nuestro wizard usará CATEGORIAS_CONFIG
     const categoriasMaestras = useMemo(() => {
-      const cats = new Set(['Inversión', 'Gasolina', 'Mercado', 'Mercado Aseo', 'Aseo hogar', 'Botellón Agua', 'Panadería', 'Alimentación', 'Ocio']);
-      presupuestos.forEach(p => cats.add(String(p.categoria)));
-      pagosFijos.forEach(pf => { if (pf.categoria && pf.categoria !== 'Otros') cats.add(String(pf.categoria)); });
-      egresos.forEach(e => { if (e.categoria && e.categoria !== 'Otros') cats.add(String(e.categoria)); });
-      return Array.from(cats).sort();
-    }, [presupuestos, pagosFijos, egresos]);
+      return Object.keys(CATEGORIAS_CONFIG);
+    }, []);
 
     const calculatedAccounts = useMemo(() => {
       const accMap = {};
@@ -468,29 +494,59 @@ const App = (() => {
       }
     }, [scoreData.score, selectedMonth, appCargando]);
 
+    // ============================================================================
+    // ✨ WIZARD DE REGISTRO RÁPIDO (CASCADA INTELIGENTE)
+    // ============================================================================
     const handleOpenWizard = () => {
-      setQeStep(1); setQeType(''); setQeMonto(''); setQeDescripcion('');
-      setQeCategoria(''); setQeMethod(''); setQeCuenta('');
+      setQeStep(1); setQeType(''); setQeMonto(''); setQeCategoria(''); setQeDescripcion(''); setQeSubcategoria(''); setQeMethod(''); setQeCuenta('');
       setQuickEntryOpen(true);
     };
     
+    // Calcula las opciones del Paso 3.5 (Solo si es Egreso)
+    const opcionesEspecificasWizard = useMemo(() => {
+      return qeCategoria && qeType === 'egreso' ? CATEGORIAS_CONFIG[qeCategoria] : [];
+    }, [qeCategoria, qeType]);
+
     const handleQuickSave = () => {
       if (!qeMonto || !qeCategoria || !qeCuenta) return;
       const today = getLocalToday();
       const montoNum = Number(qeMonto);
-      const descFinal = qeDescripcion.trim() !== '' ? qeDescripcion : (qeType === 'egreso' ? `Gasto rápido (${qeCategoria})` : `Ingreso rápido (${qeCategoria})`);
+      
+      // Si es egreso, usamos qeDescripcion (que guarda el Detalle Específico) y qeSubcategoria
+      // Si es ingreso, qeDescripcion es opcional y no hay subcategoría
       if (qeType === 'egreso') {
-        addEgreso({ id: generateId(), fecha: today, descripcion: descFinal, categoria: qeCategoria, monto: montoNum, interesesOtros: 0, cuentaId: qeCuenta, tipo: 'Variable', deudaId: null });
+        if (!qeDescripcion) return; // Validación extra
+        addEgreso({ 
+          id: generateId(), 
+          fecha: today, 
+          descripcion: qeDescripcion, 
+          categoria: qeCategoria, 
+          subcategoria: qeSubcategoria,
+          monto: montoNum, 
+          interesesOtros: 0, 
+          cuentaId: qeCuenta, 
+          tipo: 'Variable', 
+          deudaId: null 
+        });
         showToast("Gasto registrado al instante.");
       } else {
-        addIngreso({ id: generateId(), fecha: today, descripcion: descFinal, categoria: qeCategoria, monto: montoNum, cuentaId: qeCuenta, persona: 'Total', tipo: 'Variable' });
+        addIngreso({ 
+          id: generateId(), 
+          fecha: today, 
+          descripcion: qeDescripcion || `Ingreso rápido (${qeCategoria})`, 
+          categoria: qeCategoria, 
+          monto: montoNum, 
+          cuentaId: qeCuenta, 
+          persona: 'Total', 
+          tipo: 'Variable' 
+        });
         showToast("Ingreso registrado al instante.");
       }
       setQuickEntryOpen(false);
     };
 
     // ============================================================================
-    // ✨ MOTOR DE BÚSQUEDA GLOBAL Y FORMATO DE PRIVACIDAD
+    // BUSCADOR GLOBAL Y PRIVACIDAD
     // ============================================================================
     const formatCOPPrivacy = (val) => {
       if (privacyMode) return '****';
@@ -628,7 +684,6 @@ const App = (() => {
             
             <div className="flex-1 flex justify-end w-full md:w-auto gap-3">
               
-              {/* ✨ BOTONES NUEVOS: PRIVACIDAD Y BUSCADOR */}
               <button onClick={() => setPrivacyMode(!privacyMode)} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title={privacyMode ? "Mostrar saldos" : "Ocultar saldos"}>
                 <EyeIcon size={20} off={privacyMode} />
               </button>
@@ -692,7 +747,7 @@ const App = (() => {
           <Plus size={28} strokeWidth="3" />
         </button>
 
-        {/* MODAL WIZARD */}
+        {/* ✨ MODAL WIZARD (CASCADA) */}
         {quickEntryOpen && (
           <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center animate-in fade-in duration-300">
             <div className="bg-appcard w-full md:w-[420px] md:rounded-[30px] rounded-t-[30px] p-6 border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-10 min-h-[420px] flex flex-col relative overflow-hidden">
@@ -728,20 +783,47 @@ const App = (() => {
                         <input type="number" value={qeMonto} onChange={e=>setQeMonto(e.target.value)} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent ${qeType === 'egreso' ? 'focus:border-rose-500 focus:shadow-glow-magenta text-rose-400' : 'focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(16,185,129,0.4)] text-emerald-400'} rounded-2xl pl-10 pr-4 py-5 text-3xl font-black outline-none transition-all placeholder:text-slate-700`} placeholder="0" autoFocus />
                       </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest block mb-2">Descripción (Opcional)</label>
-                      <input type="text" value={qeDescripcion} onChange={e=>setQeDescripcion(e.target.value)} className="w-full bg-[#111222] shadow-neumorph-inset border border-transparent focus:border-neoncyan text-white rounded-xl px-4 py-3.5 text-sm font-medium outline-none transition-all placeholder:text-slate-600" placeholder="¿En qué fue?" />
-                    </div>
+                    {qeType === 'ingreso' && (
+                      <div>
+                        <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest block mb-2">Descripción (Opcional)</label>
+                        <input type="text" value={qeDescripcion} onChange={e=>setQeDescripcion(e.target.value)} className="w-full bg-[#111222] shadow-neumorph-inset border border-transparent focus:border-neoncyan text-white rounded-xl px-4 py-3.5 text-sm font-medium outline-none transition-all placeholder:text-slate-600" placeholder="Ej: Pago quincena" />
+                      </div>
+                    )}
                     <button disabled={!qeMonto} onClick={() => setQeStep(3)} className="w-full py-4 rounded-xl font-black text-[#0b0c16] text-lg bg-neoncyan shadow-glow-cyan disabled:opacity-20 disabled:shadow-none transition-all">Siguiente Paso</button>
                   </div>
                 )}
                 {qeStep === 3 && (
                   <div className="h-full flex flex-col">
-                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">Selecciona la categoría</h4>
+                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">Selecciona la Categoría Macro</h4>
                     <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
                       <div className="grid grid-cols-2 gap-2.5">
-                        {(qeType === 'egreso' ? categoriasMaestras : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
-                          <button key={cat} onClick={() => { setQeCategoria(cat); setQeStep(4); }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">{cat}</button>
+                        {(qeType === 'egreso' ? Object.keys(CATEGORIAS_CONFIG) : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
+                          <button key={cat} onClick={() => { 
+                            setQeCategoria(cat); 
+                            // Si es ingreso, pasamos directo al paso 4
+                            if(qeType === 'ingreso') { setQeStep(4); }
+                            // Si es egreso, pasamos al paso 3.5 (nuevo paso para el detalle)
+                            else { setQeStep(3.5); }
+                          }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">{cat}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {qeStep === 3.5 && (
+                  <div className="h-full flex flex-col">
+                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">¿Qué pagaste exactamente?</h4>
+                    <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {opcionesEspecificasWizard.map(opt => (
+                          <button key={opt.específico} onClick={() => { 
+                            setQeDescripcion(opt.específico); 
+                            setQeSubcategoria(opt.sub);
+                            setQeStep(4); 
+                          }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">
+                            {opt.específico}
+                            <span className="block text-[9px] text-slate-500 mt-1 uppercase tracking-widest">↳ {opt.sub}</span>
+                          </button>
                         ))}
                       </div>
                     </div>
