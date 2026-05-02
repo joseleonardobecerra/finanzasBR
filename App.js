@@ -53,7 +53,7 @@ const loadSheetJS = async () => {
 };
 
 // ============================================================================
-// ✨ DICCIONARIO MAESTRO DE CATEGORÍAS AUTOMATIZADO (NUEVO)
+// ✨ DICCIONARIO MAESTRO DE CATEGORÍAS AUTOMATIZADO
 // ============================================================================
 const CATEGORIAS_CONFIG = {
   "🏠 Vivienda y Servicios": [
@@ -131,7 +131,6 @@ const CATEGORIAS_CONFIG = {
   ]
 };
 
-
 // ============================================================================
 // 🛡️ CÁPSULA PRINCIPAL DE LA APLICACIÓN
 // ============================================================================
@@ -189,21 +188,26 @@ const App = (() => {
         : <SvgWrapper size={size} className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></SvgWrapper>
   );
 
-  // --- Sistema Anticaídas de React ---
+  // ✨ SISTEMA ANTICAÍDAS EXTRAÍDO Y BLINDADO
   class ErrorBoundary extends React.Component {
     constructor(props) { 
       super(props); 
       this.state = { hasError: false, error: null }; 
     }
     static getDerivedStateFromError(error) { return { hasError: true, error }; }
-    componentDidCatch(error, errorInfo) { console.error("Error en pestaña:", error, errorInfo); }
+    componentDidCatch(error, errorInfo) { console.error("Error capturado por la Cápsula:", error, errorInfo); }
     render() {
       if (this.state.hasError) {
         return (
-          <div className="p-6 bg-appcard shadow-neumorph-inset border-l-4 border-neonmagenta rounded-2xl m-4 md:m-8 text-neonmagenta">
-            <h2 className="font-black text-lg mb-2 flex items-center gap-2"><AlertCircle size={20} /> Error en esta sección</h2>
-            <p className="text-sm opacity-80">{this.state.error.toString()}</p>
-            <button onClick={() => this.setState({hasError: false})} className="mt-4 px-5 py-2.5 bg-[#111222] hover:shadow-glow-magenta text-neonmagenta rounded-xl text-sm font-bold transition-all border border-neonmagenta/30">Intentar cargar de nuevo</button>
+          <div className="p-6 bg-[#111222] shadow-neumorph-inset border-l-4 border-neonmagenta rounded-3xl m-4 md:m-8 text-white relative z-50">
+            <h2 className="font-black text-xl mb-3 flex items-center gap-2 text-neonmagenta"><AlertCircle size={24} /> Sistema Protegido</h2>
+            <p className="text-sm font-bold opacity-80 mb-6">El motor interceptó un error de renderizado y evitó que la aplicación colapsara.</p>
+            <div className="bg-[#0b0c16] p-4 rounded-xl text-[10px] text-slate-500 font-mono overflow-auto max-h-32 mb-6">
+              {this.state.error && this.state.error.toString()}
+            </div>
+            <button onClick={() => this.setState({hasError: false})} className="px-6 py-3 bg-neonmagenta hover:bg-[#ff1a8c] shadow-glow-magenta text-[#0b0c16] rounded-xl text-sm font-black transition-all tracking-widest uppercase">
+              Recargar Vista
+            </button>
           </div>
         );
       }
@@ -214,7 +218,7 @@ const App = (() => {
   const Toast = ({ toast, onClose }) => {
     if (!toast) return null;
     return (
-      <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-5 py-4 rounded-2xl shadow-neumorph z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 border ${toast.type === 'success' ? 'bg-appcard border-neoncyan/50 text-neoncyan' : 'bg-appcard border-neonmagenta/50 text-neonmagenta'}`}>
+      <div className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 px-5 py-4 rounded-2xl shadow-neumorph z-[100] flex items-center gap-3 animate-in slide-in-from-bottom-5 border ${toast.type === 'success' ? 'bg-appcard border-neoncyan/50 text-neoncyan' : 'bg-appcard border-neonmagenta/50 text-neonmagenta'}`}>
         {toast.type === 'success' ? <CheckCircle2 size={20}/> : <AlertCircle size={20}/>}
         <span className="text-sm font-bold tracking-wide">{toast.msg}</span>
         <button onClick={onClose} className="ml-4 p-1 rounded-full hover:bg-white/10 transition-colors"><XIconGlobal size={14}/></button>
@@ -240,23 +244,23 @@ const App = (() => {
     const [filtroPersona, setFiltroPersona] = useState('Total');
     const [scoreHistory, setScoreHistory] = useState({});
 
-    // ✨ MEJORA UX: Modo Privacidad y Buscador Global
+    // Modo Privacidad y Buscador Global
     const [privacyMode, setPrivacyMode] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // ✨ Wizard Registro Rápido (Actualizado con Cascada)
+    // Wizard Registro Rápido
     const [quickEntryOpen, setQuickEntryOpen] = useState(false);
     const [qeStep, setQeStep] = useState(1);
     const [qeType, setQeType] = useState('');
     const [qeMonto, setQeMonto] = useState('');
-    const [qeCategoria, setQeCategoria] = useState(''); // Categoría Madre
-    const [qeDescripcion, setQeDescripcion] = useState(''); // Gasto Específico
-    const [qeSubcategoria, setQeSubcategoria] = useState(''); // Subcategoría Auto
+    const [qeCategoria, setQeCategoria] = useState(''); 
+    const [qeDescripcion, setQeDescripcion] = useState(''); 
+    const [qeSubcategoria, setQeSubcategoria] = useState(''); 
     const [qeMethod, setQeMethod] = useState('');
     const [qeCuenta, setQeCuenta] = useState('');
 
-    // ✨ DESHACER ELIMINACIÓN
+    // DESHACER ELIMINACIÓN
     const [undoItem, setUndoItem] = useState(null);
     const undoTimerRef = useRef(null);
 
@@ -309,7 +313,26 @@ const App = (() => {
       if (!authUser) return;
       loadedRef.current = 0;
       setAppCargando(true);
-      const col = (name, setter) => db.collection(name).onSnapshot(snap => { setter(snap.docs.map(d => d.data())); markLoaded(); });
+
+      // ✨ LA VACUNA: Sanitizador Automático de Datos de Firebase
+      const sanitizeData = (item) => {
+        if (item.categoria && typeof item.categoria === 'object') {
+           item.categoria = item.categoria.sub || item.categoria.específico || 'Otros';
+        }
+        if (item.subcategoria && typeof item.subcategoria === 'object') {
+           item.subcategoria = item.subcategoria.sub || item.subcategoria.específico || 'Otros';
+        }
+        if (item.descripcion && typeof item.descripcion === 'object') {
+           item.descripcion = item.descripcion.específico || item.descripcion.sub || 'Gasto no definido';
+        }
+        return item;
+      };
+
+      const col = (name, setter) => db.collection(name).onSnapshot(snap => { 
+        setter(snap.docs.map(d => sanitizeData(d.data()))); 
+        markLoaded(); 
+      });
+
       const unsubs = [
         col('cuentas', setCuentas), col('transferencias', setTransferencias), col('ingresos', setIngresos),
         col('egresos', setEgresos), col('comprasCuotas', setComprasCuotas), col('presupuestos', setPresupuestos),
@@ -378,7 +401,6 @@ const App = (() => {
 
     const addPagoFijoToState = (pf) => addPagoFijo({ ...pf, id: generateId(), diaPago: pf.diaPago || 1, categoria: pf.categoria || 'Otros' });
 
-    // ✨ Esto mantiene la compatibilidad por si otra tabla usa la lista simple vieja, pero nuestro wizard usará CATEGORIAS_CONFIG
     const categoriasMaestras = useMemo(() => {
       return Object.keys(CATEGORIAS_CONFIG);
     }, []);
@@ -502,7 +524,6 @@ const App = (() => {
       setQuickEntryOpen(true);
     };
     
-    // Calcula las opciones del Paso 3.5 (Solo si es Egreso)
     const opcionesEspecificasWizard = useMemo(() => {
       return qeCategoria && qeType === 'egreso' ? CATEGORIAS_CONFIG[qeCategoria] : [];
     }, [qeCategoria, qeType]);
@@ -512,10 +533,8 @@ const App = (() => {
       const today = getLocalToday();
       const montoNum = Number(qeMonto);
       
-      // Si es egreso, usamos qeDescripcion (que guarda el Detalle Específico) y qeSubcategoria
-      // Si es ingreso, qeDescripcion es opcional y no hay subcategoría
       if (qeType === 'egreso') {
-        if (!qeDescripcion) return; // Validación extra
+        if (!qeDescripcion) return;
         addEgreso({ 
           id: generateId(), 
           fecha: today, 
@@ -668,7 +687,6 @@ const App = (() => {
         {/* CONTENIDO PRINCIPAL */}
         <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
           
-          {/* TOP BAR */}
           <div className="bg-appcard border-b border-white/[0.02] p-3 md:p-4 flex justify-between items-center gap-4 z-10">
             <button onClick={() => auth.signOut()} className="md:hidden text-neonmagenta p-2 hover:shadow-glow-magenta rounded-full transition-all">
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -683,15 +701,12 @@ const App = (() => {
             )}
             
             <div className="flex-1 flex justify-end w-full md:w-auto gap-3">
-              
               <button onClick={() => setPrivacyMode(!privacyMode)} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title={privacyMode ? "Mostrar saldos" : "Ocultar saldos"}>
                 <EyeIcon size={20} off={privacyMode} />
               </button>
-              
               <button onClick={() => { setIsSearchOpen(true); setTimeout(() => document.getElementById('global-search-input')?.focus(), 100); }} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title="Buscar en todo el sistema">
                 <SearchIcon size={20} />
               </button>
-
               <div className="flex items-center bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:max-w-[240px] justify-between">
                 <button onClick={() => changeMonth(-1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronLeft size={18}/></button>
                 <span className="font-bold text-white capitalize text-sm tracking-wide">{getMonthName(selectedMonth)}</span>
@@ -712,8 +727,8 @@ const App = (() => {
 
           <div className="p-4 md:p-8 overflow-y-auto flex-1 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
             <div className="max-w-6xl mx-auto">
+              {/* ✨ ESCUDO SEGURO */}
               <ErrorBoundary>
-                {/* ✨ PESTAÑAS DINÁMICAS ✨ */}
                 {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
                 {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
                 {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} privacyMode={privacyMode} />}
@@ -729,7 +744,6 @@ const App = (() => {
           </div>
         </main>
 
-        {/* BARRA INFERIOR (CELULAR) */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-appcard/90 backdrop-blur-xl border-t border-white/[0.02] z-30 flex overflow-x-auto h-[72px] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
           <div className="flex px-2 min-w-max w-full">
             {navItems.map(item => (
@@ -742,12 +756,10 @@ const App = (() => {
           </div>
         </nav>
 
-        {/* FAB REGISTRO RÁPIDO */}
         <button onClick={handleOpenWizard} className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-neoncyan text-[#0b0c16] rounded-full shadow-glow-cyan flex items-center justify-center z-40 transition-all hover:scale-110 active:scale-95">
           <Plus size={28} strokeWidth="3" />
         </button>
 
-        {/* ✨ MODAL WIZARD (CASCADA) */}
         {quickEntryOpen && (
           <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center animate-in fade-in duration-300">
             <div className="bg-appcard w-full md:w-[420px] md:rounded-[30px] rounded-t-[30px] p-6 border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-10 min-h-[420px] flex flex-col relative overflow-hidden">
@@ -800,9 +812,7 @@ const App = (() => {
                         {(qeType === 'egreso' ? Object.keys(CATEGORIAS_CONFIG) : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
                           <button key={cat} onClick={() => { 
                             setQeCategoria(cat); 
-                            // Si es ingreso, pasamos directo al paso 4
                             if(qeType === 'ingreso') { setQeStep(4); }
-                            // Si es egreso, pasamos al paso 3.5 (nuevo paso para el detalle)
                             else { setQeStep(3.5); }
                           }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">{cat}</button>
                         ))}
