@@ -1,4 +1,4 @@
-const Login = (() => {
+(() => {
   // ============================================================================
   // COMPONENTES UI EXTERNOS (Privados para Login)
   // ============================================================================
@@ -37,11 +37,17 @@ const Login = (() => {
       setError('');
       
       try {
-        await auth.signInWithEmailAndPassword(email, password);
+        await window.firebase.auth().signInWithEmailAndPassword(email, password);
       } catch (err) {
         console.error(err);
-        setError('Credenciales incorrectas. Intenta de nuevo.');
         setLoading(false);
+        if(err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+             setError('Credenciales incorrectas o usuario no encontrado.');
+        } else if (err.code === 'auth/unauthorized-domain') {
+             setError('Dominio no autorizado en Firebase.');
+        } else {
+             setError(err.message);
+        }
       }
     };
 
@@ -118,5 +124,5 @@ const Login = (() => {
     );
   };
 
-  return LoginComponent;
+  window.Login = LoginComponent;
 })();
