@@ -131,6 +131,7 @@ const CATEGORIAS_CONFIG = {
   ]
 };
 
+
 // ============================================================================
 // 🛡️ CÁPSULA PRINCIPAL DE LA APLICACIÓN
 // ============================================================================
@@ -188,7 +189,7 @@ const App = (() => {
         : <SvgWrapper size={size} className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></SvgWrapper>
   );
 
-  // ✨ SISTEMA ANTICAÍDAS EXTRAÍDO Y BLINDADO
+  // ✨ SISTEMA ANTICAÍDAS MEJORADO
   class ErrorBoundary extends React.Component {
     constructor(props) { 
       super(props); 
@@ -205,7 +206,7 @@ const App = (() => {
             <div className="bg-[#0b0c16] p-4 rounded-xl text-[10px] text-slate-500 font-mono overflow-auto max-h-32 mb-6">
               {this.state.error && this.state.error.toString()}
             </div>
-            <button onClick={() => this.setState({hasError: false})} className="px-6 py-3 bg-neonmagenta hover:bg-[#ff1a8c] shadow-glow-magenta text-[#0b0c16] rounded-xl text-sm font-black transition-all tracking-widest uppercase">
+            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-neonmagenta hover:bg-[#ff1a8c] shadow-glow-magenta text-[#0b0c16] rounded-xl text-sm font-black transition-all tracking-widest uppercase">
               Recargar Vista
             </button>
           </div>
@@ -314,18 +315,21 @@ const App = (() => {
       loadedRef.current = 0;
       setAppCargando(true);
 
-      // ✨ LA VACUNA: Sanitizador Automático de Datos de Firebase
+      // ✨ LA VACUNA DEFINITIVA: Sanitizador Profundo
+      // Esto escanea cualquier dato que llegue de Firebase y si encuentra un objeto donde debería haber texto, lo arregla.
       const sanitizeData = (item) => {
-        if (item.categoria && typeof item.categoria === 'object') {
-           item.categoria = item.categoria.sub || item.categoria.específico || 'Otros';
+        if (!item) return item;
+        const clean = { ...item };
+        for (let key in clean) {
+          if (clean[key] && typeof clean[key] === 'object') {
+            if (clean[key].específico) {
+              clean[key] = clean[key].específico;
+            } else if (clean[key].sub) {
+              clean[key] = clean[key].sub;
+            }
+          }
         }
-        if (item.subcategoria && typeof item.subcategoria === 'object') {
-           item.subcategoria = item.subcategoria.sub || item.subcategoria.específico || 'Otros';
-        }
-        if (item.descripcion && typeof item.descripcion === 'object') {
-           item.descripcion = item.descripcion.específico || item.descripcion.sub || 'Gasto no definido';
-        }
-        return item;
+        return clean;
       };
 
       const col = (name, setter) => db.collection(name).onSnapshot(snap => { 
@@ -624,299 +628,298 @@ const App = (() => {
     ];
 
     return (
-      <div className="min-h-screen bg-appbg text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
+      <ErrorBoundary>
+        <div className="min-h-screen bg-appbg text-slate-200 flex flex-col md:flex-row font-sans md:pt-0 pt-[24px] relative">
 
-        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+          {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
 
-        {/* BARRA LATERAL (PC) */}
-        <aside className="hidden md:flex w-64 bg-appcard flex-shrink-0 flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.3)]">
-          <div className="p-6 border-b border-white/[0.02]">
-            <h1 className="text-xl font-bold text-white flex items-center gap-3 tracking-wide">
-              <img 
-                src="logo.png" 
-                alt="Logo Finanzas" 
-                className="w-8 h-8 object-contain drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]"
-              />
-              FinanzasFamilia
-            </h1>
-          </div>
-          
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-800">
-            <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mb-3 tracking-widest mt-2">Diario</div>
-            {navItems.slice(0, 7).map(i => (
-              <button key={i.id} onClick={() => setActiveTab(i.id)} 
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
-                  activeTab === i.id 
-                  ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
-                  : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
-                }`}>
-                <i.icon size={18}/> {i.label}
-              </button>
-            ))}
-            
-            <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Estrategia</div>
-            {navItems.slice(7, 9).map(i => (
-              <button key={i.id} onClick={() => setActiveTab(i.id)} 
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
-                  activeTab === i.id 
-                  ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
-                  : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
-                }`}>
-                <i.icon size={18}/> {i.label}
-              </button>
-            ))}
-            
-            <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Sistema</div>
-            {navItems.slice(9).map(i => (
-              <button key={i.id} onClick={() => setActiveTab(i.id)} 
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
-                  activeTab === i.id 
-                  ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
-                  : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
-                }`}>
-                <i.icon size={18}/> {i.label}
-              </button>
-            ))}
-            
-            <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neonmagenta hover:shadow-glow-magenta hover:-translate-y-0.5 transition-all mt-6 border border-neonmagenta/30 font-bold text-sm bg-[#111222]">
-              Cerrar Sesión
-            </button>
-          </nav>
-        </aside>
-
-        {/* CONTENIDO PRINCIPAL */}
-        <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
-          
-          <div className="bg-appcard border-b border-white/[0.02] p-3 md:p-4 flex justify-between items-center gap-4 z-10">
-            <button onClick={() => auth.signOut()} className="md:hidden text-neonmagenta p-2 hover:shadow-glow-magenta rounded-full transition-all">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            </button>
-            
-            {['ingresos', 'deudas'].includes(activeTab) && (
-              <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto border border-transparent">
-                <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Total' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-slate-500 hover:text-slate-300'}`}>TOTAL</button>
-                <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Andre' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-slate-500 hover:text-slate-300'}`}>ANDRE</button>
-                <button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Leo' ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}>LEO</button>
-              </div>
-            )}
-            
-            <div className="flex-1 flex justify-end w-full md:w-auto gap-3">
-              <button onClick={() => setPrivacyMode(!privacyMode)} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title={privacyMode ? "Mostrar saldos" : "Ocultar saldos"}>
-                <EyeIcon size={20} off={privacyMode} />
-              </button>
-              <button onClick={() => { setIsSearchOpen(true); setTimeout(() => document.getElementById('global-search-input')?.focus(), 100); }} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title="Buscar en todo el sistema">
-                <SearchIcon size={20} />
-              </button>
-              <div className="flex items-center bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:max-w-[240px] justify-between">
-                <button onClick={() => changeMonth(-1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronLeft size={18}/></button>
-                <span className="font-bold text-white capitalize text-sm tracking-wide">{getMonthName(selectedMonth)}</span>
-                <button onClick={() => changeMonth(1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronRight size={18}/></button>
-              </div>
-            </div>
-          </div>
-
-          {isHistoricalMonth && (
-            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 text-amber-400 text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-              <AlertCircle size={14}/>
-              Estás viendo un mes histórico — nuevos registros van a la fecha de hoy
-              <button onClick={() => setSelectedMonth(currentRealMonth)} className="ml-auto bg-[#111222] border border-amber-500/30 hover:shadow-glow-amber px-3 py-1 rounded-lg text-amber-300 transition-all font-bold">
-                Ir al actual →
-              </button>
-            </div>
-          )}
-
-          <div className="p-4 md:p-8 overflow-y-auto flex-1 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
-            <div className="max-w-6xl mx-auto">
-              {/* ✨ ESCUDO SEGURO */}
-              <ErrorBoundary>
-                {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
-                {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
-                {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} privacyMode={privacyMode} />}
-                {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} privacyMode={privacyMode} />}
-                {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} updateCuenta={updateCuenta} removeCuenta={removeCuenta} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} privacyMode={privacyMode} />}
-                {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} privacyMode={privacyMode} />}
-                {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={activeEgresos} selectedMonth={selectedMonth} privacyMode={privacyMode} />}
-                {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} privacyMode={privacyMode} />}
-                {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} privacyMode={privacyMode} />}
-                {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
-              </ErrorBoundary>
-            </div>
-          </div>
-        </main>
-
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-appcard/90 backdrop-blur-xl border-t border-white/[0.02] z-30 flex overflow-x-auto h-[72px] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-          <div className="flex px-2 min-w-max w-full">
-            {navItems.map(item => (
-              <button key={item.id} onClick={() => setActiveTab(item.id)} className="w-[76px] flex flex-col items-center justify-center p-2 relative group">
-                {activeTab === item.id && <div className="absolute top-0 w-8 h-1 bg-neoncyan rounded-b-full shadow-glow-cyan"></div>}
-                <item.icon size={22} className={`transition-all duration-300 ${activeTab === item.id ? 'mb-1 text-neoncyan' : 'mb-1 text-slate-500 group-hover:text-slate-300'}`}/>
-                <span className={`text-[9px] font-bold tracking-wide truncate w-full text-center transition-colors ${activeTab === item.id ? 'text-white' : 'text-slate-500'}`}>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <button onClick={handleOpenWizard} className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-neoncyan text-[#0b0c16] rounded-full shadow-glow-cyan flex items-center justify-center z-40 transition-all hover:scale-110 active:scale-95">
-          <Plus size={28} strokeWidth="3" />
-        </button>
-
-        {quickEntryOpen && (
-          <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center animate-in fade-in duration-300">
-            <div className="bg-appcard w-full md:w-[420px] md:rounded-[30px] rounded-t-[30px] p-6 border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-10 min-h-[420px] flex flex-col relative overflow-hidden">
-              <div className="absolute -top-32 -left-32 w-64 h-64 bg-neoncyan/10 rounded-full blur-[100px] pointer-events-none"></div>
-              
-              <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
-                <div className="flex items-center gap-4">
-                  {qeStep > 1 && <button onClick={() => setQeStep(qeStep - 1)} className="text-slate-400 hover:text-neoncyan transition-colors"><ArrowLeftIcon size={20}/></button>}
-                  <div>
-                    <h3 className="text-lg font-black text-white tracking-wide">Acción Rápida</h3>
-                    <div className="flex gap-1.5 mt-2">
-                      {[1,2,3,4,5].map(s => <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${s === qeStep ? 'bg-neoncyan w-6 shadow-glow-cyan' : s < qeStep ? 'bg-neoncyan/40 w-3' : 'bg-[#111222] w-3'}`}></div>)}
-                    </div>
-                  </div>
-                </div>
-                <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-rose-400 bg-[#111222] p-2.5 rounded-full transition-all hover:shadow-glow-magenta"><XIconGlobal size={18}/></button>
-              </div>
-
-              <div className="flex-1 flex flex-col justify-center relative z-10 animate-in fade-in slide-in-from-right-4 duration-300">
-                {qeStep === 1 && (
-                  <div className="space-y-4">
-                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">Selecciona el tipo de movimiento</h4>
-                    <button onClick={() => { setQeType('egreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-rose-500/20 hover:border-rose-500 hover:shadow-glow-magenta rounded-2xl text-rose-400 font-black text-lg transition-all hover:-translate-y-1">📉 Registrar Gasto</button>
-                    <button onClick={() => { setQeType('ingreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-emerald-500/20 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] rounded-2xl text-emerald-400 font-black text-lg transition-all hover:-translate-y-1">📈 Registrar Ingreso</button>
-                  </div>
-                )}
-                {qeStep === 2 && (
-                  <div className="space-y-6">
-                    <div>
-                      <label className={`text-[10px] font-black uppercase tracking-widest block mb-2 ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>Monto exacto</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-600">$</span>
-                        <input type="number" value={qeMonto} onChange={e=>setQeMonto(e.target.value)} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent ${qeType === 'egreso' ? 'focus:border-rose-500 focus:shadow-glow-magenta text-rose-400' : 'focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(16,185,129,0.4)] text-emerald-400'} rounded-2xl pl-10 pr-4 py-5 text-3xl font-black outline-none transition-all placeholder:text-slate-700`} placeholder="0" autoFocus />
-                      </div>
-                    </div>
-                    {qeType === 'ingreso' && (
-                      <div>
-                        <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest block mb-2">Descripción (Opcional)</label>
-                        <input type="text" value={qeDescripcion} onChange={e=>setQeDescripcion(e.target.value)} className="w-full bg-[#111222] shadow-neumorph-inset border border-transparent focus:border-neoncyan text-white rounded-xl px-4 py-3.5 text-sm font-medium outline-none transition-all placeholder:text-slate-600" placeholder="Ej: Pago quincena" />
-                      </div>
-                    )}
-                    <button disabled={!qeMonto} onClick={() => setQeStep(3)} className="w-full py-4 rounded-xl font-black text-[#0b0c16] text-lg bg-neoncyan shadow-glow-cyan disabled:opacity-20 disabled:shadow-none transition-all">Siguiente Paso</button>
-                  </div>
-                )}
-                {qeStep === 3 && (
-                  <div className="h-full flex flex-col">
-                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">Selecciona la Categoría Macro</h4>
-                    <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {(qeType === 'egreso' ? Object.keys(CATEGORIAS_CONFIG) : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
-                          <button key={cat} onClick={() => { 
-                            setQeCategoria(cat); 
-                            if(qeType === 'ingreso') { setQeStep(4); }
-                            else { setQeStep(3.5); }
-                          }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">{cat}</button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {qeStep === 3.5 && (
-                  <div className="h-full flex flex-col">
-                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">¿Qué pagaste exactamente?</h4>
-                    <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
-                      <div className="grid grid-cols-1 gap-2.5">
-                        {opcionesEspecificasWizard.map(opt => (
-                          <button key={opt.específico} onClick={() => { 
-                            setQeDescripcion(opt.específico); 
-                            setQeSubcategoria(opt.sub);
-                            setQeStep(4); 
-                          }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">
-                            {opt.específico}
-                            <span className="block text-[9px] text-slate-500 mt-1 uppercase tracking-widest">↳ {opt.sub}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {qeStep === 4 && (
-                  <div className="space-y-4">
-                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">{qeType === 'egreso' ? '¿Cómo lo pagaste?' : '¿A dónde entró el dinero?'}</h4>
-                    <button onClick={() => { setQeMethod('cash'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💵</span> Efectivo</button>
-                    <button onClick={() => { setQeMethod('bank'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">🏦</span> Cuenta Débito / Ahorros</button>
-                    {qeType === 'egreso' && <button onClick={() => { setQeMethod('credit'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💳</span> Tarjeta de Crédito</button>}
-                  </div>
-                )}
-                {qeStep === 5 && (
-                  <div className="space-y-6">
-                    <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-2">{qeType === 'egreso' ? '¿De cuál cuenta exactamente?' : '¿A qué cuenta exactamente?'}</h4>
-                    <div className="grid grid-cols-1 gap-2.5 overflow-y-auto max-h-[250px] pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
-                      {activeCalculatedAccounts.filter(c => c.type === qeMethod).map(acc => (
-                        <button key={acc.id} onClick={() => setQeCuenta(acc.id)} className={`p-4 rounded-xl text-sm font-bold text-left transition-all border flex justify-between items-center ${qeCuenta === acc.id ? 'bg-neoncyan/10 border-neoncyan text-neoncyan shadow-glow-cyan' : 'bg-[#111222] border-white/[0.02] text-slate-300 hover:border-slate-600'}`}>
-                          <span>{acc.name}</span>
-                          {qeCuenta === acc.id && <div className="w-2.5 h-2.5 bg-neoncyan rounded-full shadow-[0_0_8px_#00E5FF]"></div>}
-                        </button>
-                      ))}
-                      {activeCalculatedAccounts.filter(c => c.type === qeMethod).length === 0 && <div className="text-center p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl"><p className="text-rose-400 text-xs font-bold">No tienes cuentas de este tipo registradas.</p></div>}
-                    </div>
-                    {qeCuenta && <button onClick={handleQuickSave} className={`w-full py-4 rounded-xl font-black text-lg transition-all hover:scale-[1.02] active:scale-95 ${qeType === 'egreso' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-emerald-500 text-[#0b0c16] shadow-[0_0_20px_rgba(16,185,129,0.4)]'}`}>¡Confirmar y Guardar!</button>}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ✨ MODAL DEL BUSCADOR GLOBAL */}
-        {isSearchOpen && (
-          <div className="fixed inset-0 bg-[#0b0c16]/90 backdrop-blur-md z-[60] flex flex-col items-center pt-10 md:pt-20 px-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-2xl flex flex-col relative animate-in slide-in-from-top-4">
-              
-              <div className="relative z-10">
-                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-neoncyan"><SearchIcon size={24}/></span>
-                <input 
-                  id="global-search-input"
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Busca el nombre del colegio, un supermercado, una cuenta..."
-                  className="w-full bg-appcard shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-neoncyan/30 rounded-2xl pl-16 pr-12 py-5 text-lg font-black text-white outline-none focus:border-neoncyan focus:shadow-glow-cyan transition-all placeholder:text-slate-600 placeholder:font-medium"
+          {/* BARRA LATERAL (PC) */}
+          <aside className="hidden md:flex w-64 bg-appcard flex-shrink-0 flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.3)]">
+            <div className="p-6 border-b border-white/[0.02]">
+              <h1 className="text-xl font-bold text-white flex items-center gap-3 tracking-wide">
+                <img 
+                  src="logo.png" 
+                  alt="Logo Finanzas" 
+                  className="w-8 h-8 object-contain drop-shadow-[0_0_10px_rgba(0,229,255,0.4)]"
                 />
-                <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-rose-400 p-2 transition-colors">
-                  <XIconGlobal size={20}/>
+                FinanzasFamilia
+              </h1>
+            </div>
+            
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-800">
+              <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mb-3 tracking-widest mt-2">Diario</div>
+              {navItems.slice(0, 7).map(i => (
+                <button key={i.id} onClick={() => setActiveTab(i.id)} 
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                    activeTab === i.id 
+                    ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                    : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+                  }`}>
+                  <i.icon size={18}/> {i.label}
+                </button>
+              ))}
+              
+              <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Estrategia</div>
+              {navItems.slice(7, 9).map(i => (
+                <button key={i.id} onClick={() => setActiveTab(i.id)} 
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                    activeTab === i.id 
+                    ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                    : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+                  }`}>
+                  <i.icon size={18}/> {i.label}
+                </button>
+              ))}
+              
+              <div className="text-[10px] font-black text-[#8A92A6] uppercase px-4 mt-8 mb-3 tracking-widest">Sistema</div>
+              {navItems.slice(9).map(i => (
+                <button key={i.id} onClick={() => setActiveTab(i.id)} 
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-300 ${
+                    activeTab === i.id 
+                    ? 'bg-neoncyan text-[#0b0c16] font-bold shadow-glow-cyan' 
+                    : 'text-slate-400 hover:bg-white/[0.03] hover:text-slate-200 font-medium'
+                  }`}>
+                  <i.icon size={18}/> {i.label}
+                </button>
+              ))}
+              
+              <button onClick={() => auth.signOut()} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-neonmagenta hover:shadow-glow-magenta hover:-translate-y-0.5 transition-all mt-6 border border-neonmagenta/30 font-bold text-sm bg-[#111222]">
+                Cerrar Sesión
+              </button>
+            </nav>
+          </aside>
+
+          {/* CONTENIDO PRINCIPAL */}
+          <main className="flex-1 flex flex-col h-screen overflow-hidden pb-[72px] md:pb-0 relative">
+            
+            <div className="bg-appcard border-b border-white/[0.02] p-3 md:p-4 flex justify-between items-center gap-4 z-10">
+              <button onClick={() => auth.signOut()} className="md:hidden text-neonmagenta p-2 hover:shadow-glow-magenta rounded-full transition-all">
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
+              
+              {['ingresos', 'deudas'].includes(activeTab) && (
+                <div className="flex bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:w-auto border border-transparent">
+                  <button onClick={() => setFiltroPersona('Total')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Total' ? 'bg-neoncyan text-[#0b0c16] shadow-glow-cyan' : 'text-slate-500 hover:text-slate-300'}`}>TOTAL</button>
+                  <button onClick={() => setFiltroPersona('Andre')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Andre' ? 'bg-neonmagenta text-white shadow-glow-magenta' : 'text-slate-500 hover:text-slate-300'}`}>ANDRE</button>
+                  <button onClick={() => setFiltroPersona('Leo')} className={`flex-1 md:px-6 py-2 rounded-lg text-xs font-bold transition-all ${filtroPersona === 'Leo' ? 'bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}>LEO</button>
+                </div>
+              )}
+              
+              <div className="flex-1 flex justify-end w-full md:w-auto gap-3">
+                <button onClick={() => setPrivacyMode(!privacyMode)} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title={privacyMode ? "Mostrar saldos" : "Ocultar saldos"}>
+                  <EyeIcon size={20} off={privacyMode} />
+                </button>
+                <button onClick={() => { setIsSearchOpen(true); setTimeout(() => document.getElementById('global-search-input')?.focus(), 100); }} className="flex items-center justify-center w-[46px] h-[46px] bg-[#111222] shadow-neumorph-inset border border-transparent hover:border-neoncyan/30 rounded-xl text-slate-500 hover:text-neoncyan transition-all" title="Buscar en todo el sistema">
+                  <SearchIcon size={20} />
+                </button>
+                <div className="flex items-center bg-[#111222] shadow-neumorph-inset rounded-xl p-1 w-full md:max-w-[240px] justify-between">
+                  <button onClick={() => changeMonth(-1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronLeft size={18}/></button>
+                  <span className="font-bold text-white capitalize text-sm tracking-wide">{getMonthName(selectedMonth)}</span>
+                  <button onClick={() => changeMonth(1)} className="p-2 text-slate-500 hover:text-neoncyan transition-colors"><ChevronRight size={18}/></button>
+                </div>
+              </div>
+            </div>
+
+            {isHistoricalMonth && (
+              <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 text-amber-400 text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+                <AlertCircle size={14}/>
+                Estás viendo un mes histórico — nuevos registros van a la fecha de hoy
+                <button onClick={() => setSelectedMonth(currentRealMonth)} className="ml-auto bg-[#111222] border border-amber-500/30 hover:shadow-glow-amber px-3 py-1 rounded-lg text-amber-300 transition-all font-bold">
+                  Ir al actual →
                 </button>
               </div>
+            )}
 
-              {searchQuery.trim() !== '' && (
-                <div className="mt-4 bg-appcard border border-white/[0.05] rounded-2xl p-2 max-h-[60vh] overflow-y-auto shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700">
-                  {searchResults.length > 0 ? (
-                    <div className="flex flex-col gap-1">
-                      {searchResults.map((res, i) => (
-                        <div key={i} className="flex justify-between items-center p-4 hover:bg-white/[0.02] rounded-xl transition-colors cursor-default border border-transparent hover:border-white/[0.05]">
-                          <div className="flex items-center gap-4 overflow-hidden">
-                            <span className="text-2xl shrink-0">{res.icon}</span>
-                            <div className="truncate pr-2">
-                              <p className="text-sm font-bold text-white tracking-wide truncate">{res.descripcion}</p>
-                              <p className="text-[10px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5">{res.fecha} • {res.tipo}</p>
-                            </div>
-                          </div>
-                          <span className={`text-sm font-black tabular-nums shrink-0 drop-shadow-md ${res.color}`}>
-                            {formatCOPPrivacy(res.monto)}
-                          </span>
-                        </div>
-                      ))}
+            <div className="p-4 md:p-8 overflow-y-auto flex-1 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-[#1c1e32] [&::-webkit-scrollbar-track]:bg-[#141526]">
+              <div className="max-w-6xl mx-auto">
+                  {activeTab === 'dashboard' && <DashboardTab flujoNetoMes={flujoNetoMes} cuotasMesTotal={cuotasMesTotal} cuotasMesRestantes={cuotasMesRestantes} ingresosMesTotal={ingresosMesTotal} egresosMesTotal={egresosMesTotal} deudaTotal={deudaTotal} liquidezTotal={liquidezTotal} selectedMonth={selectedMonth} egresosMes={egresosMes} ingresos={activeIngresos} egresos={activeEgresos} presupuestos={activePresupuestos} pagosFijos={activePagosFijos} ingresosFijos={activeIngresosFijos} cuentas={activeCalculatedAccounts} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
+                  {activeTab === 'analitica' && <AnaliticaTab ingresos={activeIngresos} egresos={activeEgresos} selectedMonth={selectedMonth} cuentas={activeCalculatedAccounts} scoreData={scoreData} scoreHistory={scoreHistory} proyeccionLiquidez={proyeccionLiquidez} privacyMode={privacyMode} />}
+                  {activeTab === 'cuentas' && <CuentasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} transferencias={activeTransferencias} addTransferencia={addTransferencia} removeTransferencia={removeTransferencia} addEgreso={addEgreso} showToast={showToast} privacyMode={privacyMode} />}
+                  {activeTab === 'ingresos' && <IngresosTab ingresos={activeIngresos} addIngreso={addIngreso} updateIngreso={updateIngreso} removeIngreso={removeIngreso} ingresosFijos={activeIngresosFijos} addIngresoFijo={addIngresoFijo} updateIngresoFijo={updateIngresoFijo} removeIngresoFijo={removeIngresoFijo} cuentas={activeCalculatedAccounts} selectedMonth={selectedMonth} showToast={showToast} filtroPersona={filtroPersona} privacyMode={privacyMode} />}
+                  {activeTab === 'egresos' && <EgresosTab egresos={activeEgresos} addEgreso={addEgreso} updateEgreso={updateEgreso} removeEgreso={removeEgreso} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} comprasCuotas={activeComprasCuotas} addComprasCuotas={addComprasCuotas} removeComprasCuotas={removeComprasCuotas} cuentas={activeCalculatedAccounts} updateCuenta={updateCuenta} removeCuenta={removeCuenta} selectedMonth={selectedMonth} presupuestos={activePresupuestos} categoriasMaestras={categoriasMaestras} showToast={showToast} privacyMode={privacyMode} />}
+                  {activeTab === 'presupuestos' && <PresupuestosTab presupuestos={activePresupuestos} addPresupuesto={addPresupuesto} updatePresupuesto={updatePresupuesto} removePresupuesto={removePresupuesto} pagosFijos={activePagosFijos} addPagoFijo={addPagoFijo} updatePagoFijo={updatePagoFijo} removePagoFijo={removePagoFijo} egresos={activeEgresos} selectedMonth={selectedMonth} showToast={showToast} categoriasMaestras={categoriasMaestras} privacyMode={privacyMode} />}
+                  {activeTab === 'deudas' && <DeudasTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} showToast={showToast} egresos={activeEgresos} selectedMonth={selectedMonth} privacyMode={privacyMode} />}
+                  {activeTab === 'inversiones' && <InversionesTab cuentas={activeCalculatedAccounts} addCuenta={addCuenta} updateCuenta={updateCuenta} removeCuenta={removeCuenta} ingresos={ingresos} addIngreso={addIngreso} egresos={egresos} transferencias={transferencias} selectedMonth={selectedMonth} showToast={showToast} getOwner={getOwnerFallback} privacyMode={privacyMode} />}
+                  {activeTab === 'simulador' && <SimuladorTab cuentas={activeCalculatedAccounts} addPagoFijo={addPagoFijoToState} showToast={showToast} privacyMode={privacyMode} />}
+                  {activeTab === 'settings' && <SettingsTab stateData={{cuentas, transferencias, ingresos, egresos, presupuestos, pagosFijos, comprasCuotas, ingresosFijos}} importAllState={importAllState} selectedMonth={selectedMonth} showToast={showToast} />}
+              </div>
+            </div>
+          </main>
+
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-appcard/90 backdrop-blur-xl border-t border-white/[0.02] z-30 flex overflow-x-auto h-[72px] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+            <div className="flex px-2 min-w-max w-full">
+              {navItems.map(item => (
+                <button key={item.id} onClick={() => setActiveTab(item.id)} className="w-[76px] flex flex-col items-center justify-center p-2 relative group">
+                  {activeTab === item.id && <div className="absolute top-0 w-8 h-1 bg-neoncyan rounded-b-full shadow-glow-cyan"></div>}
+                  <item.icon size={22} className={`transition-all duration-300 ${activeTab === item.id ? 'mb-1 text-neoncyan' : 'mb-1 text-slate-500 group-hover:text-slate-300'}`}/>
+                  <span className={`text-[9px] font-bold tracking-wide truncate w-full text-center transition-colors ${activeTab === item.id ? 'text-white' : 'text-slate-500'}`}>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          <button onClick={handleOpenWizard} className="fixed bottom-[90px] md:bottom-8 right-4 md:right-8 w-14 h-14 bg-neoncyan text-[#0b0c16] rounded-full shadow-glow-cyan flex items-center justify-center z-40 transition-all hover:scale-110 active:scale-95">
+            <Plus size={28} strokeWidth="3" />
+          </button>
+
+          {quickEntryOpen && (
+            <div className="fixed inset-0 bg-[#0b0c16]/80 backdrop-blur-md z-50 flex items-end md:items-center justify-center animate-in fade-in duration-300">
+              <div className="bg-appcard w-full md:w-[420px] md:rounded-[30px] rounded-t-[30px] p-6 border border-white/[0.05] shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-10 min-h-[420px] flex flex-col relative overflow-hidden">
+                <div className="absolute -top-32 -left-32 w-64 h-64 bg-neoncyan/10 rounded-full blur-[100px] pointer-events-none"></div>
+                
+                <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
+                  <div className="flex items-center gap-4">
+                    {qeStep > 1 && <button onClick={() => setQeStep(qeStep - 1)} className="text-slate-400 hover:text-neoncyan transition-colors"><ArrowLeftIcon size={20}/></button>}
+                    <div>
+                      <h3 className="text-lg font-black text-white tracking-wide">Acción Rápida</h3>
+                      <div className="flex gap-1.5 mt-2">
+                        {[1,2,3,4,5].map(s => <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${s === qeStep ? 'bg-neoncyan w-6 shadow-glow-cyan' : s < qeStep ? 'bg-neoncyan/40 w-3' : 'bg-[#111222] w-3'}`}></div>)}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="p-10 text-center">
-                      <p className="text-[#8A92A6] text-sm font-bold tracking-wide">No se encontraron resultados para "<span className="text-white">{searchQuery}</span>"</p>
+                  </div>
+                  <button onClick={() => setQuickEntryOpen(false)} className="text-slate-500 hover:text-rose-400 bg-[#111222] p-2.5 rounded-full transition-all hover:shadow-glow-magenta"><XIconGlobal size={18}/></button>
+                </div>
+
+                <div className="flex-1 flex flex-col justify-center relative z-10 animate-in fade-in slide-in-from-right-4 duration-300">
+                  {qeStep === 1 && (
+                    <div className="space-y-4">
+                      <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">Selecciona el tipo de movimiento</h4>
+                      <button onClick={() => { setQeType('egreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-rose-500/20 hover:border-rose-500 hover:shadow-glow-magenta rounded-2xl text-rose-400 font-black text-lg transition-all hover:-translate-y-1">📉 Registrar Gasto</button>
+                      <button onClick={() => { setQeType('ingreso'); setQeStep(2); }} className="w-full flex items-center justify-center gap-3 p-5 bg-[#111222] border border-emerald-500/20 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] rounded-2xl text-emerald-400 font-black text-lg transition-all hover:-translate-y-1">📈 Registrar Ingreso</button>
+                    </div>
+                  )}
+                  {qeStep === 2 && (
+                    <div className="space-y-6">
+                      <div>
+                        <label className={`text-[10px] font-black uppercase tracking-widest block mb-2 ${qeType === 'egreso' ? 'text-rose-500' : 'text-emerald-500'}`}>Monto exacto</label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-600">$</span>
+                          <input type="number" value={qeMonto} onChange={e=>setQeMonto(e.target.value)} className={`w-full bg-[#111222] shadow-neumorph-inset border border-transparent ${qeType === 'egreso' ? 'focus:border-rose-500 focus:shadow-glow-magenta text-rose-400' : 'focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(16,185,129,0.4)] text-emerald-400'} rounded-2xl pl-10 pr-4 py-5 text-3xl font-black outline-none transition-all placeholder:text-slate-700`} placeholder="0" autoFocus />
+                        </div>
+                      </div>
+                      {qeType === 'ingreso' && (
+                        <div>
+                          <label className="text-[10px] font-black text-[#8A92A6] uppercase tracking-widest block mb-2">Descripción (Opcional)</label>
+                          <input type="text" value={qeDescripcion} onChange={e=>setQeDescripcion(e.target.value)} className="w-full bg-[#111222] shadow-neumorph-inset border border-transparent focus:border-neoncyan text-white rounded-xl px-4 py-3.5 text-sm font-medium outline-none transition-all placeholder:text-slate-600" placeholder="Ej: Pago quincena" />
+                        </div>
+                      )}
+                      <button disabled={!qeMonto} onClick={() => setQeStep(3)} className="w-full py-4 rounded-xl font-black text-[#0b0c16] text-lg bg-neoncyan shadow-glow-cyan disabled:opacity-20 disabled:shadow-none transition-all">Siguiente Paso</button>
+                    </div>
+                  )}
+                  {qeStep === 3 && (
+                    <div className="h-full flex flex-col">
+                      <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">Selecciona la Categoría Macro</h4>
+                      <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {(qeType === 'egreso' ? Object.keys(CATEGORIAS_CONFIG) : ['Salario', 'Honorarios', 'Transferencia', 'Inversión', 'Regalo', 'Otros']).map(cat => (
+                            <button key={cat} onClick={() => { 
+                              setQeCategoria(cat); 
+                              if(qeType === 'ingreso') { setQeStep(4); }
+                              else { setQeStep(3.5); }
+                            }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">{cat}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {qeStep === 3.5 && (
+                    <div className="h-full flex flex-col">
+                      <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-4">¿Qué pagaste exactamente?</h4>
+                      <div className="flex-1 overflow-y-auto pr-2 pb-4 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                        <div className="grid grid-cols-1 gap-2.5">
+                          {opcionesEspecificasWizard.map(opt => (
+                            <button key={opt.específico} onClick={() => { 
+                              setQeDescripcion(opt.específico); 
+                              setQeSubcategoria(opt.sub);
+                              setQeStep(4); 
+                            }} className="p-3.5 rounded-xl text-xs font-bold text-left transition-all border border-white/[0.02] bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan active:scale-95">
+                              {opt.específico}
+                              <span className="block text-[9px] text-slate-500 mt-1 uppercase tracking-widest">↳ {opt.sub}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {qeStep === 4 && (
+                    <div className="space-y-4">
+                      <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-6">{qeType === 'egreso' ? '¿Cómo lo pagaste?' : '¿A dónde entró el dinero?'}</h4>
+                      <button onClick={() => { setQeMethod('cash'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💵</span> Efectivo</button>
+                      <button onClick={() => { setQeMethod('bank'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">🏦</span> Cuenta Débito / Ahorros</button>
+                      {qeType === 'egreso' && <button onClick={() => { setQeMethod('credit'); setQeStep(5); }} className="w-full p-4 rounded-xl text-sm font-bold text-left transition-all border border-white/[0.02] flex items-center gap-3 bg-[#111222] text-slate-300 hover:border-neoncyan hover:shadow-glow-cyan"><span className="text-xl">💳</span> Tarjeta de Crédito</button>}
+                    </div>
+                  )}
+                  {qeStep === 5 && (
+                    <div className="space-y-6">
+                      <h4 className="text-center text-[#8A92A6] font-black uppercase tracking-widest text-xs mb-2">{qeType === 'egreso' ? '¿De cuál cuenta exactamente?' : '¿A qué cuenta exactamente?'}</h4>
+                      <div className="grid grid-cols-1 gap-2.5 overflow-y-auto max-h-[250px] pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                        {activeCalculatedAccounts.filter(c => c.type === qeMethod).map(acc => (
+                          <button key={acc.id} onClick={() => setQeCuenta(acc.id)} className={`p-4 rounded-xl text-sm font-bold text-left transition-all border flex justify-between items-center ${qeCuenta === acc.id ? 'bg-neoncyan/10 border-neoncyan text-neoncyan shadow-glow-cyan' : 'bg-[#111222] border-white/[0.02] text-slate-300 hover:border-slate-600'}`}>
+                            <span>{acc.name}</span>
+                            {qeCuenta === acc.id && <div className="w-2.5 h-2.5 bg-neoncyan rounded-full shadow-[0_0_8px_#00E5FF]"></div>}
+                          </button>
+                        ))}
+                        {activeCalculatedAccounts.filter(c => c.type === qeMethod).length === 0 && <div className="text-center p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl"><p className="text-rose-400 text-xs font-bold">No tienes cuentas de este tipo registradas.</p></div>}
+                      </div>
+                      {qeCuenta && <button onClick={handleQuickSave} className={`w-full py-4 rounded-xl font-black text-lg transition-all hover:scale-[1.02] active:scale-95 ${qeType === 'egreso' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-emerald-500 text-[#0b0c16] shadow-[0_0_20px_rgba(16,185,129,0.4)]'}`}>¡Confirmar y Guardar!</button>}
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* ✨ MODAL DEL BUSCADOR GLOBAL */}
+          {isSearchOpen && (
+            <div className="fixed inset-0 bg-[#0b0c16]/90 backdrop-blur-md z-[60] flex flex-col items-center pt-10 md:pt-20 px-4 animate-in fade-in duration-200">
+              <div className="w-full max-w-2xl flex flex-col relative animate-in slide-in-from-top-4">
+                
+                <div className="relative z-10">
+                  <span className="absolute left-6 top-1/2 -translate-y-1/2 text-neoncyan"><SearchIcon size={24}/></span>
+                  <input 
+                    id="global-search-input"
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Busca el nombre del colegio, un supermercado, una cuenta..."
+                    className="w-full bg-appcard shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-neoncyan/30 rounded-2xl pl-16 pr-12 py-5 text-lg font-black text-white outline-none focus:border-neoncyan focus:shadow-glow-cyan transition-all placeholder:text-slate-600 placeholder:font-medium"
+                  />
+                  <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-rose-400 p-2 transition-colors">
+                    <XIconGlobal size={20}/>
+                  </button>
+                </div>
+
+                {searchQuery.trim() !== '' && (
+                  <div className="mt-4 bg-appcard border border-white/[0.05] rounded-2xl p-2 max-h-[60vh] overflow-y-auto shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+                    {searchResults.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {searchResults.map((res, i) => (
+                          <div key={i} className="flex justify-between items-center p-4 hover:bg-white/[0.02] rounded-xl transition-colors cursor-default border border-transparent hover:border-white/[0.05]">
+                            <div className="flex items-center gap-4 overflow-hidden">
+                              <span className="text-2xl shrink-0">{res.icon}</span>
+                              <div className="truncate pr-2">
+                                <p className="text-sm font-bold text-white tracking-wide truncate">{res.descripcion}</p>
+                                <p className="text-[10px] text-[#8A92A6] font-black uppercase tracking-widest mt-0.5">{res.fecha} • {res.tipo}</p>
+                              </div>
+                            </div>
+                            <span className={`text-sm font-black tabular-nums shrink-0 drop-shadow-md ${res.color}`}>
+                              {formatCOPPrivacy(res.monto)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-10 text-center">
+                        <p className="text-[#8A92A6] text-sm font-bold tracking-wide">No se encontraron resultados para "<span className="text-white">{searchQuery}</span>"</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </ErrorBoundary>
     );
   };
 
